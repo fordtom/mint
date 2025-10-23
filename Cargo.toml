@@ -2,7 +2,7 @@
 name = "mint-cli"
 version = "1.0.0"
 edition = "2024"
-description = "Build hex files from a layout file and excel data"
+description = "A CLI tool for building hex files from excel data and a layout definition."
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/fordtom/mint"
