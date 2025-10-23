@@ -1,0 +1,30 @@
+[settings]
+endianness = "little"
+virtual_offset = 0x0
+byte_swap = false
+pad_to_end = false
+
+[settings.crc]
+polynomial = 0x04C11DB7
+start = 0xFFFFFFFF
+xor_out = 0xFFFFFFFF
+ref_in = true
+ref_out = true
+area = "data"
+
+[simple_block.header]
+start_address = 0x8000
+length = 0x100
+crc_location = "end"
+padding = 0xFF
+
+[simple_block.data]
+# All values defined inline - no Excel dependency
+device.id = { value = 0x1234, type = "u32" }
+device.name = { value = "TestDevice", type = "u8", size = 16 }
+config.enable = { value = 1, type = "u8" }
+config.timeout = { value = 5000, type = "u16" }
+network.ip = { value = [192, 168, 1, 100], type = "u8", size = 4 }
+constants.pi = { value = 3.14159, type = "f32" }
+array.values = { value = [10, 20, 30, 40, 50], type = "u16", size = 5 }
+magic = { value = 0xDEADBEEF, type = "u32" }

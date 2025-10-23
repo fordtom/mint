@@ -1,0 +1,29 @@
+[package]
+name = "mint-cli"
+version = "1.0.0"
+edition = "2024"
+description = "Build hex files from a layout file and excel data"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/fordtom/mint"
+categories = ["command-line-utilities"]
+keywords = ["flash", "hex", "layout", "excel", "data"]
+
+exclude = ["examples/**", "flake.*", ".envrc", ".cursor/**"]
+
+[[bin]]
+name = "mint"
+path = "src/main.rs"
+
+[dependencies]
+bin_file = "0.1.4"
+calamine = "0.29.0"
+clap = { version = "4.5.42", features = ["derive"] }
+comfy-table = "7.1"
+indexmap = { version = "2.10.0", features = ["serde"] }
+rayon = "1.11.0"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = { version = "1.0.142", features = ["preserve_order"] }
+serde_yaml = "0.9.34"
+thiserror = "2.0.12"
+toml = { version = "0.9.4", features = ["preserve_order"] }

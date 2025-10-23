@@ -1,0 +1,7 @@
+target
+.DS_Store
+.direnv
+out
+
+#symlinked to .cursor/commands
+.agents/commands
