@@ -3,5 +3,3 @@ target
 .direnv
 out
 
-#symlinked to .cursor/commands
-.agents/commands
