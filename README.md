@@ -2,10 +2,8 @@
 
 Build flash blocks from a layout file (TOML/YAML/JSON) and an Excel workbook, then emit hex files.
 
-```bash
-mint block@examples/block.toml -x examples/data.xlsx -o out
-```
+![img](img.png)
 
-Install with `cargo install mint-cli`.
+Install with `cargo install mint-cli` or via nix flakes.
 
 Run `mint --help` for all available options. Example layouts and data are in the `examples/` directory.
