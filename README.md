@@ -2,6 +2,9 @@
 
 Build flash blocks from a layout file (TOML/YAML/JSON) and an Excel workbook, then emit hex files.
 
+![img](img.png)
+
+
 ```bash
 mint block@examples/block.toml -x examples/data.xlsx -o out
 ```
