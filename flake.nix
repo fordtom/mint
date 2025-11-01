@@ -24,17 +24,17 @@
 
         cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
 
-        pname = cargoToml.package.name;
-        version = cargoToml.package.version;
+        mintPkg = pkgs.rustPlatform.buildRustPackage {
+          pname = cargoToml.package.name;
+          version = cargoToml.package.version;
+          src = ./.;
+          cargoLock.lockFile = ./Cargo.lock;
+          buildType = "release";
+        };
       in {
-        packages = rec {
-          default = mint-cli;
-          mint-cli = pkgs.rustPlatform.buildRustPackage {
-            inherit pname version;
-            src = ./.;
-            cargoLock.lockFile = ./Cargo.lock;
-            buildType = "release";
-          };
+        packages = {
+          default = mintPkg;
+          mint = mintPkg;
         };
 
         devShells.default = pkgs.mkShell {

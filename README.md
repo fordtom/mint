@@ -4,6 +4,6 @@ Build flash blocks from a layout file (TOML/YAML/JSON) and an Excel workbook, th
 
 ![img](img.png)
 
-Install with `cargo install mint-cli`.
+Install with `cargo install mint-cli` or via nix flakes.
 
 Run `mint --help` for all available options. Example layouts and data are in the `examples/` directory.
