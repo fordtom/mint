@@ -43,8 +43,11 @@ Main sheet (first row is headers):
 | CalibrationMatrix    | #CalibrationMatrix  |       |           |
 
 Notes:
-- Precedence: `Debug` (when `--debug`) → selected `Variant` (when `--variant` specifies the column name) → `Default`. A default value should always be specified.
-- Cell starting with `#` is a sheet reference; otherwise a string cell is literal bytes (for u8 strings).
+- Precedence:
+  - `Debug` (when `--debug` flag is set)
+  - `Variant` (when `--variant [NAME]` specifies the column name)
+  - `Default` (a default value should always be specified as fallback).
+- Cell starting with `#` is a sheet reference (for arrays); otherwise a string cell is literal bytes (for u8 strings).
 
 Arrays from Excel sheets:
 - First row is headers; width of the header row defines a 2D array's expected width.
