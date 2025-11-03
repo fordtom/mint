@@ -5,7 +5,12 @@ use clap::Parser;
 
 // Top-level CLI parser. Sub-sections are flattened from sub-Args structs.
 #[derive(Parser, Debug)]
-#[command(author, version, about = "Build flash blocks from layout + Excel data")]
+#[command(
+    author,
+    version,
+    about = "Build flash blocks from layout + Excel data",
+    after_help = "For more information, visit https://github.com/fordtom/mint"
+)]
 pub struct Args {
     #[command(flatten)]
     pub layout: LayoutArgs,
