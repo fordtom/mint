@@ -38,8 +38,7 @@ fn test_build_without_excel() {
     };
 
     // This should succeed since all values are inline
-    let stats =
-        commands::builder::build(&args, None).expect("build should succeed without Excel file");
+    let stats = commands::build(&args, None).expect("build should succeed without Excel file");
 
     assert!(
         stats.blocks_processed > 0,
@@ -90,7 +89,7 @@ fn test_error_when_name_without_excel() {
     };
 
     // This should fail with MissingDataSheet error
-    let result = commands::generate::build_block_single(&input, None, &args);
+    let result = commands::build(&args, None);
     assert!(
         result.is_err(),
         "Expected error when using 'name' without Excel file"

@@ -40,7 +40,7 @@ fn test_file_expands_all_blocks() {
         },
     };
 
-    let stats = commands::builder::build(&args, None).expect("build should succeed");
+    let stats = commands::build(&args, None).expect("build should succeed");
 
     let cfg = mint_cli::layout::load_layout(layout_path).expect("layout loads");
     assert_eq!(
@@ -97,7 +97,7 @@ fn test_deduplication_file_and_specific() {
         },
     };
 
-    let stats = commands::builder::build(&args, None).expect("build should succeed");
+    let stats = commands::build(&args, None).expect("build should succeed");
 
     let cfg = mint_cli::layout::load_layout(layout_path).expect("layout loads");
     assert_eq!(
@@ -139,7 +139,7 @@ fn test_file_expansion_with_combined() {
         },
     };
 
-    let stats = commands::builder::build(&args, None).expect("build should succeed");
+    let stats = commands::build(&args, None).expect("build should succeed");
 
     let cfg = mint_cli::layout::load_layout(layout_path).expect("layout loads");
     assert_eq!(

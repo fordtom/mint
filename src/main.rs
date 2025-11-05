@@ -32,7 +32,7 @@ fn main() -> Result<(), NvmError> {
         )))
     })?;
 
-    let stats = commands::builder::build(&args, data_sheet.as_ref())?;
+    let stats = commands::build(&args, data_sheet.as_ref())?;
 
     if !args.output.quiet {
         if args.output.stats {

@@ -1,30 +1,182 @@
-pub mod builder;
-pub mod generate;
 pub mod stats;
 
 use crate::args::Args;
 use crate::error::NvmError;
 use crate::layout;
+use crate::layout::args::BlockNames;
+use crate::layout::block::Config;
 use crate::layout::errors::LayoutError;
+use crate::layout::settings::Endianness;
 use crate::output;
+use crate::output::DataRange;
 use crate::output::errors::OutputError;
 use crate::variant::DataSheet;
 use crate::writer::write_output;
 use rayon::prelude::*;
 use stats::{BlockStat, BuildStats};
+use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 
-pub fn build_separate_blocks(
-    args: &Args,
-    data_sheet: Option<&DataSheet>,
-) -> Result<BuildStats, NvmError> {
-    let start_time = Instant::now();
+/// Represents a resolved block ready for building
+#[derive(Debug, Clone)]
+struct ResolvedBlock {
+    name: String,
+    file: String,
+}
 
-    let block_stats: Result<Vec<BlockStat>, NvmError> = args
-        .layout
-        .blocks
+/// Result of building a single block's bytestream and metadata
+struct BlockBuildResult {
+    block_names: BlockNames,
+    data_range: DataRange,
+    stat: BlockStat,
+}
+
+/// Phase 1: Resolve all blocks we need to build
+/// - Load all unique layout files in parallel
+/// - Expand any "all blocks" specifications (where name is empty)
+/// - Deduplicate to avoid building the same block twice
+fn resolve_blocks(
+    block_args: &[BlockNames],
+) -> Result<(Vec<ResolvedBlock>, HashMap<String, Config>), LayoutError> {
+    // Collect all unique filenames we need to load
+    let unique_files: HashSet<String> = block_args.iter().map(|b| b.file.clone()).collect();
+
+    // Load all layouts in parallel
+    let layouts: Result<HashMap<String, Config>, LayoutError> = unique_files
         .par_iter()
-        .map(|input| generate::build_block_single(input, data_sheet, args))
+        .map(|file| layout::load_layout(file).map(|cfg| (file.clone(), cfg)))
+        .collect();
+
+    let layouts = layouts?;
+
+    // Resolve each block argument to concrete blocks
+    let mut resolved = Vec::new();
+    for arg in block_args {
+        if arg.name.is_empty() {
+            // Expand to all blocks in this file
+            let layout = layouts.get(&arg.file).ok_or_else(|| {
+                LayoutError::FileError(format!("Layout not loaded: {}", arg.file))
+            })?;
+
+            for block_name in layout.blocks.keys() {
+                resolved.push(ResolvedBlock {
+                    name: block_name.clone(),
+                    file: arg.file.clone(),
+                });
+            }
+        } else {
+            // Specific block
+            resolved.push(ResolvedBlock {
+                name: arg.name.clone(),
+                file: arg.file.clone(),
+            });
+        }
+    }
+
+    // Deduplicate: use (file, name) pairs
+    let mut seen = HashSet::new();
+    let deduplicated: Vec<ResolvedBlock> = resolved
+        .into_iter()
+        .filter(|b| seen.insert((b.file.clone(), b.name.clone())))
+        .collect();
+
+    Ok((deduplicated, layouts))
+}
+
+/// Phase 2: Build bytestreams in parallel for all resolved blocks
+fn build_bytestreams(
+    blocks: &[ResolvedBlock],
+    layouts: &HashMap<String, Config>,
+    data_sheet: Option<&DataSheet>,
+    strict: bool,
+) -> Result<Vec<BlockBuildResult>, NvmError> {
+    blocks
+        .par_iter()
+        .map(|resolved| build_single_bytestream(resolved, layouts, data_sheet, strict))
+        .collect()
+}
+
+fn build_single_bytestream(
+    resolved: &ResolvedBlock,
+    layouts: &HashMap<String, Config>,
+    data_sheet: Option<&DataSheet>,
+    strict: bool,
+) -> Result<BlockBuildResult, NvmError> {
+    let layout = layouts
+        .get(&resolved.file)
+        .ok_or_else(|| LayoutError::FileError(format!("Layout not found: {}", resolved.file)))?;
+
+    let block = layout
+        .blocks
+        .get(&resolved.name)
+        .ok_or_else(|| LayoutError::BlockNotFound(resolved.name.clone()))?;
+
+    let (bytestream, padding_bytes) =
+        block.build_bytestream(data_sheet, &layout.settings, strict)?;
+
+    let data_range = output::bytestream_to_datarange(
+        bytestream,
+        &block.header,
+        &layout.settings,
+        layout.settings.byte_swap,
+        layout.settings.pad_to_end,
+        padding_bytes,
+    )?;
+
+    let crc_value = extract_crc_value(&data_range.crc_bytestream, &layout.settings.endianness);
+
+    let stat = BlockStat {
+        name: resolved.name.clone(),
+        start_address: data_range.start_address,
+        allocated_size: data_range.allocated_size,
+        used_size: data_range.used_size,
+        crc_value,
+    };
+
+    Ok(BlockBuildResult {
+        block_names: BlockNames {
+            name: resolved.name.clone(),
+            file: resolved.file.clone(),
+        },
+        data_range,
+        stat,
+    })
+}
+
+fn extract_crc_value(crc_bytestream: &[u8], endianness: &Endianness) -> u32 {
+    match endianness {
+        Endianness::Big => u32::from_be_bytes([
+            crc_bytestream[0],
+            crc_bytestream[1],
+            crc_bytestream[2],
+            crc_bytestream[3],
+        ]),
+        Endianness::Little => u32::from_le_bytes([
+            crc_bytestream[0],
+            crc_bytestream[1],
+            crc_bytestream[2],
+            crc_bytestream[3],
+        ]),
+    }
+}
+
+/// Phase 3a: Output separate hex files for each block
+fn output_separate_blocks(
+    results: Vec<BlockBuildResult>,
+    args: &Args,
+) -> Result<BuildStats, NvmError> {
+    let block_stats: Result<Vec<BlockStat>, NvmError> = results
+        .par_iter()
+        .map(|result| {
+            let hex_string = output::emit_hex(
+                std::slice::from_ref(&result.data_range),
+                args.output.record_width as usize,
+                args.output.format,
+            )?;
+
+            write_output(&args.output, &result.block_names.name, &hex_string)?;
+            Ok(result.stat.clone())
+        })
         .collect();
 
     let block_stats = block_stats?;
@@ -33,92 +185,65 @@ pub fn build_separate_blocks(
     for stat in block_stats {
         stats.add_block(stat);
     }
-    stats.total_duration = start_time.elapsed();
 
     Ok(stats)
 }
 
-pub fn build_single_file(
+/// Phase 3b: Combine all blocks into a single hex file
+fn output_combined_file(
+    results: Vec<BlockBuildResult>,
+    layouts: &HashMap<String, Config>,
     args: &Args,
-    data_sheet: Option<&DataSheet>,
 ) -> Result<BuildStats, NvmError> {
-    let start_time = Instant::now();
-
-    let mut ranges = Vec::new();
-    let mut block_ranges: Vec<(String, u32, u32)> = Vec::new();
     let mut stats = BuildStats::new();
+    let mut ranges = Vec::new();
+    let mut block_ranges = Vec::new();
 
-    for input in &args.layout.blocks {
-        let result =
-            (|| {
-                let layout = layout::load_layout(&input.file)?;
+    for result in results {
+        let layout = layouts.get(&result.block_names.file).ok_or_else(|| {
+            LayoutError::FileError(format!("Layout not found: {}", result.block_names.file))
+        })?;
 
-                let block = layout
-                    .blocks
-                    .get(&input.name)
-                    .ok_or(LayoutError::BlockNotFound(input.name.clone()))?;
+        let block = layout
+            .blocks
+            .get(&result.block_names.name)
+            .ok_or_else(|| LayoutError::BlockNotFound(result.block_names.name.clone()))?;
 
-                let (bytestream, padding_bytes) =
-                    block.build_bytestream(data_sheet, &layout.settings, args.layout.strict)?;
+        let start = block
+            .header
+            .start_address
+            .checked_add(layout.settings.virtual_offset)
+            .ok_or(LayoutError::InvalidBlockArgument(
+                "start_address + virtual_offset overflow".into(),
+            ))?;
 
-                let dr = output::bytestream_to_datarange(
-                    bytestream,
-                    &block.header,
-                    &layout.settings,
-                    layout.settings.byte_swap,
-                    layout.settings.pad_to_end,
-                    padding_bytes,
-                )?;
+        let end =
+            start
+                .checked_add(block.header.length)
+                .ok_or(LayoutError::InvalidBlockArgument(
+                    "start + length overflow".into(),
+                ))?;
 
-                let mut crc_bytes = [
-                    dr.crc_bytestream[0],
-                    dr.crc_bytestream[1],
-                    dr.crc_bytestream[2],
-                    dr.crc_bytestream[3],
-                ];
-                if layout.settings.byte_swap {
-                    crc_bytes.swap(0, 1);
-                    crc_bytes.swap(2, 3);
-                }
-                let crc_value = match layout.settings.endianness {
-                    layout::settings::Endianness::Big => u32::from_be_bytes(crc_bytes),
-                    layout::settings::Endianness::Little => u32::from_le_bytes(crc_bytes),
-                };
-
-                let stat = BlockStat {
-                    name: input.name.clone(),
-                    start_address: dr.start_address,
-                    allocated_size: dr.allocated_size,
-                    used_size: dr.used_size,
-                    crc_value,
-                };
-
-                let start = block
-                    .header
-                    .start_address
-                    .checked_add(layout.settings.virtual_offset)
-                    .ok_or(LayoutError::InvalidBlockArgument(
-                        "start_address + virtual_offset overflow".into(),
-                    ))?;
-                let end = start.checked_add(block.header.length).ok_or(
-                    LayoutError::InvalidBlockArgument("start + length overflow".into()),
-                )?;
-
-                Ok((dr, stat, start, end))
-            })()
-            .map_err(|e| NvmError::InBlock {
-                block_name: input.name.clone(),
-                layout_file: input.file.clone(),
-                source: Box::new(e),
-            })?;
-
-        let (dr, stat, start, end) = result;
-        stats.add_block(stat);
-        ranges.push(dr);
-        block_ranges.push((input.name.clone(), start, end));
+        stats.add_block(result.stat);
+        ranges.push(result.data_range);
+        block_ranges.push((result.block_names.name.clone(), start, end));
     }
 
-    // Detect overlaps between declared block memory ranges (inclusive start, exclusive end)
+    // Detect overlaps between declared block memory ranges
+    check_overlaps(&block_ranges)?;
+
+    let hex_string = output::emit_hex(
+        &ranges,
+        args.output.record_width as usize,
+        args.output.format,
+    )?;
+
+    write_output(&args.output, "combined", &hex_string)?;
+
+    Ok(stats)
+}
+
+fn check_overlaps(block_ranges: &[(String, u32, u32)]) -> Result<(), NvmError> {
     for i in 0..block_ranges.len() {
         for j in (i + 1)..block_ranges.len() {
             let (ref name_a, a_start, a_end) = block_ranges[i];
@@ -145,16 +270,26 @@ pub fn build_single_file(
             }
         }
     }
+    Ok(())
+}
 
-    let hex_string = output::emit_hex(
-        &ranges,
-        args.output.record_width as usize,
-        args.output.format,
-    )?;
+/// Main unified build function
+pub fn build(args: &Args, data_sheet: Option<&DataSheet>) -> Result<BuildStats, NvmError> {
+    let start_time = Instant::now();
 
-    write_output(&args.output, "combined", &hex_string)?;
+    // Phase 1: Resolve all blocks and load all layouts
+    let (resolved_blocks, layouts) = resolve_blocks(&args.layout.blocks)?;
+
+    // Phase 2: Build all bytestreams in parallel
+    let results = build_bytestreams(&resolved_blocks, &layouts, data_sheet, args.layout.strict)?;
+
+    // Phase 3: Output based on combined flag
+    let mut stats = if args.output.combined {
+        output_combined_file(results, &layouts, args)?
+    } else {
+        output_separate_blocks(results, args)?
+    };
 
     stats.total_duration = start_time.elapsed();
-
     Ok(stats)
 }
