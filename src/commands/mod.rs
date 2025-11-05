@@ -4,6 +4,7 @@ pub mod stats;
 use crate::args::Args;
 use crate::error::NvmError;
 use crate::layout;
+use crate::layout::args::BlockNames;
 use crate::layout::errors::LayoutError;
 use crate::output;
 use crate::output::errors::OutputError;
@@ -15,13 +16,12 @@ use std::time::Instant;
 
 pub fn build_separate_blocks(
     args: &Args,
+    blocks: &[BlockNames],
     data_sheet: Option<&DataSheet>,
 ) -> Result<BuildStats, NvmError> {
     let start_time = Instant::now();
 
-    let block_stats: Result<Vec<BlockStat>, NvmError> = args
-        .layout
-        .blocks
+    let block_stats: Result<Vec<BlockStat>, NvmError> = blocks
         .par_iter()
         .map(|input| generate::build_block_single(input, data_sheet, args))
         .collect();
@@ -39,6 +39,7 @@ pub fn build_separate_blocks(
 
 pub fn build_single_file(
     args: &Args,
+    blocks: &[BlockNames],
     data_sheet: Option<&DataSheet>,
 ) -> Result<BuildStats, NvmError> {
     let start_time = Instant::now();
@@ -47,7 +48,7 @@ pub fn build_single_file(
     let mut block_ranges: Vec<(String, u32, u32)> = Vec::new();
     let mut stats = BuildStats::new();
 
-    for input in &args.layout.blocks {
+    for input in blocks {
         let result =
             (|| {
                 let layout = layout::load_layout(&input.file)?;

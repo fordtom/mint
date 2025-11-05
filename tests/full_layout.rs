@@ -13,10 +13,9 @@ fn builds_all_blocks_from_example_layout() {
 
     let layout_path = "examples/block.toml".to_string();
 
-    let mut args = Args {
+    let args = Args {
         layout: LayoutArgs {
-            specifiers: vec![BlockSpecifier::All(layout_path.clone())],
-            blocks: Vec::new(),
+            blocks: vec![BlockSpecifier::All(layout_path.clone())],
             strict: false,
         },
         variant: variant::args::VariantArgs {
@@ -37,13 +36,16 @@ fn builds_all_blocks_from_example_layout() {
         },
     };
 
-    args.layout.resolve_blocks().expect("resolve blocks");
+    let blocks = args
+        .layout
+        .resolve_blocks()
+        .expect("resolve blocks");
 
     let datasheet = common
         .find_working_datasheet()
         .expect("datasheet should exist for example");
 
-    let stats = commands::build_separate_blocks(&args, Some(&datasheet))
+    let stats = commands::build_separate_blocks(&args, &blocks, Some(&datasheet))
         .expect("build full layout");
 
     assert_eq!(stats.blocks_processed, 3);

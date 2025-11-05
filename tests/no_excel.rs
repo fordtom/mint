@@ -18,8 +18,9 @@ fn test_build_without_excel() {
     // Build args without Excel file
     let args = mint_cli::args::Args {
         layout: mint_cli::layout::args::LayoutArgs {
-            specifiers: Vec::new(),
-            blocks: vec![input.clone()],
+            blocks: vec![mint_cli::layout::args::BlockSpecifier::Specific(
+                input.clone(),
+            )],
             strict: false,
         },
         variant: mint_cli::variant::args::VariantArgs {
@@ -66,8 +67,9 @@ fn test_error_when_name_without_excel() {
 
     let args = mint_cli::args::Args {
         layout: mint_cli::layout::args::LayoutArgs {
-            specifiers: Vec::new(),
-            blocks: vec![input.clone()],
+            blocks: vec![mint_cli::layout::args::BlockSpecifier::Specific(
+                input.clone(),
+            )],
             strict: false,
         },
         variant: mint_cli::variant::args::VariantArgs {

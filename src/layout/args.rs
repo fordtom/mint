@@ -2,7 +2,7 @@ use super::errors::LayoutError;
 use clap::Args;
 use std::collections::{hash_map::Entry, HashMap};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BlockNames {
     pub name: String,
     pub file: String,
@@ -58,10 +58,7 @@ pub struct LayoutArgs {
         value_parser = parse_block_specifier,
         help = "One or more blocks in the form name@layout_file (toml/yaml/json), or provide a layout file to build all blocks"
     )]
-    pub specifiers: Vec<BlockSpecifier>,
-
-    #[arg(skip)]
-    pub blocks: Vec<BlockNames>,
+    pub blocks: Vec<BlockSpecifier>,
 
     #[arg(
         long,
@@ -72,18 +69,14 @@ pub struct LayoutArgs {
 }
 
 impl LayoutArgs {
-    pub fn resolve_blocks(&mut self) -> Result<&[BlockNames], LayoutError> {
-        if self.blocks.is_empty() {
-            let resolved = Self::expand_specifiers(&self.specifiers)?;
+    pub fn resolve_blocks(&self) -> Result<Vec<BlockNames>, LayoutError> {
+        let resolved = Self::expand_specifiers(&self.blocks)?;
 
-            if resolved.is_empty() {
-                return Err(LayoutError::NoBlocksProvided);
-            }
-
-            self.blocks = resolved;
+        if resolved.is_empty() {
+            return Err(LayoutError::NoBlocksProvided);
         }
 
-        Ok(&self.blocks)
+        Ok(resolved)
     }
 
     fn expand_specifiers(specifiers: &[BlockSpecifier]) -> Result<Vec<BlockNames>, LayoutError> {
@@ -145,15 +138,14 @@ mod tests {
     #[test]
     fn resolves_mixed_specifiers_in_order() {
         let layout_path = "examples/block.toml".to_string();
-        let mut args = LayoutArgs {
-            specifiers: vec![
+        let args = LayoutArgs {
+            blocks: vec![
                 BlockSpecifier::Specific(BlockNames {
                     name: "block2".to_string(),
                     file: layout_path.clone(),
                 }),
                 BlockSpecifier::All(layout_path.clone()),
             ],
-            blocks: Vec::new(),
             strict: false,
         };
 
@@ -164,11 +156,11 @@ mod tests {
         let names: Vec<_> = resolved.iter().map(|b| b.name.as_str()).collect();
         assert_eq!(names, vec!["block2", "block", "block2", "block3"]);
 
-        // Second call uses cached result
+        // Second call resolves to same order
         let resolved_again = args
             .resolve_blocks()
-            .expect("should reuse resolved blocks");
-        assert_eq!(resolved_again.len(), 4);
+            .expect("should resolve specifiers again");
+        assert_eq!(resolved_again, resolved);
     }
 
     #[test]
@@ -191,9 +183,8 @@ area = "data"
 
         let layout_path = write_temp_layout(layout_contents);
 
-        let mut args = LayoutArgs {
-            specifiers: vec![BlockSpecifier::All(layout_path.clone())],
-            blocks: Vec::new(),
+        let args = LayoutArgs {
+            blocks: vec![BlockSpecifier::All(layout_path.clone())],
             strict: false,
         };
 

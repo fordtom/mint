@@ -7,9 +7,9 @@ use mint_cli::variant::DataSheet;
 use mint_cli::visuals;
 
 fn main() -> Result<(), NvmError> {
-    let mut args = Args::parse();
+    let args = Args::parse();
 
-    args.layout.resolve_blocks()?;
+    let blocks = args.layout.resolve_blocks()?;
 
     let data_sheet = DataSheet::new(&args.variant)?;
 
@@ -28,8 +28,8 @@ fn main() -> Result<(), NvmError> {
     })?;
 
     let stats = match args.output.combined {
-        true => commands::build_single_file(&args, data_sheet.as_ref())?,
-        false => commands::build_separate_blocks(&args, data_sheet.as_ref())?,
+        true => commands::build_single_file(&args, &blocks, data_sheet.as_ref())?,
+        false => commands::build_separate_blocks(&args, &blocks, data_sheet.as_ref())?,
     };
 
     if !args.output.quiet {

@@ -88,11 +88,12 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
     // Case 1: Big endian, swap, pad to end, CRC at explicit address, HEX with width 64
     let args_be_hex = mint_cli::args::Args {
         layout: mint_cli::layout::args::LayoutArgs {
-            specifiers: Vec::new(),
-            blocks: vec![BlockNames {
-                name: "block".to_string(),
-                file: be_path.clone(),
-            }],
+            blocks: vec![mint_cli::layout::args::BlockSpecifier::Specific(
+                BlockNames {
+                    name: "block".to_string(),
+                    file: be_path.clone(),
+                },
+            )],
             strict: false,
         },
         variant: var_args.clone(),
@@ -121,11 +122,12 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
     // Case 2: Big endian, swap, pad to end, explicit CRC, MOT with width 16
     let args_be_mot = mint_cli::args::Args {
         layout: mint_cli::layout::args::LayoutArgs {
-            specifiers: Vec::new(),
-            blocks: vec![BlockNames {
-                name: "block".to_string(),
-                file: be_path.clone(),
-            }],
+            blocks: vec![mint_cli::layout::args::BlockSpecifier::Specific(
+                BlockNames {
+                    name: "block".to_string(),
+                    file: be_path.clone(),
+                },
+            )],
             strict: false,
         },
         variant: var_args.clone(),
@@ -154,11 +156,12 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
     // Case 3: Little endian, no swap, no pad to end, CRC at end, HEX width 16, virtual_offset applied
     let args_le_hex = mint_cli::args::Args {
         layout: mint_cli::layout::args::LayoutArgs {
-            specifiers: Vec::new(),
-            blocks: vec![BlockNames {
-                name: "block".to_string(),
-                file: le_path.clone(),
-            }],
+            blocks: vec![mint_cli::layout::args::BlockSpecifier::Specific(
+                BlockNames {
+                    name: "block".to_string(),
+                    file: le_path.clone(),
+                },
+            )],
             strict: true, // exercise strict path on numeric arrays
         },
         variant: var_args.clone(),
@@ -187,11 +190,12 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
     // Case 4: Little endian, no swap, no pad, CRC at end, MOT width 64
     let args_le_mot = mint_cli::args::Args {
         layout: mint_cli::layout::args::LayoutArgs {
-            specifiers: Vec::new(),
-            blocks: vec![BlockNames {
-                name: "block".to_string(),
-                file: le_path.clone(),
-            }],
+            blocks: vec![mint_cli::layout::args::BlockSpecifier::Specific(
+                BlockNames {
+                    name: "block".to_string(),
+                    file: le_path.clone(),
+                },
+            )],
             strict: true,
         },
         variant: var_args,

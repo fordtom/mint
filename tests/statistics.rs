@@ -60,12 +60,11 @@ fn test_build_stats_aggregation() {
         return;
     }
 
-    let args = common::build_args_for_layouts(
-        block_inputs.clone(),
-        mint_cli::output::args::OutputFormat::Hex,
-    );
+    let blocks = block_inputs.clone();
+    let args = common::build_args_for_layouts(&blocks, mint_cli::output::args::OutputFormat::Hex);
 
-    let stats = commands::build_single_file(&args, Some(&ds)).expect("build should succeed");
+    let stats = commands::build_single_file(&args, &blocks, Some(&ds))
+        .expect("build should succeed");
 
     assert_eq!(stats.blocks_processed, block_inputs.len());
     assert!(stats.total_allocated > 0);
@@ -137,12 +136,11 @@ fn test_combined_mode_stats() {
         return;
     }
 
-    let args = common::build_args_for_layouts(
-        block_inputs.clone(),
-        mint_cli::output::args::OutputFormat::Hex,
-    );
+    let blocks = block_inputs.clone();
+    let args = common::build_args_for_layouts(&blocks, mint_cli::output::args::OutputFormat::Hex);
 
-    let stats = commands::build_single_file(&args, Some(&ds)).expect("build should succeed");
+    let stats = commands::build_single_file(&args, &blocks, Some(&ds))
+        .expect("build should succeed");
 
     assert_eq!(stats.blocks_processed, block_inputs.len());
 

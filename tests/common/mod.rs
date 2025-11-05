@@ -4,7 +4,7 @@ use std::fs;
 use std::path::Path;
 
 use mint_cli::args::Args;
-use mint_cli::layout::args::{BlockNames, LayoutArgs};
+use mint_cli::layout::args::{BlockNames, BlockSpecifier, LayoutArgs};
 use mint_cli::output::args::{OutputArgs, OutputFormat};
 use mint_cli::variant::{self, DataSheet};
 
@@ -22,11 +22,10 @@ pub fn write_layout_file(file_stem: &str, contents: &str) -> String {
 pub fn build_args(layout_path: &str, block_name: &str, format: OutputFormat) -> Args {
     Args {
         layout: LayoutArgs {
-            specifiers: Vec::new(),
-            blocks: vec![BlockNames {
+            blocks: vec![BlockSpecifier::Specific(BlockNames {
                 name: block_name.to_string(),
                 file: layout_path.to_string(),
-            }],
+            })],
             strict: false,
         },
         variant: variant::args::VariantArgs {
@@ -92,11 +91,14 @@ pub fn assert_out_file_exists_custom(
     assert!(Path::new("out").join(expected).exists());
 }
 
-pub fn build_args_for_layouts(layouts: Vec<BlockNames>, format: OutputFormat) -> Args {
+pub fn build_args_for_layouts(layouts: &[BlockNames], format: OutputFormat) -> Args {
     Args {
         layout: LayoutArgs {
-            specifiers: Vec::new(),
-            blocks: layouts,
+            blocks: layouts
+                .iter()
+                .cloned()
+                .map(BlockSpecifier::Specific)
+                .collect(),
             strict: false,
         },
         variant: variant::args::VariantArgs {

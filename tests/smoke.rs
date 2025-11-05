@@ -55,12 +55,14 @@ fn smoke_build_examples_all_formats_and_options() {
             .collect::<Vec<_>>();
 
         if !block_inputs.is_empty() {
+            let blocks = block_inputs.clone();
             let args_single = common::build_args_for_layouts(
-                block_inputs,
+                &blocks,
                 mint_cli::output::args::OutputFormat::Hex,
             );
 
-            commands::build_single_file(&args_single, Some(&ds)).expect("build combined");
+            commands::build_single_file(&args_single, &blocks, Some(&ds))
+                .expect("build combined");
             common::assert_out_file_exists("combined", mint_cli::output::args::OutputFormat::Hex);
         }
     }
