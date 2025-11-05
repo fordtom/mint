@@ -96,7 +96,11 @@ macro_rules! impl_try_from_strict_float_targets {
                         if out.is_finite() {
                             Ok(out)
                         } else {
-                            Err(err!(format!("float value {} out of range for {}", v, stringify!($t))))
+                            Err(err!(format!(
+                                "float value {} out of range for {}",
+                                v,
+                                stringify!($t)
+                            )))
                         }
                     }
                     DataValue::U64(v) => {

@@ -10,15 +10,13 @@ fn test_build_without_excel() {
 
     let layout_path = "examples/block_no_excel.toml";
 
-    let input = mint_cli::layout::args::BlockNames {
-        name: "simple_block".to_string(),
-        file: layout_path.to_string(),
-    };
-
-    // Build args without Excel file
+    // Build args without Excel file, using FILE syntax (empty name = all blocks)
     let args = mint_cli::args::Args {
         layout: mint_cli::layout::args::LayoutArgs {
-            blocks: vec![input.clone()],
+            blocks: vec![mint_cli::layout::args::BlockNames {
+                name: String::new(),
+                file: layout_path.to_string(),
+            }],
             strict: false,
         },
         variant: mint_cli::variant::args::VariantArgs {
@@ -40,8 +38,12 @@ fn test_build_without_excel() {
     };
 
     // This should succeed since all values are inline
-    commands::generate::build_block_single(&input, None, &args)
-        .expect("build should succeed without Excel file");
+    let stats = commands::build(&args, None).expect("build should succeed without Excel file");
+
+    assert!(
+        stats.blocks_processed > 0,
+        "Should build at least one block"
+    );
 
     common::assert_out_file_exists_custom(
         "simple_block",
@@ -87,7 +89,7 @@ fn test_error_when_name_without_excel() {
     };
 
     // This should fail with MissingDataSheet error
-    let result = commands::generate::build_block_single(&input, None, &args);
+    let result = commands::build(&args, None);
     assert!(
         result.is_err(),
         "Expected error when using 'name' without Excel file"

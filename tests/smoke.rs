@@ -29,19 +29,13 @@ fn smoke_build_examples_all_formats_and_options() {
             // Hex
             let args_hex =
                 common::build_args(layout_path, blk, mint_cli::output::args::OutputFormat::Hex);
-            let input = mint_cli::layout::args::BlockNames {
-                name: blk.to_string(),
-                file: layout_path.to_string(),
-            };
-            commands::generate::build_block_single(&input, Some(&ds), &args_hex)
-                .expect("build hex");
+            commands::build(&args_hex, Some(&ds)).expect("build hex");
             common::assert_out_file_exists(blk, mint_cli::output::args::OutputFormat::Hex);
 
             // Mot
             let args_mot =
                 common::build_args(layout_path, blk, mint_cli::output::args::OutputFormat::Mot);
-            commands::generate::build_block_single(&input, Some(&ds), &args_mot)
-                .expect("build mot");
+            commands::build(&args_mot, Some(&ds)).expect("build mot");
             common::assert_out_file_exists(blk, mint_cli::output::args::OutputFormat::Mot);
         }
 
@@ -55,12 +49,13 @@ fn smoke_build_examples_all_formats_and_options() {
             .collect::<Vec<_>>();
 
         if !block_inputs.is_empty() {
-            let args_single = common::build_args_for_layouts(
+            let mut args_combined = common::build_args_for_layouts(
                 block_inputs,
                 mint_cli::output::args::OutputFormat::Hex,
             );
+            args_combined.output.combined = true;
 
-            commands::build_single_file(&args_single, Some(&ds)).expect("build combined");
+            commands::build(&args_combined, Some(&ds)).expect("build combined");
             common::assert_out_file_exists("combined", mint_cli::output::args::OutputFormat::Hex);
         }
     }
