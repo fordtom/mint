@@ -32,10 +32,7 @@ fn main() -> Result<(), NvmError> {
         )))
     })?;
 
-    let stats = match args.output.combined {
-        true => commands::build_single_file(&args, data_sheet.as_ref())?,
-        false => commands::build_separate_blocks(&args, data_sheet.as_ref())?,
-    };
+    let stats = commands::builder::build(&args, data_sheet.as_ref())?;
 
     if !args.output.quiet {
         if args.output.stats {

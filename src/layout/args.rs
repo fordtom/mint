@@ -10,22 +10,25 @@ pub struct BlockNames {
 pub fn parse_block_arg(block: &str) -> Result<BlockNames, LayoutError> {
     let parts: Vec<&str> = block.split('@').collect();
 
-    if parts.len() != 2 {
-        Err(LayoutError::InvalidBlockArgument(format!(
-            "Failed to unpack block {}",
-            block
-        )))
-    } else {
-        Ok(BlockNames {
+    match parts.len() {
+        2 => Ok(BlockNames {
             name: parts[0].to_string(),
             file: parts[1].to_string(),
-        })
+        }),
+        1 => Ok(BlockNames {
+            name: String::new(),
+            file: parts[0].to_string(),
+        }),
+        _ => Err(LayoutError::InvalidBlockArgument(format!(
+            "Failed to unpack block {}",
+            block
+        ))),
     }
 }
 
 #[derive(Args, Debug)]
 pub struct LayoutArgs {
-    #[arg(value_name = "BLOCK@FILE", num_args = 1.., value_parser = parse_block_arg, help = "One or more blocks in the form name@layout_file (toml/yaml/json)")]
+    #[arg(value_name = "BLOCK@FILE | FILE", num_args = 1.., value_parser = parse_block_arg, help = "One or more blocks as name@layout_file or a layout_file (toml/yaml/json) to build all blocks")]
     pub blocks: Vec<BlockNames>,
 
     #[arg(
