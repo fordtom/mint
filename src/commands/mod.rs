@@ -102,44 +102,52 @@ fn build_single_bytestream(
     data_sheet: Option<&DataSheet>,
     strict: bool,
 ) -> Result<BlockBuildResult, NvmError> {
-    let layout = layouts
-        .get(&resolved.file)
-        .ok_or_else(|| LayoutError::FileError(format!("Layout not found: {}", resolved.file)))?;
+    let result = (|| {
+        let layout = layouts
+            .get(&resolved.file)
+            .ok_or_else(|| LayoutError::FileError(format!("Layout not found: {}", resolved.file)))?;
 
-    let block = layout
-        .blocks
-        .get(&resolved.name)
-        .ok_or_else(|| LayoutError::BlockNotFound(resolved.name.clone()))?;
+        let block = layout
+            .blocks
+            .get(&resolved.name)
+            .ok_or_else(|| LayoutError::BlockNotFound(resolved.name.clone()))?;
 
-    let (bytestream, padding_bytes) =
-        block.build_bytestream(data_sheet, &layout.settings, strict)?;
+        let (bytestream, padding_bytes) =
+            block.build_bytestream(data_sheet, &layout.settings, strict)?;
 
-    let data_range = output::bytestream_to_datarange(
-        bytestream,
-        &block.header,
-        &layout.settings,
-        layout.settings.byte_swap,
-        layout.settings.pad_to_end,
-        padding_bytes,
-    )?;
+        let data_range = output::bytestream_to_datarange(
+            bytestream,
+            &block.header,
+            &layout.settings,
+            layout.settings.byte_swap,
+            layout.settings.pad_to_end,
+            padding_bytes,
+        )?;
 
-    let crc_value = extract_crc_value(&data_range.crc_bytestream, &layout.settings.endianness);
+        let crc_value = extract_crc_value(&data_range.crc_bytestream, &layout.settings.endianness);
 
-    let stat = BlockStat {
-        name: resolved.name.clone(),
-        start_address: data_range.start_address,
-        allocated_size: data_range.allocated_size,
-        used_size: data_range.used_size,
-        crc_value,
-    };
-
-    Ok(BlockBuildResult {
-        block_names: BlockNames {
+        let stat = BlockStat {
             name: resolved.name.clone(),
-            file: resolved.file.clone(),
-        },
-        data_range,
-        stat,
+            start_address: data_range.start_address,
+            allocated_size: data_range.allocated_size,
+            used_size: data_range.used_size,
+            crc_value,
+        };
+
+        Ok(BlockBuildResult {
+            block_names: BlockNames {
+                name: resolved.name.clone(),
+                file: resolved.file.clone(),
+            },
+            data_range,
+            stat,
+        })
+    })();
+
+    result.map_err(|e| NvmError::InBlock {
+        block_name: resolved.name.clone(),
+        layout_file: resolved.file.clone(),
+        source: Box::new(e),
     })
 }
 
