@@ -3,12 +3,13 @@ use clap::Parser;
 use mint_cli::args::Args;
 use mint_cli::commands;
 use mint_cli::error::*;
-use mint_cli::layout;
 use mint_cli::variant::DataSheet;
 use mint_cli::visuals;
 
 fn main() -> Result<(), NvmError> {
-    let args = Args::parse();
+    let mut args = Args::parse();
+
+    args.layout.resolve_blocks()?;
 
     let data_sheet = DataSheet::new(&args.variant)?;
 
@@ -18,12 +19,6 @@ fn main() -> Result<(), NvmError> {
             "Warning: --variant or --debug flag specified without an Excel file (-x). These flags will be ignored."
         );
     }
-
-    // Check if blocks are provided
-    args.layout
-        .blocks
-        .first()
-        .ok_or(layout::errors::LayoutError::NoBlocksProvided)?;
 
     std::fs::create_dir_all(&args.output.out).map_err(|e| {
         NvmError::Output(mint_cli::output::errors::OutputError::FileError(format!(

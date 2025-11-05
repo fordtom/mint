@@ -22,6 +22,7 @@ pub fn write_layout_file(file_stem: &str, contents: &str) -> String {
 pub fn build_args(layout_path: &str, block_name: &str, format: OutputFormat) -> Args {
     Args {
         layout: LayoutArgs {
+            specifiers: Vec::new(),
             blocks: vec![BlockNames {
                 name: block_name.to_string(),
                 file: layout_path.to_string(),
@@ -94,6 +95,7 @@ pub fn assert_out_file_exists_custom(
 pub fn build_args_for_layouts(layouts: Vec<BlockNames>, format: OutputFormat) -> Args {
     Args {
         layout: LayoutArgs {
+            specifiers: Vec::new(),
             blocks: layouts,
             strict: false,
         },

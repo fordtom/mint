@@ -17,6 +17,9 @@ pub enum LayoutError {
     #[error("No blocks provided.")]
     NoBlocksProvided,
 
+    #[error("No blocks found in layout file: {0}.")]
+    NoBlocksInLayout(String),
+
     #[error("Missing datasheet: {0}")]
     MissingDataSheet(String),
 
