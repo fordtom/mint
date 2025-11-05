@@ -17,31 +17,23 @@ use stats::{BlockStat, BuildStats};
 use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 
-/// Represents a resolved block ready for building
 #[derive(Debug, Clone)]
 struct ResolvedBlock {
     name: String,
     file: String,
 }
 
-/// Result of building a single block's bytestream and metadata
 struct BlockBuildResult {
     block_names: BlockNames,
     data_range: DataRange,
     stat: BlockStat,
 }
 
-/// Phase 1: Resolve all blocks we need to build
-/// - Load all unique layout files in parallel
-/// - Expand any "all blocks" specifications (where name is empty)
-/// - Deduplicate to avoid building the same block twice
 fn resolve_blocks(
     block_args: &[BlockNames],
 ) -> Result<(Vec<ResolvedBlock>, HashMap<String, Config>), LayoutError> {
-    // Collect all unique filenames we need to load
     let unique_files: HashSet<String> = block_args.iter().map(|b| b.file.clone()).collect();
 
-    // Load all layouts in parallel
     let layouts: Result<HashMap<String, Config>, LayoutError> = unique_files
         .par_iter()
         .map(|file| layout::load_layout(file).map(|cfg| (file.clone(), cfg)))
@@ -49,15 +41,10 @@ fn resolve_blocks(
 
     let layouts = layouts?;
 
-    // Resolve each block argument to concrete blocks
     let mut resolved = Vec::new();
     for arg in block_args {
         if arg.name.is_empty() {
-            // Expand to all blocks in this file
-            let layout = layouts.get(&arg.file).ok_or_else(|| {
-                LayoutError::FileError(format!("Layout not loaded: {}", arg.file))
-            })?;
-
+            let layout = &layouts[&arg.file];
             for block_name in layout.blocks.keys() {
                 resolved.push(ResolvedBlock {
                     name: block_name.clone(),
@@ -65,7 +52,6 @@ fn resolve_blocks(
                 });
             }
         } else {
-            // Specific block
             resolved.push(ResolvedBlock {
                 name: arg.name.clone(),
                 file: arg.file.clone(),
@@ -73,7 +59,6 @@ fn resolve_blocks(
         }
     }
 
-    // Deduplicate: use (file, name) pairs
     let mut seen = HashSet::new();
     let deduplicated: Vec<ResolvedBlock> = resolved
         .into_iter()
@@ -83,7 +68,6 @@ fn resolve_blocks(
     Ok((deduplicated, layouts))
 }
 
-/// Phase 2: Build bytestreams in parallel for all resolved blocks
 fn build_bytestreams(
     blocks: &[ResolvedBlock],
     layouts: &HashMap<String, Config>,
@@ -103,14 +87,8 @@ fn build_single_bytestream(
     strict: bool,
 ) -> Result<BlockBuildResult, NvmError> {
     let result = (|| {
-        let layout = layouts
-            .get(&resolved.file)
-            .ok_or_else(|| LayoutError::FileError(format!("Layout not found: {}", resolved.file)))?;
-
-        let block = layout
-            .blocks
-            .get(&resolved.name)
-            .ok_or_else(|| LayoutError::BlockNotFound(resolved.name.clone()))?;
+        let layout = &layouts[&resolved.file];
+        let block = &layout.blocks[&resolved.name];
 
         let (bytestream, padding_bytes) =
             block.build_bytestream(data_sheet, &layout.settings, strict)?;
@@ -168,7 +146,6 @@ fn extract_crc_value(crc_bytestream: &[u8], endianness: &Endianness) -> u32 {
     }
 }
 
-/// Phase 3a: Output separate hex files for each block
 fn output_separate_blocks(
     results: Vec<BlockBuildResult>,
     args: &Args,
@@ -197,7 +174,6 @@ fn output_separate_blocks(
     Ok(stats)
 }
 
-/// Phase 3b: Combine all blocks into a single hex file
 fn output_combined_file(
     results: Vec<BlockBuildResult>,
     layouts: &HashMap<String, Config>,
@@ -208,14 +184,8 @@ fn output_combined_file(
     let mut block_ranges = Vec::new();
 
     for result in results {
-        let layout = layouts.get(&result.block_names.file).ok_or_else(|| {
-            LayoutError::FileError(format!("Layout not found: {}", result.block_names.file))
-        })?;
-
-        let block = layout
-            .blocks
-            .get(&result.block_names.name)
-            .ok_or_else(|| LayoutError::BlockNotFound(result.block_names.name.clone()))?;
+        let layout = &layouts[&result.block_names.file];
+        let block = &layout.blocks[&result.block_names.name];
 
         let start = block
             .header
@@ -237,7 +207,6 @@ fn output_combined_file(
         block_ranges.push((result.block_names.name.clone(), start, end));
     }
 
-    // Detect overlaps between declared block memory ranges
     check_overlaps(&block_ranges)?;
 
     let hex_string = output::emit_hex(
@@ -281,17 +250,12 @@ fn check_overlaps(block_ranges: &[(String, u32, u32)]) -> Result<(), NvmError> {
     Ok(())
 }
 
-/// Main unified build function
 pub fn build(args: &Args, data_sheet: Option<&DataSheet>) -> Result<BuildStats, NvmError> {
     let start_time = Instant::now();
 
-    // Phase 1: Resolve all blocks and load all layouts
     let (resolved_blocks, layouts) = resolve_blocks(&args.layout.blocks)?;
-
-    // Phase 2: Build all bytestreams in parallel
     let results = build_bytestreams(&resolved_blocks, &layouts, data_sheet, args.layout.strict)?;
 
-    // Phase 3: Output based on combined flag
     let mut stats = if args.output.combined {
         output_combined_file(results, &layouts, args)?
     } else {
