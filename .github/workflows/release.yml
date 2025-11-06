@@ -1,0 +1,120 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build (e.g., v1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  CICD_INTERMEDIATES_DIR: "_cicd-intermediates"
+
+jobs:
+  build-release:
+    name: ${{ matrix.job.target }} (${{ matrix.job.os }})
+    runs-on: ${{ matrix.job.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - { target: x86_64-unknown-linux-musl   , os: ubuntu-latest, use-cross: true }
+          - { target: aarch64-unknown-linux-musl  , os: ubuntu-latest, use-cross: true }
+          - { target: x86_64-apple-darwin         , os: macos-13      }
+          - { target: aarch64-apple-darwin        , os: macos-14      }
+          - { target: x86_64-pc-windows-msvc      , os: windows-latest }
+    
+    env:
+      BUILD_CMD: cargo
+    
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Extract crate metadata
+        shell: bash
+        run: |
+          echo "PROJECT_NAME=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].name')" >> $GITHUB_ENV
+          echo "PROJECT_VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')" >> $GITHUB_ENV
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.job.target }}
+
+      - name: Install cross
+        if: matrix.job.use-cross
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cross
+
+      - name: Overwrite build command
+        if: matrix.job.use-cross
+        shell: bash
+        run: echo "BUILD_CMD=cross" >> $GITHUB_ENV
+
+      - name: Build
+        shell: bash
+        run: $BUILD_CMD build --locked --release --target=${{ matrix.job.target }}
+
+      - name: Build archive
+        shell: bash
+        run: |
+          EXE_SUFFIX=""
+          case ${{ matrix.job.target }} in
+            *-pc-windows-*) EXE_SUFFIX=".exe" ;;
+          esac
+          
+          BIN_NAME="${PROJECT_NAME}${EXE_SUFFIX}"
+          BIN_PATH="target/${{ matrix.job.target }}/release/${BIN_NAME}"
+          
+          PKG_SUFFIX=".tar.gz"
+          case ${{ matrix.job.target }} in
+            *-pc-windows-*) PKG_SUFFIX=".zip" ;;
+          esac
+          
+          PKG_BASENAME="${PROJECT_NAME}-v${PROJECT_VERSION}-${{ matrix.job.target }}"
+          PKG_NAME="${PKG_BASENAME}${PKG_SUFFIX}"
+          
+          PKG_STAGING="${CICD_INTERMEDIATES_DIR}/package"
+          ARCHIVE_DIR="${PKG_STAGING}/${PKG_BASENAME}/"
+          mkdir -p "${ARCHIVE_DIR}"
+          
+          cp "${BIN_PATH}" "${ARCHIVE_DIR}"
+          cp README.md LICENSE* "${ARCHIVE_DIR}" 2>/dev/null || true
+          
+          pushd "${PKG_STAGING}/" >/dev/null
+          case ${{ matrix.job.target }} in
+            *-pc-windows-*)
+              7z a "${PKG_NAME}" "${PKG_BASENAME}"/* | tail -2
+              certutil -hashfile "${PKG_NAME}" SHA256 > "${PKG_NAME}.sha256"
+              ;;
+            *)
+              tar czf "${PKG_NAME}" "${PKG_BASENAME}"/*
+              shasum -a 256 "${PKG_NAME}" > "${PKG_NAME}.sha256"
+              ;;
+          esac
+          popd >/dev/null
+          
+          echo "PKG_PATH=${PKG_STAGING}/${PKG_NAME}" >> $GITHUB_ENV
+          echo "PKG_CHECKSUM=${PKG_STAGING}/${PKG_NAME}.sha256" >> $GITHUB_ENV
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          generate_release_notes: true
+          files: |
+            ${{ env.PKG_PATH }}
+            ${{ env.PKG_CHECKSUM }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
