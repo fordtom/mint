@@ -43,7 +43,7 @@ jobs:
       - name: Extract crate metadata
         shell: bash
         run: |
-          echo "PROJECT_NAME=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].name')" >> $GITHUB_ENV
+          echo "PROJECT_NAME=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].targets[] | select(.kind[] == "bin") | .name')" >> $GITHUB_ENV
           echo "PROJECT_VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')" >> $GITHUB_ENV
 
       - name: Install Rust toolchain
