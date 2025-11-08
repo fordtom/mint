@@ -1,4 +1,5 @@
 pub mod stats;
+mod writer;
 
 use crate::args::Args;
 use crate::error::NvmError;
@@ -11,11 +12,11 @@ use crate::output;
 use crate::output::DataRange;
 use crate::output::errors::OutputError;
 use crate::variant::DataSheet;
-use crate::writer::write_output;
 use rayon::prelude::*;
 use stats::{BlockStat, BuildStats};
 use std::collections::{HashMap, HashSet};
 use std::time::Instant;
+use writer::write_output;
 
 #[derive(Debug, Clone)]
 struct ResolvedBlock {
