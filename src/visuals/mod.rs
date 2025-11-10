@@ -2,13 +2,13 @@ mod formatters;
 
 use crate::commands::stats::BuildStats;
 use comfy_table::{Attribute, Cell, ContentArrangement, Table};
-use formatters::{format_address_range, format_bytes, format_efficiency};
+use formatters::{format_address_range, format_bytes, format_duration, format_efficiency};
 
 pub fn print_summary(stats: &BuildStats) {
     println!(
-        "✓ Built {} blocks in {}ms ({:.1}% efficiency)",
+        "✓ Built {} blocks in {} ({:.1}% efficiency)",
         stats.blocks_processed,
-        stats.total_duration.as_millis(),
+        format_duration(stats.total_duration),
         stats.space_efficiency()
     );
 }
@@ -26,7 +26,7 @@ pub fn print_detailed(stats: &BuildStats) {
 
     summary_table.add_row(vec![
         "Build Time",
-        &format!("{}ms", stats.total_duration.as_millis()),
+        &format_duration(stats.total_duration),
     ]);
     summary_table.add_row(vec![
         "Blocks Processed",
