@@ -1,0 +1,151 @@
+name: Update Nix Package
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., 1.0.1)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-nixpkgs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout nixpkgs
+        uses: actions/checkout@v4
+        with:
+          repository: NixOS/nixpkgs
+          token: ${{ secrets.NIXPKGS_TOKEN || secrets.GITHUB_TOKEN }}
+          path: nixpkgs
+
+      - name: Determine version
+        id: version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="${{ github.event.release.tag_name }}"
+            VERSION="${VERSION#v}"
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Get release assets
+        id: assets
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const release = context.payload.release || await github.rest.repos.getLatestRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            }).then(r => r.data);
+            
+            const linuxAsset = release.assets.find(a => 
+              a.name.includes('x86_64-unknown-linux-musl') && a.name.endsWith('.tar.gz')
+            );
+            
+            return {
+              url: linuxAsset?.browser_download_url || release.tarball_url || '',
+            };
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+
+      - name: Calculate source hash
+        id: hash
+        shell: bash
+        run: |
+          URL="${{ steps.assets.outputs.url }}"
+          if [ -n "$URL" ]; then
+            HASH=$(nix-prefetch-url --type sha256 "$URL" 2>/dev/null || echo "")
+            echo "sha256=${HASH}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create package file
+        working-directory: nixpkgs
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          SHA256="${{ steps.hash.outputs.sha256 }}"
+          REPO_URL="https://github.com/fordtom/mint"
+          
+          mkdir -p pkgs/tools/misc/mint-cli
+          
+          cat > pkgs/tools/misc/mint-cli/default.nix <<EOF
+          { lib
+          , stdenv
+          , fetchzip
+          }:
+          
+          stdenv.mkDerivation rec {
+            pname = "mint-cli";
+            version = "$VERSION";
+            
+            src = fetchzip {
+              url = "${{ steps.assets.outputs.url }}";
+              sha256 = "$SHA256";
+              stripRoot = false;
+            };
+            
+            installPhase = ''
+              mkdir -p \$out/bin
+              cp mint \$out/bin/mint
+            '';
+            
+            meta = with lib; {
+              description = "A CLI tool for building hex files from excel data and a layout definition";
+              homepage = "$REPO_URL";
+              license = licenses.mit;
+              maintainers = [ ];
+              platforms = platforms.unix;
+            };
+          }
+          EOF
+
+      - name: Validate hash
+        shell: bash
+        run: |
+          if [ -z "${{ steps.hash.outputs.sha256 }}" ]; then
+            echo "Error: Could not calculate SHA256 hash"
+            exit 1
+          fi
+
+      - name: Create PR
+        working-directory: nixpkgs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          BRANCH="mint-cli-${{ steps.version.outputs.version }}"
+          git checkout -b "$BRANCH" || git checkout "$BRANCH"
+          git add pkgs/tools/misc/mint-cli/default.nix
+          git commit -m "mint-cli: ${{ steps.version.outputs.version }}" || exit 0
+          git push origin "$BRANCH" --force
+
+      - name: Open PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: existingPRs } = await github.rest.pulls.list({
+              owner: 'NixOS',
+              repo: 'nixpkgs',
+              head: 'github-actions[bot]:mint-cli-${{ steps.version.outputs.version }}',
+              state: 'open'
+            });
+            
+            if (existingPRs.length === 0) {
+              await github.rest.pulls.create({
+                owner: 'NixOS',
+                repo: 'nixpkgs',
+                title: 'mint-cli: ${{ steps.version.outputs.version }}',
+                head: 'github-actions[bot]:mint-cli-${{ steps.version.outputs.version }}',
+                base: 'master',
+                body: 'Automated update for mint-cli ${{ steps.version.outputs.version }}'
+              });
+            }
