@@ -1,0 +1,135 @@
+name: Update Homebrew Tap
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., 1.0.1)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  update-homebrew:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tap repository
+        uses: actions/checkout@v4
+        with:
+          repository: fordtom/homebrew-mint
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN || secrets.GITHUB_TOKEN }}
+          path: tap-repo
+
+      - name: Determine version
+        id: version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="${{ github.event.release.tag_name }}"
+            VERSION="${VERSION#v}"
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Get release assets
+        id: assets
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const release = context.payload.release || await github.rest.repos.getLatestRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            }).then(r => r.data);
+            
+            const macosIntel = release.assets.find(a => 
+              a.name.includes('x86_64-apple-darwin') && a.name.endsWith('.tar.gz')
+            );
+            const macosArm = release.assets.find(a => 
+              a.name.includes('aarch64-apple-darwin') && a.name.endsWith('.tar.gz')
+            );
+            
+            const intelChecksum = release.assets.find(a => 
+              a.name.includes('x86_64-apple-darwin') && a.name.endsWith('.sha256')
+            );
+            const armChecksum = release.assets.find(a => 
+              a.name.includes('aarch64-apple-darwin') && a.name.endsWith('.sha256')
+            );
+            
+            let intelSha = '';
+            let armSha = '';
+            
+            if (intelChecksum) {
+              const response = await fetch(intelChecksum.browser_download_url);
+              const text = await response.text();
+              intelSha = text.split(/\s+/)[0];
+            }
+            
+            if (armChecksum) {
+              const response = await fetch(armChecksum.browser_download_url);
+              const text = await response.text();
+              armSha = text.split(/\s+/)[0];
+            }
+            
+            core.setOutput('macosIntelUrl', macosIntel?.browser_download_url || '');
+            core.setOutput('macosIntelSha256', intelSha);
+            core.setOutput('macosArmUrl', macosArm?.browser_download_url || '');
+            core.setOutput('macosArmSha256', armSha);
+
+      - name: Validate assets
+        shell: bash
+        run: |
+          if [ -z "${{ steps.assets.outputs.macosIntelUrl }}" ] && [ -z "${{ steps.assets.outputs.macosArmUrl }}" ]; then
+            echo "Error: No macOS release assets found"
+            exit 1
+          fi
+
+      - name: Update formula
+        working-directory: tap-repo
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          INTEL_URL="${{ steps.assets.outputs.macosIntelUrl }}"
+          ARM_URL="${{ steps.assets.outputs.macosArmUrl }}"
+          INTEL_SHA="${{ steps.assets.outputs.macosIntelSha256 }}"
+          ARM_SHA="${{ steps.assets.outputs.macosArmSha256 }}"
+          
+          mkdir -p Formula
+          
+          cat > Formula/mint.rb <<EOF
+          class Mint < Formula
+            desc "A CLI tool for building hex files from excel data and a layout definition"
+            homepage "https://github.com/fordtom/mint"
+            version "$VERSION"
+            license "MIT"
+            
+            if Hardware::CPU.intel?
+              url "$INTEL_URL"
+              sha256 "$INTEL_SHA"
+            else
+              url "$ARM_URL"
+              sha256 "$ARM_SHA"
+            end
+            
+            def install
+              bin.install "mint"
+            end
+            
+            test do
+              system "#{bin}/mint", "--version"
+            end
+          end
+          EOF
+
+      - name: Commit and push
+        working-directory: tap-repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/mint.rb
+          git commit -m "Update mint to ${{ steps.version.outputs.version }}" || exit 0
+          git push
