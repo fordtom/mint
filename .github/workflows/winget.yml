@@ -46,9 +46,22 @@ jobs:
       - name: Checkout winget-pkgs
         uses: actions/checkout@v4
         with:
-          repository: microsoft/winget-pkgs
+          repository: fordtom/winget-pkgs
           token: ${{ secrets.WINGET_TOKEN || secrets.GITHUB_TOKEN }}
           path: winget-pkgs
+          fetch-depth: 0
+
+      - name: Sync upstream
+        working-directory: winget-pkgs
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/microsoft/winget-pkgs.git
+          git fetch upstream master
+          git checkout master
+          git merge upstream/master
+          git push origin master
 
       - name: Configure git
         shell: bash
@@ -171,15 +184,15 @@ jobs:
               owner: 'microsoft',
               repo: 'winget-pkgs',
               state: 'open',
-              head: 'github-actions:mint-${{ steps.version.outputs.version }}'
+              head: 'fordtom:mint-${{ steps.version.outputs.version }}'
             });
-            
+
             if (existingPRs.length === 0) {
               await github.rest.pulls.create({
                 owner: 'microsoft',
                 repo: 'winget-pkgs',
                 title: 'New version: fordtom.mint version ${{ steps.version.outputs.version }}',
-                head: 'github-actions:mint-${{ steps.version.outputs.version }}',
+                head: 'fordtom:mint-${{ steps.version.outputs.version }}',
                 base: 'master',
                 body: `This PR updates fordtom.mint to version ${{ steps.version.outputs.version }}
 

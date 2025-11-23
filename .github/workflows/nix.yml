@@ -47,7 +47,7 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           
           # Calculate source hash
-          SRC_HASH=$(nurl https://github.com/${{ github.repository }} v${VERSION})
+          SRC_HASH=$(nurl --hash https://github.com/${{ github.repository }} v${VERSION})
           echo "src_hash=${SRC_HASH}" >> $GITHUB_OUTPUT
           
           # We'll calculate cargoHash after creating the initial package file
@@ -56,9 +56,21 @@ jobs:
       - name: Checkout nixpkgs
         uses: actions/checkout@v4
         with:
-          repository: NixOS/nixpkgs
+          repository: fordtom/nixpkgs
           token: ${{ secrets.NIXPKGS_TOKEN || secrets.GITHUB_TOKEN }}
           path: nixpkgs
+          fetch-depth: 0
+
+      - name: Sync upstream
+        working-directory: nixpkgs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/NixOS/nixpkgs.git
+          git fetch upstream master
+          git checkout master
+          git merge upstream/master
+          git push origin master
 
       - name: Create branch
         working-directory: nixpkgs
@@ -127,7 +139,7 @@ jobs:
       - name: Test build
         working-directory: nixpkgs
         run: |
-          nix build .#mint-cli --show-trace
+          nix build .#legacyPackages.x86_64-linux.mint-cli --show-trace
           ./result/bin/mint --version
 
       - name: Open PR
@@ -141,7 +153,7 @@ jobs:
               owner: 'NixOS',
               repo: 'nixpkgs',
               state: 'open',
-              head: `github-actions:mint-cli-${version}`
+              head: `fordtom:mint-cli-${version}`
             });
             
             if (existingPRs.length === 0) {
@@ -149,7 +161,7 @@ jobs:
                 owner: 'NixOS',
                 repo: 'nixpkgs',
                 title: `mint-cli: init at ${version}`,
-                head: `github-actions:mint-cli-${version}`,
+                head: `fordtom:mint-cli-${version}`,
                 base: 'master',
                 body: `Automated PR to add mint-cli version ${version}
 
@@ -163,7 +175,7 @@ jobs:
 
             ## Testing
             \`\`\`
-            nix build .#mint-cli
+            nix build .#legacyPackages.x86_64-linux.mint-cli
             ./result/bin/mint --version
             \`\`\`
 
