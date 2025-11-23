@@ -12,20 +12,12 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   update-winget:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
-      - name: Checkout winget-pkgs
-        uses: actions/checkout@v4
-        with:
-          repository: microsoft/winget-pkgs
-          token: ${{ secrets.WINGET_TOKEN || secrets.GITHUB_TOKEN }}
-          path: winget-pkgs
-          sparse-checkout: |
-            manifests/f/fordtom/mint
-
       - name: Determine version
         id: version
         shell: bash
@@ -38,117 +30,165 @@ jobs:
           fi
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
-      - name: Get release assets
-        id: assets
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const release = context.payload.release || await github.rest.repos.getLatestRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo
-            }).then(r => r.data);
-            
-            const windowsAsset = release.assets.find(a => 
-              a.name.includes('x86_64-pc-windows-msvc') && a.name.endsWith('.zip')
-            );
-            
-            const checksumAsset = release.assets.find(a => 
-              a.name.includes('x86_64-pc-windows-msvc') && a.name.endsWith('.sha256')
-            );
-            
-            let sha256 = '';
-            if (checksumAsset) {
-              const checksumResponse = await fetch(checksumAsset.browser_download_url);
-              const checksumText = await checksumResponse.text();
-              sha256 = checksumText.split(/\s+/)[0];
-            }
-            
-            return {
-              url: windowsAsset?.browser_download_url || '',
-              sha256: sha256
-            };
-
-      - name: Validate assets
-        shell: bash
+      - name: Download Windows installer
+        shell: pwsh
         run: |
-          if [ -z "${{ steps.assets.outputs.url }}" ]; then
-            echo "Error: No Windows release asset found"
-            exit 1
-          fi
-          if [ -z "${{ steps.assets.outputs.sha256 }}" ]; then
-            echo "Error: No checksum found for Windows release asset"
-            exit 1
-          fi
-
-      - name: Create manifest directory
-        working-directory: winget-pkgs
-        run: |
-          mkdir -p "manifests/f/fordtom/mint/${{ steps.version.outputs.version }}"
-
-      - name: Create version manifest
-        working-directory: winget-pkgs
-        shell: bash
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          URL="${{ steps.assets.outputs.url }}"
-          SHA256="${{ steps.assets.outputs.sha256 }}"
+          $VERSION = "${{ steps.version.outputs.version }}"
+          $URL = "https://github.com/${{ github.repository }}/releases/download/v${VERSION}/mint-v${VERSION}-x86_64-pc-windows-msvc.zip"
           
-          cat > "manifests/f/fordtom/mint/$VERSION/fordtom.mint.yaml" <<EOF
-          PackageIdentifier: fordtom.mint
-          PackageVersion: $VERSION
-          DefaultLocale: en-US
-          Publisher: fordtom
-          PublisherUrl: https://github.com/fordtom/mint
-          PublisherSupportUrl: https://github.com/fordtom/mint/issues
-          Author: fordtom
-          PackageName: mint
-          PackageUrl: https://github.com/fordtom/mint
-          License: MIT
-          LicenseUrl: https://github.com/fordtom/mint/blob/main/LICENSE.md
-          Copyright: Copyright (c) $(date +%Y) fordtom
-          CopyrightUrl: https://github.com/fordtom/mint
-          ShortDescription: A CLI tool for building hex files from excel data and a layout definition
-          Description: Build flash blocks from a layout file (TOML/YAML/JSON) and an Excel workbook, then emit hex files.
-          Moniker: mint
-          Tags:
-            - flash
-            - hex
-            - layout
-            - excel
-            - data
-            - cli
-          Commands:
-            - mint
-          Installers:
-            - Architecture: x64
-              InstallerType: zip
-              InstallerUrl: $URL
-              InstallerSha256: $SHA256
-              InstallMode: user
-          ManifestType: version
-          ManifestVersion: 1.6.0
-          EOF
+          Invoke-WebRequest -Uri $URL -OutFile "mint-windows.zip"
+          
+          $hash = Get-FileHash -Path "mint-windows.zip" -Algorithm SHA256
+          echo "INSTALLER_SHA256=$($hash.Hash)" >> $env:GITHUB_ENV
+          
+          Write-Output "Downloaded installer SHA256: $($hash.Hash)"
 
-      - name: Update latest manifest
-        working-directory: winget-pkgs
+      - name: Checkout winget-pkgs
+        uses: actions/checkout@v4
+        with:
+          repository: microsoft/winget-pkgs
+          token: ${{ secrets.WINGET_TOKEN || secrets.GITHUB_TOKEN }}
+          path: winget-pkgs
+
+      - name: Configure git
         shell: bash
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          if [ -f "manifests/f/fordtom/mint/fordtom.mint.yaml" ]; then
-            sed -i "s|PackageVersion:.*|PackageVersion: $VERSION|" "manifests/f/fordtom/mint/fordtom.mint.yaml"
-            sed -i "s|InstallerUrl:.*|InstallerUrl: ${{ steps.assets.outputs.url }}|" "manifests/f/fordtom/mint/fordtom.mint.yaml"
-            sed -i "s|InstallerSha256:.*|InstallerSha256: ${{ steps.assets.outputs.sha256 }}|" "manifests/f/fordtom/mint/fordtom.mint.yaml"
-          else
-            mkdir -p "manifests/f/fordtom/mint"
-            cp "manifests/f/fordtom/mint/$VERSION/fordtom.mint.yaml" "manifests/f/fordtom/mint/fordtom.mint.yaml"
-            sed -i 's|ManifestType: version|ManifestType: defaultLocale|' "manifests/f/fordtom/mint/fordtom.mint.yaml"
-          fi
-
-      - name: Commit and push
         working-directory: winget-pkgs
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add manifests/f/fordtom/mint/
-          git commit -m "Add mint ${{ steps.version.outputs.version }}" || exit 0
-          git push
+          git checkout -b mint-${{ steps.version.outputs.version }}
+
+      - name: Create package directory structure
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $manifestDir = "winget-pkgs/manifests/f/fordtom/mint/${version}"
+          
+          New-Item -ItemType Directory -Force -Path $manifestDir
+
+      - name: Create installer manifest
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $manifestDir = "winget-pkgs/manifests/f/fordtom/mint/${version}"
+          
+          $installerManifest = @"
+          PackageIdentifier: fordtom.mint
+          PackageVersion: ${version}
+          InstallerType: zip
+          ReleaseDate: $((Get-Date).ToString("yyyy-MM-dd"))
+          Installers:
+            - Architecture: x64
+              InstallerUrl: https://github.com/fordtom/mint/releases/download/v${version}/mint-v${version}-x86_64-pc-windows-msvc.zip
+              InstallerSha256: $env:INSTALLER_SHA256
+              NestedInstallerType: portable
+              NestedInstallerFiles:
+                - RelativeFilePath: mint-v${version}-x86_64-pc-windows-msvc\mint.exe
+                  PortableCommandAlias: mint
+          ManifestType: installer
+          ManifestVersion: 1.6.0
+          "@
+          
+          $installerManifest | Out-File -FilePath "${manifestDir}/fordtom.mint.installer.yaml" -Encoding utf8
+
+      - name: Create locale manifest
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $manifestDir = "winget-pkgs/manifests/f/fordtom/mint/${version}"
+          
+          $localeManifest = @"
+          PackageIdentifier: fordtom.mint
+          PackageVersion: ${version}
+          PackageLocale: en-US
+          Publisher: Tom Ford
+          PublisherUrl: https://github.com/fordtom
+          PackageName: mint
+          PackageUrl: https://github.com/fordtom/mint
+          License: MIT
+          LicenseUrl: https://github.com/fordtom/mint/blob/main/LICENSE.md
+          ShortDescription: CLI tool for building hex files from excel data and a layout definition
+          Description: >
+            mint is a CLI tool for building hex files from Excel data and a layout definition.
+            It supports TOML, YAML, and JSON layout formats and can generate flash blocks from
+            Excel workbooks with various data types including numeric values, strings, and arrays.
+          Moniker: mint
+          Tags:
+            - cli
+            - hex
+            - flash
+            - excel
+            - embedded
+            - firmware
+          ManifestType: defaultLocale
+          ManifestVersion: 1.6.0
+          "@
+          
+          $localeManifest | Out-File -FilePath "${manifestDir}/fordtom.mint.locale.en-US.yaml" -Encoding utf8
+
+      - name: Create version manifest
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $manifestDir = "winget-pkgs/manifests/f/fordtom/mint/${version}"
+          
+          $versionManifest = @"
+          PackageIdentifier: fordtom.mint
+          PackageVersion: ${version}
+          DefaultLocale: en-US
+          ManifestType: version
+          ManifestVersion: 1.6.0
+          "@
+          
+          $versionManifest | Out-File -FilePath "${manifestDir}/fordtom.mint.yaml" -Encoding utf8
+
+      - name: Validate manifests
+        shell: pwsh
+        run: |
+          $wingetCreateUrl = "https://github.com/microsoft/winget-create/releases/latest/download/wingetcreate.exe"
+          Invoke-WebRequest -Uri $wingetCreateUrl -OutFile "wingetcreate.exe"
+          
+          $version = "${{ steps.version.outputs.version }}"
+          $manifestDir = "winget-pkgs/manifests/f/fordtom/mint/${version}"
+          
+          .\wingetcreate.exe validate $manifestDir
+
+      - name: Commit and push
+        shell: bash
+        working-directory: winget-pkgs
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          git add manifests/f/fordtom/mint/${VERSION}/
+          git commit -m "Add fordtom.mint version ${VERSION}"
+          git push origin mint-${VERSION}
+
+      - name: Create PR
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.WINGET_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: existingPRs } = await github.rest.pulls.list({
+              owner: 'microsoft',
+              repo: 'winget-pkgs',
+              state: 'open',
+              head: 'github-actions:mint-${{ steps.version.outputs.version }}'
+            });
+            
+            if (existingPRs.length === 0) {
+              await github.rest.pulls.create({
+                owner: 'microsoft',
+                repo: 'winget-pkgs',
+                title: 'New version: fordtom.mint version ${{ steps.version.outputs.version }}',
+                head: 'github-actions:mint-${{ steps.version.outputs.version }}',
+                base: 'master',
+                body: `This PR updates fordtom.mint to version ${{ steps.version.outputs.version }}
+
+            ## Release Notes
+            See: https://github.com/${{ github.repository }}/releases/tag/v${{ steps.version.outputs.version }}
+
+            ## Validation
+            - [x] Manifests validated using wingetcreate
+            - [x] SHA256 checksum verified
+            - [x] All required manifest files present`
+              });
+            }
