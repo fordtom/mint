@@ -35,7 +35,7 @@ Datasheet view (how the Excel workbook is interpreted). See workbook in [`exampl
 
 Main sheet (first row is headers):
 
-| Name                 | Default             | Debug | Variant-A |
+| Name                 | Default             | Debug | VarA |
 |----------------------|---------------------|-------|-----------|
 | DeviceName           | MyDevice            |       |           |
 | FWVersionMajor       | 3                   |       | 4         |
@@ -43,10 +43,8 @@ Main sheet (first row is headers):
 | CalibrationMatrix    | #CalibrationMatrix  |       |           |
 
 Notes:
-- Precedence:
-  - `Debug` (when `--debug` flag is set)
-  - `Variant` (when `--variant [NAME]` specifies the column name)
-  - `Default` (a default value should always be specified as fallback).
+- Precedence follows the order passed to `-v`/`--variant`. Supply columns separated by `/` (for example `-v Debug/VarA`). The first non-empty entry wins, falling back to `Default`.
+- `--debug` is deprecated; include `Debug` in the `-v` stack if you still rely on that column.
 - Cell starting with `#` is a sheet reference (for arrays); otherwise a string cell is literal bytes (for u8 strings).
 
 Arrays from Excel sheets:

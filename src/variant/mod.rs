@@ -3,7 +3,7 @@ pub mod errors;
 mod helpers;
 
 use calamine::{Data, Range, Reader, Xlsx, open_workbook};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::layout::value::{DataValue, ValueSource};
 use errors::VariantError;
@@ -11,8 +11,7 @@ use errors::VariantError;
 pub struct DataSheet {
     names: Vec<String>,
     default_values: Vec<Data>,
-    debug_values: Option<Vec<Data>>,
-    variant_values: Option<Vec<Data>>,
+    variant_columns: Vec<Vec<Data>>,
     sheets: HashMap<String, Range<Data>>,
 }
 
@@ -57,46 +56,9 @@ impl DataSheet {
         }));
         helpers::warn_duplicate_names(&names);
 
-        let mut default_values: Vec<Data> = Vec::with_capacity(data_rows);
-        default_values.extend(
-            rows.iter()
-                .skip(1)
-                .map(|row| row.get(default_index).cloned().unwrap_or(Data::Empty)),
-        );
+        let default_values = Self::collect_column(&rows, default_index, data_rows);
 
-        let mut debug_values: Option<Vec<Data>> = None;
-        if args.debug {
-            let debug_index = headers
-                .iter()
-                .position(|cell| Self::cell_eq_ascii(cell, "Debug"))
-                .ok_or(VariantError::ColumnNotFound("Debug".to_string()))?;
-
-            let mut debug_vec: Vec<Data> = Vec::with_capacity(data_rows);
-            debug_vec.extend(
-                rows.iter()
-                    .skip(1)
-                    .map(|row| row.get(debug_index).cloned().unwrap_or(Data::Empty)),
-            );
-
-            debug_values = Some(debug_vec);
-        }
-
-        let mut variant_values: Option<Vec<Data>> = None;
-        if let Some(name) = &args.variant {
-            let variant_index = headers
-                .iter()
-                .position(|cell| Self::cell_eq_ascii(cell, name))
-                .ok_or(VariantError::ColumnNotFound(name.to_string()))?;
-
-            let mut variant_vec: Vec<Data> = Vec::with_capacity(data_rows);
-            variant_vec.extend(
-                rows.iter()
-                    .skip(1)
-                    .map(|row| row.get(variant_index).cloned().unwrap_or(Data::Empty)),
-            );
-
-            variant_values = Some(variant_vec);
-        };
+        let variant_columns = Self::collect_variant_columns(headers, &rows, data_rows, args)?;
 
         let mut sheets: HashMap<String, Range<Data>> =
             HashMap::with_capacity(workbook.worksheets().len().saturating_sub(1));
@@ -109,8 +71,7 @@ impl DataSheet {
         Ok(Some(Self {
             names,
             default_values,
-            debug_values,
-            variant_values,
+            variant_columns,
             sheets,
         }))
     }
@@ -265,16 +226,18 @@ impl DataSheet {
                     "index not found in data sheet".to_string(),
                 ))?;
 
-        if let Some(v) = [
-            self.debug_values.as_ref().and_then(|v| v.get(index)),
-            self.variant_values.as_ref().and_then(|v| v.get(index)),
-            self.default_values.get(index),
-        ]
-        .iter()
-        .flatten()
-        .find(|d| !Self::cell_is_empty(d))
-        {
-            return Ok(v);
+        for column in &self.variant_columns {
+            if let Some(value) = column.get(index) {
+                if !Self::cell_is_empty(value) {
+                    return Ok(value);
+                }
+            }
+        }
+
+        if let Some(default) = self.default_values.get(index) {
+            if !Self::cell_is_empty(default) {
+                return Ok(default);
+            }
         }
 
         Err(VariantError::RetrievalError(
@@ -295,6 +258,63 @@ impl DataSheet {
             Data::String(s) => s.trim().is_empty(),
             _ => false,
         }
+    }
+
+    fn collect_column(rows: &[&[Data]], index: usize, data_rows: usize) -> Vec<Data> {
+        let mut column = Vec::with_capacity(data_rows);
+        column.extend(
+            rows.iter()
+                .skip(1)
+                .map(|row| row.get(index).cloned().unwrap_or(Data::Empty)),
+        );
+        column
+    }
+
+    fn parse_variant_stack(raw: &str) -> Vec<String> {
+        raw.split('/')
+            .map(|name| name.trim())
+            .filter(|name| !name.is_empty())
+            .map(|name| name.to_string())
+            .collect()
+    }
+
+    fn collect_variant_columns(
+        headers: &[Data],
+        rows: &[&[Data]],
+        data_rows: usize,
+        args: &args::VariantArgs,
+    ) -> Result<Vec<Vec<Data>>, VariantError> {
+        let mut names: Vec<String> = Vec::new();
+
+        if args.debug {
+            eprintln!(
+                "Warning: --debug flag is deprecated; include 'Debug' in --variant instead."
+            );
+            names.push("Debug".to_string());
+        }
+
+        if let Some(raw) = &args.variant {
+            names.extend(Self::parse_variant_stack(raw));
+        }
+
+        let mut seen = HashSet::new();
+        let mut columns = Vec::new();
+
+        for name in names {
+            let key = name.to_ascii_lowercase();
+            if !seen.insert(key) {
+                continue;
+            }
+
+            let index = headers
+                .iter()
+                .position(|cell| Self::cell_eq_ascii(cell, &name))
+                .ok_or_else(|| VariantError::ColumnNotFound(name.clone()))?;
+
+            columns.push(Self::collect_column(rows, index, data_rows));
+        }
+
+        Ok(columns)
     }
 
     // TODO: retrieve sheets by name, data format to be decided
