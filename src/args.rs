@@ -9,7 +9,7 @@ use clap::Parser;
     author,
     version,
     about = "Build flash blocks from layout + Excel data",
-    after_help = "For more information, visit https://github.com/fordtom/mint"
+    after_help = "For more information, visit https://crates.io/crates/mint-cli"
 )]
 pub struct Args {
     #[command(flatten)]
