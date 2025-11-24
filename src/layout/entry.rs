@@ -129,7 +129,6 @@ impl LeafEntry {
         data_sheet: Option<&DataSheet>,
         config: &BuildConfig,
     ) -> Result<Vec<u8>, LayoutError> {
-        // Handle bitmap entries separately
         if let EntrySource::Bitmap(fields) = &self.source {
             self.validate_bitmap(fields)?;
             return self.emit_bitmap(fields, data_sheet, config);
@@ -149,21 +148,18 @@ impl LeafEntry {
 
     /// Validates bitmap entry rules.
     fn validate_bitmap(&self, fields: &[BitmapField]) -> Result<(), LayoutError> {
-        // size/SIZE forbidden with bitmap
         if self.size_keys.size.is_some() || self.size_keys.strict_size.is_some() {
             return Err(LayoutError::DataValueExportFailed(
                 "size/SIZE keys are forbidden with bitmap.".into(),
             ));
         }
 
-        // Storage type must be integer
         if !self.scalar_type.is_integer() {
             return Err(LayoutError::DataValueExportFailed(
                 "Bitmap requires integer storage type.".into(),
             ));
         }
 
-        // Validate each field and sum bits
         let mut total_bits = 0usize;
         for field in fields {
             if field.bits == 0 {
@@ -171,10 +167,9 @@ impl LeafEntry {
                     "Bitmap field bits must be > 0.".into(),
                 ));
             }
-            total_bits = total_bits.saturating_add(field.bits);
+            total_bits += field.bits;
         }
 
-        // Sum must equal storage width
         let expected_bits = self.scalar_type.size_bytes() * 8;
         if total_bits != expected_bits {
             return Err(LayoutError::DataValueExportFailed(format!(
@@ -207,7 +202,6 @@ impl LeafEntry {
             offset += field.bits;
         }
 
-        // Reuse DataValue conversion for endian serialization (strict=false since already clamped)
         DataValue::U64(accumulator as u64).to_bytes(self.scalar_type, config.endianness, false)
     }
 
