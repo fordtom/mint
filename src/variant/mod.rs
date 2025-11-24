@@ -80,6 +80,7 @@ impl DataSheet {
         let result = (|| match self.retrieve_cell(name)? {
             Data::Int(i) => Ok(DataValue::I64(*i)),
             Data::Float(f) => Ok(DataValue::F64(*f)),
+            Data::Bool(b) => Ok(DataValue::Bool(*b)),
             _ => Err(VariantError::RetrievalError(
                 "Found non-numeric single value".to_string(),
             )),
@@ -118,6 +119,7 @@ impl DataSheet {
                             let v = match cell {
                                 Data::Int(i) => DataValue::I64(*i),
                                 Data::Float(f) => DataValue::F64(*f),
+                                Data::Bool(b) => DataValue::Bool(*b),
                                 Data::String(s) => DataValue::Str(s.to_owned()),
                                 _ => {
                                     return Err(VariantError::RetrievalError(
@@ -171,6 +173,7 @@ impl DataSheet {
                 match cell {
                     Data::Int(i) => Ok(DataValue::I64(*i)),
                     Data::Float(f) => Ok(DataValue::F64(*f)),
+                    Data::Bool(b) => Ok(DataValue::Bool(*b)),
                     _ => Err(VariantError::RetrievalError(
                         "Unsupported data type in 2D array".to_string(),
                     )),
@@ -313,6 +316,29 @@ impl DataSheet {
 
         Ok(columns)
     }
+}
 
-    // TODO: retrieve sheets by name, data format to be decided
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    fn datasheet_with_default(value: Data) -> DataSheet {
+        DataSheet {
+            names: vec!["Flag".to_string()],
+            default_values: vec![value],
+            variant_columns: Vec::new(),
+            sheets: HashMap::new(),
+        }
+    }
+
+    #[test]
+    fn retrieve_single_value_accepts_bool_cell() {
+        let ds = datasheet_with_default(Data::Bool(true));
+        let value = ds.retrieve_single_value("Flag").expect("bool cell");
+        match value {
+            DataValue::Bool(v) => assert!(v),
+            _ => panic!("expected bool value"),
+        }
+    }
 }

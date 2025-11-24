@@ -9,6 +9,10 @@ macro_rules! impl_try_from_data_value {
             type Error = LayoutError;
             fn try_from(value: &DataValue) -> Result<Self, LayoutError> {
                 match value {
+                    DataValue::Bool(val) => {
+                        let n: u8 = if *val { 1 } else { 0 };
+                        Ok(n as $t)
+                    }
                     DataValue::U64(val) => Ok(*val as $t),
                     DataValue::I64(val) => Ok(*val as $t),
                     DataValue::F64(val) => Ok(*val as $t),
@@ -52,6 +56,10 @@ macro_rules! impl_try_from_strict_unsigned {
                         if *v < 0.0 || *v > (<$t>::MAX as f64) { return Err(err!(format!("float value {} out of range for {}", v, stringify!($t)))); }
                         Ok(*v as $t)
                     }
+                    DataValue::Bool(b) => {
+                        let n: u8 = if *b { 1 } else { 0 };
+                        Ok(n as $t)
+                    }
                     DataValue::Str(_) => Err(err!("Cannot convert string to scalar type.")),
                 }
             }
@@ -75,6 +83,10 @@ macro_rules! impl_try_from_strict_signed {
                         if v.fract() != 0.0 { return Err(err!("float to integer conversion not allowed unless value is an exact integer")); }
                         if *v < (<$t>::MIN as f64) || *v > (<$t>::MAX as f64) { return Err(err!(format!("float value {} out of range for {}", v, stringify!($t)))); }
                         Ok(*v as $t)
+                    }
+                    DataValue::Bool(b) => {
+                        let n: u8 = if *b { 1 } else { 0 };
+                        Ok(n as $t)
                     }
                     DataValue::Str(_) => Err(err!("Cannot convert string to scalar type.")),
                 }
@@ -130,6 +142,10 @@ macro_rules! impl_try_from_strict_float_targets {
                             ))
                         }
                     }
+                    DataValue::Bool(b) => {
+                        let out: $t = if *b { 1.0 } else { 0.0 };
+                        Ok(out)
+                    }
                     DataValue::Str(_) => Err(err!("Cannot convert string to scalar type.")),
                 }
             }
@@ -163,6 +179,10 @@ impl TryFromStrict<&DataValue> for f64 {
                         "lossy integer to float conversion not allowed in strict mode"
                     ))
                 }
+            }
+            DataValue::Bool(b) => {
+                let out = if *b { 1.0 } else { 0.0 };
+                Ok(out)
             }
             DataValue::Str(_) => Err(err!("Cannot convert string to scalar type.")),
         }

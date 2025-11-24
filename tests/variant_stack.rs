@@ -16,6 +16,13 @@ fn value_as_i64(value: DataValue) -> i64 {
         DataValue::I64(v) => v,
         DataValue::U64(v) => v as i64,
         DataValue::F64(v) => v as i64,
+        DataValue::Bool(v) => {
+            if v {
+                1
+            } else {
+                0
+            }
+        }
         DataValue::Str(s) => panic!("expected numeric value, got {}", s),
     }
 }
@@ -60,4 +67,46 @@ fn legacy_debug_flag_still_applies_first() {
         .expect("value present");
 
     assert_eq!(value_as_i64(value), 60);
+}
+
+#[test]
+fn boolean_cell_retrieves_default_true() {
+    let args = build_args(None, false);
+    let sheet = DataSheet::new(&args)
+        .expect("datasheet load")
+        .expect("datasheet exists");
+
+    let value = sheet
+        .retrieve_single_value("boolean")
+        .expect("boolean present");
+
+    assert!(matches!(value, DataValue::Bool(true)));
+}
+
+#[test]
+fn boolean_cell_retrieves_debug_true() {
+    let args = build_args(Some("Debug"), false);
+    let sheet = DataSheet::new(&args)
+        .expect("datasheet load")
+        .expect("datasheet exists");
+
+    let value = sheet
+        .retrieve_single_value("boolean")
+        .expect("boolean present");
+
+    assert!(matches!(value, DataValue::Bool(true)));
+}
+
+#[test]
+fn boolean_cell_retrieves_vara_false() {
+    let args = build_args(Some("VarA"), false);
+    let sheet = DataSheet::new(&args)
+        .expect("datasheet load")
+        .expect("datasheet exists");
+
+    let value = sheet
+        .retrieve_single_value("boolean")
+        .expect("boolean present");
+
+    assert!(matches!(value, DataValue::Bool(false)));
 }

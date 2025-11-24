@@ -2,18 +2,44 @@
 
 mint is an embedded development tool that works with layout files (toml/yaml/json) and excel sheets to assemble, diff, export, sign (and more) static hex files for flashing to microcontrollers.
 
-## Tools
+## Architecture & Codebase
 
-The development environment uses Nix. Use all the tools mentioned below (including cargo) via `nix develop`.
+### Core Concepts
 
-Always run `cargo test` as a final check after making any changes, and use `cargo fmt` to clean up your code once finished.
+- **Layouts**: TOML/YAML/JSON files defining memory blocks (`src/layout`).
+- **DataSheet**: Excel workbook (`.xlsx`) serving as the data source (`src/variant`).
+  - Uses `Name` column for lookups.
+  - Supports variants via columns (e.g., `Debug`, `VarA`).
+  - Arrays are referenced by sheet name (prefixed with `#`).
+- **Output**: Generates hex files, handling block overlaps and CRC calculations (`src/output`).
+
+### Build Flow
+
+1. **Parse Args**: `clap` defines arguments in `src/args.rs`.
+2. **Resolve Blocks**: Parallel loading of layout files (`rayon`).
+3. **Build Bytestreams**: Each block is built by combining layout config with Excel data.
+4. **Output**: Hex files are generated (either per-block or combined).
+
+### Key Directories
+
+- `src/commands/`: Command implementations (e.g., `build`).
+- `src/layout/`: Layout parsing and block configuration.
+- `src/variant/`: Excel interaction and value retrieval.
+- `src/output/`: Hex generation and data ranges.
+
+## Development Environment
+
+- **Nix**: Use `nix develop` for the environment.
+- **Commands**:
+  - Build: `cargo build`
+  - Test: `cargo test` (Always run after changes)
+  - Format: `cargo fmt` (Run before submitting)
+  - Clippy: `cargo clippy` (Run before submitting)
 
 ## Working Guidelines
 
-Make the minimum changes required to achieve your task; that does not mean skip parts or leave placeholders, but it means you should not add more than is asked for. You should instead allocate more time to planning so that you can provide a superior solution. If you are ever unsure of the goals or requirements of your task, you should pause your changes and provide the user with an update on your progress, and ask for clarification on the parts that aren't clear.
-
-Do not add comments that relate to changes in the code over time (i.e. "x now only takes 1 arg") as these have no value once the PR is merged. Comments should only ever reflect the current state of the code.
-
-## Compatibility Policy
-
-Do not maintain or even reference backwards compatibility unless explicitly required by the issue. We will break compatibility to deliver better functionality. Users are expected to adapt layouts/usage to adopt newer features and improvements.
+- **Minimal Changes**: Do only what is asked.
+- **Planning**: Allocate time to plan superior solutions.
+- **Clarification**: Ask if goals are unclear.
+- **Comments**: No "history" comments (e.g., "changed x to y"). Document current state only.
+- **Compatibility**: Do not maintain backwards compatibility unless required. Focus on better functionality.
