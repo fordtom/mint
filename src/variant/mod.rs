@@ -316,8 +316,6 @@ impl DataSheet {
 
         Ok(columns)
     }
-
-    // TODO: retrieve sheets by name, data format to be decided
 }
 
 #[cfg(test)]
