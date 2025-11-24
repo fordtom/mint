@@ -35,27 +35,28 @@ Datasheet view (how the Excel workbook is interpreted). See workbook in [`exampl
 
 Main sheet (first row is headers):
 
-| Name                 | Default             | Debug | VarA |
-|----------------------|---------------------|-------|-----------|
-| DeviceName           | MyDevice            |       |           |
-| FWVersionMajor       | 3                   |       | 4         |
-| Coefficients1D       | #Coefficients1D     |       |           |
-| CalibrationMatrix    | #CalibrationMatrix  |       |           |
+| Name              | Default            | Debug | VarA |
+| ----------------- | ------------------ | ----- | ---- |
+| DeviceName        | MyDevice           |       |      |
+| FWVersionMajor    | 3                  |       | 4    |
+| Coefficients1D    | #Coefficients1D    |       |      |
+| CalibrationMatrix | #CalibrationMatrix |       |      |
 
 Notes:
+
 - Precedence follows the order passed to `-v`/`--variant`. Supply columns separated by `/` (for example `-v Debug/VarA`). The first non-empty entry wins, falling back to `Default`.
-- `--debug` is deprecated; include `Debug` in the `-v` stack if you still rely on that column.
 - Cell starting with `#` is a sheet reference (for arrays); otherwise a string cell is literal bytes (for u8 strings).
 
 Arrays from Excel sheets:
+
 - First row is headers; width of the header row defines a 2D array's expected width.
 - Values are taken only as complete rows until an empty cell is encountered.
 
-| C1 | C2 | C3 |
-|----|----|----|
-|  1 |  2 |  3 |
-|  4 |  5 |  6 |
-|  7 |  8 |  9 |
-| ...| ...| ...|
+| C1  | C2  | C3  |
+| --- | --- | --- |
+| 1   | 2   | 3   |
+| 4   | 5   | 6   |
+| 7   | 8   | 9   |
+| ... | ... | ... |
 
 Strings and undersized arrays are padded to their expected size by default. If you want to enforce strict length, use the `SIZE` in place of `size` in the layout file (e.g. `SIZE = 8`).

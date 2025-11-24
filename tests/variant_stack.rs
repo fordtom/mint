@@ -1,6 +1,6 @@
 use mint_cli::layout::value::DataValue;
-use mint_cli::variant::args::VariantArgs;
 use mint_cli::variant::DataSheet;
+use mint_cli::variant::args::VariantArgs;
 
 fn build_args(variant: Option<&str>, debug: bool) -> VariantArgs {
     VariantArgs {

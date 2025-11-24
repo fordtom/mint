@@ -287,9 +287,7 @@ impl DataSheet {
         let mut names: Vec<String> = Vec::new();
 
         if args.debug {
-            eprintln!(
-                "Warning: --debug flag is deprecated; include 'Debug' in --variant instead."
-            );
+            eprintln!("Warning: --debug flag is deprecated; include 'Debug' in --variant instead.");
             names.push("Debug".to_string());
         }
 
@@ -301,8 +299,7 @@ impl DataSheet {
         let mut columns = Vec::new();
 
         for name in names {
-            let key = name.to_ascii_lowercase();
-            if !seen.insert(key) {
+            if !seen.insert(name.clone()) {
                 continue;
             }
 

@@ -24,10 +24,7 @@ pub fn print_detailed(stats: &BuildStats) {
             Cell::new(""),
         ]);
 
-    summary_table.add_row(vec![
-        "Build Time",
-        &format_duration(stats.total_duration),
-    ]);
+    summary_table.add_row(vec!["Build Time", &format_duration(stats.total_duration)]);
     summary_table.add_row(vec![
         "Blocks Processed",
         &format!("{}", stats.blocks_processed),
