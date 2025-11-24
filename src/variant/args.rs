@@ -19,9 +19,18 @@ pub struct VariantArgs {
     )]
     pub main_sheet: String,
 
-    #[arg(short = 'v', long, value_name = "NAME", help = "Variant column to use")]
+    #[arg(
+        short = 'v',
+        long,
+        value_name = "NAME[/NAME...]",
+        help = "Variant columns to use in priority order (separate with '/')"
+    )]
     pub variant: Option<String>,
 
-    #[arg(short = 'd', long, help = "Use the Debug column when present")]
+    #[arg(
+        short = 'd',
+        long,
+        help = "Use the Debug column when present (deprecated, prefer -v Debug)"
+    )]
     pub debug: bool,
 }
