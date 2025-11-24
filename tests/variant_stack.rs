@@ -62,3 +62,45 @@ fn legacy_debug_flag_still_applies_first() {
 
     assert_eq!(value_as_i64(value), 60);
 }
+
+#[test]
+fn boolean_cell_retrieves_default_true() {
+    let args = build_args(None, false);
+    let sheet = DataSheet::new(&args)
+        .expect("datasheet load")
+        .expect("datasheet exists");
+
+    let value = sheet
+        .retrieve_single_value("boolean")
+        .expect("boolean present");
+
+    assert!(matches!(value, DataValue::Bool(true)));
+}
+
+#[test]
+fn boolean_cell_retrieves_debug_true() {
+    let args = build_args(Some("Debug"), false);
+    let sheet = DataSheet::new(&args)
+        .expect("datasheet load")
+        .expect("datasheet exists");
+
+    let value = sheet
+        .retrieve_single_value("boolean")
+        .expect("boolean present");
+
+    assert!(matches!(value, DataValue::Bool(true)));
+}
+
+#[test]
+fn boolean_cell_retrieves_vara_false() {
+    let args = build_args(Some("VarA"), false);
+    let sheet = DataSheet::new(&args)
+        .expect("datasheet load")
+        .expect("datasheet exists");
+
+    let value = sheet
+        .retrieve_single_value("boolean")
+        .expect("boolean present");
+
+    assert!(matches!(value, DataValue::Bool(false)));
+}
