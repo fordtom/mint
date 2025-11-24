@@ -3,11 +3,11 @@ name: Release
 on:
   push:
     tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - "v[0-9]+.[0-9]+.[0-9]+"
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag to build (e.g., v1.0.0)'
+        description: "Tag to build (e.g., v1.0.0)"
         required: true
         type: string
 
@@ -25,15 +25,23 @@ jobs:
       fail-fast: false
       matrix:
         job:
-          - { target: x86_64-unknown-linux-musl   , os: ubuntu-latest, use-cross: true }
-          - { target: aarch64-unknown-linux-musl  , os: ubuntu-latest, use-cross: true }
-          - { target: x86_64-apple-darwin         , os: macos-13      }
-          - { target: aarch64-apple-darwin        , os: macos-14      }
-          - { target: x86_64-pc-windows-msvc      , os: windows-latest }
-    
+          - {
+              target: x86_64-unknown-linux-musl,
+              os: ubuntu-latest,
+              use-cross: true,
+            }
+          - {
+              target: aarch64-unknown-linux-musl,
+              os: ubuntu-latest,
+              use-cross: true,
+            }
+          - { target: x86_64-apple-darwin, os: macos-13 }
+          - { target: aarch64-apple-darwin, os: macos-14 }
+          - { target: x86_64-pc-windows-msvc, os: windows-latest }
+
     env:
       BUILD_CMD: cargo
-    
+
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
@@ -73,25 +81,25 @@ jobs:
           case ${{ matrix.job.target }} in
             *-pc-windows-*) EXE_SUFFIX=".exe" ;;
           esac
-          
+
           BIN_NAME="${PROJECT_NAME}${EXE_SUFFIX}"
           BIN_PATH="target/${{ matrix.job.target }}/release/${BIN_NAME}"
-          
+
           PKG_SUFFIX=".tar.gz"
           case ${{ matrix.job.target }} in
             *-pc-windows-*) PKG_SUFFIX=".zip" ;;
           esac
-          
+
           PKG_BASENAME="${PROJECT_NAME}-v${PROJECT_VERSION}-${{ matrix.job.target }}"
           PKG_NAME="${PKG_BASENAME}${PKG_SUFFIX}"
-          
+
           PKG_STAGING="${CICD_INTERMEDIATES_DIR}/package"
           ARCHIVE_DIR="${PKG_STAGING}/${PKG_BASENAME}/"
           mkdir -p "${ARCHIVE_DIR}"
-          
+
           cp "${BIN_PATH}" "${ARCHIVE_DIR}"
           cp README.md LICENSE* "${ARCHIVE_DIR}" 2>/dev/null || true
-          
+
           pushd "${PKG_STAGING}/" >/dev/null
           case ${{ matrix.job.target }} in
             *-pc-windows-*)
@@ -104,7 +112,7 @@ jobs:
               ;;
           esac
           popd >/dev/null
-          
+
           echo "PKG_PATH=${PKG_STAGING}/${PKG_NAME}" >> $GITHUB_ENV
           echo "PKG_CHECKSUM=${PKG_STAGING}/${PKG_NAME}.sha256" >> $GITHUB_ENV
 
@@ -112,7 +120,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.tag || github.ref_name }}
-          generate_release_notes: true
+          generate_release_notes: ${{ matrix.job.target == 'x86_64-unknown-linux-musl' }}
           files: |
             ${{ env.PKG_PATH }}
             ${{ env.PKG_CHECKSUM }}
