@@ -228,15 +228,17 @@ impl DataSheet {
 
         for column in &self.variant_columns {
             if let Some(value) = column.get(index)
-                && !Self::cell_is_empty(value) {
-                    return Ok(value);
-                }
+                && !Self::cell_is_empty(value)
+            {
+                return Ok(value);
+            }
         }
 
         if let Some(default) = self.default_values.get(index)
-            && !Self::cell_is_empty(default) {
-                return Ok(default);
-            }
+            && !Self::cell_is_empty(default)
+        {
+            return Ok(default);
+        }
 
         Err(VariantError::RetrievalError(
             "data not found in any variant column".to_string(),

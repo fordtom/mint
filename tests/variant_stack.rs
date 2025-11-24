@@ -45,7 +45,6 @@ fn stacked_variants_fall_back_when_empty() {
         .retrieve_single_value("Value 2")
         .expect("value present");
 
-    // VarA is empty for this row, so Debug should supply the value.
     assert_eq!(value_as_i64(value), 2);
 }
 
