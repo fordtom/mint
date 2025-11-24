@@ -1,83 +1,84 @@
-# Bitmap Leaf Implementation Plan (Updated)
+# Bitmap Leaf Implementation Plan (v3)
 
 ## Syntax
-- Leaf stores bitmap via `bitmap = [ ... ]` alongside `type = "u8|u16|u32|u64|i8|i16|i32|i64"`.
+- Any scalar leaf may declare `bitmap = [ ... ]` instead of `name`/`value`.
+- Storage `type` must be integer (`u8/u16/u32/u64/i8/i16/i32/i64`). Storage signedness drives interpretation of every bitmap field (all fields inherit the storage’s signed/two’s-complement behavior; no per-field override).
 - Example:
   ```
-  flags = { type = "u16", bitmap = [
-      { size = 1, name = "AllowDebug" },
-      { size = 2, name = "ModeSelect" },
-      { size = 1, value = true },
-      { size = 4, name = "Region" },
-      { size = 8, value = 0 },
+  flags = { type = "i16", bitmap = [
+      { bits = 1, name = "AllowDebug" },
+      { bits = 2, name = "ModeSelect" },
+      { bits = 1, value = true },
+      { bits = 4, name = "RegionCode" },
+      { bits = 8, value = 0 }, # explicit padding
   ] }
   ```
-- `size` = number of bits (integer >0). No per-field `type`.
-- Signed handling:
-  - Fields default to unsigned when storage is unsigned.
-  - When storage scalar is signed (`i8/i16/i32/i64`), fields default to signed interpretation (two's complement) unless `signed = false`.
-  - Optional `signed = true/false` overrides inheritance for individual fields.
-- Field values use same mutually exclusive sources as standard leaves: `name = "ExcelRow"` or `value = <literal>`.
-- Order defines bit packing (LSB-first). Remaining bits auto-zero-padded unless strict mode demands exact coverage.
+- `bits` is a positive integer count per element. The sum of all `bits` **must equal** the storage width (bytes * 8). Users must add padding entries themselves (no implicit zero-fill).
+- Each entry is mutually exclusive between `name = "ExcelRow"` and `value = <literal>`, mirroring the existing leaf sources. Arrays are invalid.
 
 ## Parsing (`src/layout/entry.rs`)
-- Extend `LeafEntry` with `bitmap: Option<Vec<BitmapField>>`; keep `#[serde(deny_unknown_fields)]`.
-- `BitmapField`:
-  - `size_bits: u8` (`#[serde(rename = "size")]`).
-  - `signed: Option<bool>`.
-  - `source: EntrySource` via `#[serde(flatten)]`.
-- Validation:
-  - Exactly one of `{name,value,bitmap}`.
-  - Reject `size`/`SIZE` on bitmap leaves for now.
-  - Storage `scalar_type` must be integer (no floats). Allow signed+unsigned.
-  - Each field size ≤ storage bits; sum ≤ storage bits (error if overflow).
+- `LeafEntry` gains `bitmap: Option<Vec<BitmapField>>`; retains `#[serde(deny_unknown_fields)]`.
+- `BitmapField` struct:
+  - `bits: usize` (serde key `bits`).
+  - `source: EntrySource` via `#[serde(flatten)]` (so `name` / `value` reused).
+- Validation rules:
+  - Exactly one of `{name,value,bitmap}` per leaf.
+  - `size`/`SIZE` keys forbidden when `bitmap` is present.
+  - `bits > 0`.
+  - Sum of `bits` must equal `self.scalar_type.size_bytes() * 8`; otherwise emit `LayoutError` (independent of strict flag).
+  - Storage type must not be floating-point.
 
-## Boolean + Literal Support (`src/layout/value.rs`, `src/layout/conversions.rs`)
-- Introduce `DataValue::Bool(bool)` to represent serde booleans (`true/false`) from layout or Excel.
-- Map string literals `"true"/"false"` (case-insensitive) to bool during bitmap field conversion.
-- Helper `fn extract_bitmap_value(value: &DataValue, width: u8, signed: bool, strict: bool) -> Result<i128, LayoutError>`:
-  - Accept `Bool`, ints, floats (integer-valued), and strings `0/1/true/false`.
-  - Clamp to range: unsigned fields `[0, 2^width-1]`, signed fields `[ -2^(width-1), 2^(width-1)-1 ]`.
-  - Returns `i128`; caller reinterprets as unsigned when needed before packing.
+## DataValue + Conversion Enhancements
+- Extend `DataValue` with `Bool(bool)` to capture serde booleans.
+- When a bitmap field uses literal strings `"true"`/`"false"` (case-insensitive) or Excel bool cells, convert to `DataValue::Bool`.
+- Introduce helper in `layout` module:  
+  `fn clamp_bitfield_value(value: &DataValue, bits: usize, signed: bool, strict: bool) -> Result<i128, LayoutError>`
+  - Accept bools (`true` → 1, `false` → 0).
+  - Accept integers/floats (floats must be whole numbers, reusing `TryFromStrict` when strict).
+  - Accept strings `"0"` / `"1"` / `"true"` / `"false"` (case-insensitive).
+  - Range:
+    - Unsigned: `0 ..= 2^bits - 1`.
+    - Signed: `-(2^(bits-1)) ..= 2^(bits-1) - 1` (two's complement).
+  - If outside range:
+    - `strict == true` ⇒ error.
+    - `strict == false` ⇒ saturate to nearest representable value.
+  - Returns `i128` so the caller can mask/pack easily.
 
 ## Excel Retrieval (`src/variant/mod.rs`)
 - `retrieve_single_value`:
   - Accept `Data::Bool` → `DataValue::Bool`.
-  - Accept strings `true/false` → `Bool`.
-  - Keep numeric behavior as-is.
-- `retrieve_1d_array_or_string` / `retrieve_2d_array`:
-  - When reading cells, convert bool cells or bool-like strings into `DataValue::Bool`.
-  - Numeric conversions unchanged.
+  - Accept string `true/false` as bool (case-insensitive).
+- `retrieve_1d_array_or_string` / `retrieve_2d_array` conversions should do the same for bool cells, ensuring bitmaps sourced from sheets behave consistently.
 
-## Bitmap Emission
-- New `LeafEntry::emit_bitmap`.
-- Steps:
-  1. Ensure no array sizing keys set.
-  2. Determine storage bit width and confirm scalar integer type; capture if storage signed for default inheritance.
-  3. Iterate bitmap fields:
-     - Resolve `DataValue`: `EntrySource::Name` uses `data_sheet.retrieve_single_value`, `EntrySource::Value` requires single value.
-     - Determine signedness: `field.signed.unwrap_or(storage_is_signed)`.
-     - Convert via `extract_bitmap_value`.
-     - For signed fields, convert to two's complement representation within `width` bits before packing.
-     - Accumulate into `u128` buffer at current bit offset (LSB-first).
-  4. After loop: if total bits < storage bits → pad zeros unless `config.strict`, where mismatch triggers error.
-  5. Emit bytes by narrowing accumulator to requested scalar type and using existing endian conversion.
+## Bitmap Emission Flow
+- `LeafEntry::emit_bytes` order:
+  1. If `bitmap.is_some()` → call `emit_bitmap`.
+  2. Else follow existing scalar / array logic.
+- `emit_bitmap` steps:
+  1. Assert `size_keys` empty and `bitmap` present.
+  2. Determine storage width in bits and signedness.
+  3. Ensure total bits already validated (panic if not).
+  4. Iterate bitmap fields in order, tracking current bit offset (LSB-first).
+     - Resolve `DataValue` via existing source mechanisms (`name` uses `data_sheet.retrieve_single_value`, `value` expects `ValueSource::Single`).
+     - Call `clamp_bitfield_value` with `(bits, signed, config.strict)`.
+     - Convert signed result into two's-complement bit pattern limited to `bits` and insert into `u128` accumulator (shift by current offset, mask).
+  5. After packing all fields, emit bytes by casting accumulator to the requested scalar type and running existing endian serialization utilities.
 
-## Strictness & Padding
-- Default: zero-fill remaining high bits.
-- `config.strict` (from CLI `--strict`) → require cumulative field size = storage bits.
-- Future: optional `BITMAP` uppercase key for per-layout strict enforcement (not scoped now).
+## Strict Mode Interpretation
+- `config.strict` now only affects conversion tolerance inside `clamp_bitfield_value` (range overflow and float/integer exactness). Length enforcement is unconditional (total bits must match storage bits regardless of strict flag).
 
-## Error Cases
-- Missing data sheet for `name` field.
-- Arrays inside bitmap field source.
-- Field value out of range for declared width & signedness.
-- Storage type float, or bitmap plus `size/SIZE`.
+## Error Cases to Cover
+- Using bitmap with float storage.
+- Missing `name`/`value` inside a bitmap field.
+- `bits = 0`.
+- Sum of bits != storage width.
+- Arrays as bitmap sources.
+- Value outside representable range under strict mode.
 
 ## Testing
-- Add tests covering:
-  - Packing order, zero padding, strict failure.
-  - Signed fields (negative values) with signed storage and overrides.
-  - Bool literal + Excel bool retrieval.
-  - Overflow detection for widths.
-  - Error on using bitmap with float storage or arrays.
+- Add tests verifying:
+  - Happy path packing for unsigned + signed storage.
+  - Saturation vs error based on strict flag.
+  - Bool literals and Excel bools map to correct bit patterns.
+  - Detection of mis-sized bitmaps and zero-bit fields.
+  - Example snippet in `examples/block.toml` for documentation.
