@@ -89,3 +89,36 @@ limits.temperature_max = { name = "TemperatureMax", type = "i16" }
 thresholds.voltage = { name = "VoltageThresholds", type = "f32", size = 4 }
 # Large notice string or bytes from Excel
 dlegal.notice = { name = "LegalNotice", type = "u8", size = 128 }
+
+[block_bitmap.header]
+start_address = 0x8E000
+length = 0x100
+crc_location = "end"
+
+[block_bitmap.data]
+# Normal scalar before bitmaps
+prefix.marker = { value = 0xBEEF, type = "u16" }
+prefix.count = { name = "BitmapTestCount", type = "u8" }
+
+# Signed i16 bitmap - tests two's complement and negative field values
+config.flags = { type = "i16", bitmap = [
+    { bits = 1, name = "AllowDebug" },
+    { bits = 3, name = "ModeSelect" },
+    { bits = 1, value = true },
+    { bits = 4, name = "RegionCode" },
+    { bits = 7, value = 0 },
+] }
+
+# Unsigned u32 bitmap - tests larger storage and mixed sources
+hw.status = { type = "u32", bitmap = [
+    { bits = 1, name = "PowerGood" },
+    { bits = 1, name = "FanRunning" },
+    { bits = 6, value = 0 },
+    { bits = 8, name = "ErrorCode" },
+    { bits = 4, name = "HwRevision" },
+    { bits = 12, value = 0xABC },
+] }
+
+# Normal scalars after bitmaps
+suffix.checkval = { name = "BitmapCheckVal", type = "u32" }
+suffix.trailer = { value = 0xCAFE, type = "u16" }

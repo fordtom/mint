@@ -11,7 +11,7 @@ pub enum ValueSource {
     Array(Vec<DataValue>),
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(untagged)]
 pub enum DataValue {
     Bool(bool),

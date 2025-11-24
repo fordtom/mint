@@ -27,6 +27,17 @@ pub enum LayoutError {
         source: Box<LayoutError>,
     },
 
+    #[error(
+        "bitfield value {value} out of range for {bits}-bit {signedness} field ({min}..={max})"
+    )]
+    BitfieldOutOfRange {
+        value: i128,
+        bits: usize,
+        signedness: &'static str,
+        min: i128,
+        max: i128,
+    },
+
     #[error(transparent)]
     Variant(#[from] crate::variant::errors::VariantError),
 }

@@ -1,4 +1,5 @@
 use super::block::BuildConfig;
+use super::conversions::clamp_bitfield_value;
 use super::errors::LayoutError;
 use super::value::{DataValue, ValueSource};
 use crate::variant::DataSheet;
@@ -100,6 +101,23 @@ pub enum BitmapFieldSource {
     Value(DataValue),
 }
 
+impl BitmapField {
+    fn resolve_value(&self, data_sheet: Option<&DataSheet>) -> Result<DataValue, LayoutError> {
+        match &self.source {
+            BitmapFieldSource::Name(name) => {
+                let Some(ds) = data_sheet else {
+                    return Err(LayoutError::MissingDataSheet(format!(
+                        "Bitmap field '{}' requires a value from the Excel datasheet, but no datasheet was provided. Use -x to specify an Excel file.",
+                        name
+                    )));
+                };
+                Ok(ds.retrieve_single_value(name)?)
+            }
+            BitmapFieldSource::Value(v) => Ok(v.clone()),
+        }
+    }
+}
+
 impl LeafEntry {
     /// Returns the alignment of the leaf entry.
     pub fn get_alignment(&self) -> usize {
@@ -171,12 +189,26 @@ impl LeafEntry {
     /// Emits bytes for a bitmap entry. Validation must be called first.
     fn emit_bitmap(
         &self,
-        _fields: &[BitmapField],
-        _data_sheet: Option<&DataSheet>,
-        _config: &BuildConfig,
+        fields: &[BitmapField],
+        data_sheet: Option<&DataSheet>,
+        config: &BuildConfig,
     ) -> Result<Vec<u8>, LayoutError> {
-        // Placeholder - actual packing logic will be added later
-        todo!("Bitmap emission not yet implemented")
+        let signed = self.scalar_type.is_signed();
+        let mut accumulator: u128 = 0;
+        let mut offset: usize = 0;
+
+        for field in fields {
+            let value = field.resolve_value(data_sheet)?;
+            let clamped = clamp_bitfield_value(&value, field.bits, signed, config.strict)?;
+
+            let mask = (1u128 << field.bits) - 1;
+            let pattern = (clamped as u128) & mask;
+            accumulator |= pattern << offset;
+            offset += field.bits;
+        }
+
+        // Reuse DataValue conversion for endian serialization (strict=false since already clamped)
+        DataValue::U64(accumulator as u64).to_bytes(self.scalar_type, config.endianness, false)
     }
 
     fn emit_bytes_single(
