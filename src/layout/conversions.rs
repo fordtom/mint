@@ -26,7 +26,7 @@ macro_rules! impl_try_from_data_value {
         }
     )* }; }
 
-impl_try_from_data_value!(u8, u16, u32, u64, i8, i16, i32, i64, f32, f64);
+impl_try_from_data_value!(u8, u16, u32, u64, i8, i16, i32, i64, i128, f32, f64);
 
 pub trait TryFromStrict<T>: Sized {
     fn try_from_strict(value: T) -> Result<Self, LayoutError>;
@@ -154,7 +154,7 @@ macro_rules! impl_try_from_strict_float_targets {
 }
 
 impl_try_from_strict_unsigned!(u8, u16, u32, u64);
-impl_try_from_strict_signed!(i8, i16, i32, i64);
+impl_try_from_strict_signed!(i8, i16, i32, i64, i128);
 impl_try_from_strict_float_targets!(f32);
 impl TryFromStrict<&DataValue> for f64 {
     fn try_from_strict(value: &DataValue) -> Result<Self, LayoutError> {
@@ -187,6 +187,42 @@ impl TryFromStrict<&DataValue> for f64 {
             DataValue::Str(_) => Err(err!("Cannot convert string to scalar type.")),
         }
     }
+}
+
+/// Converts a DataValue to an i128 for bitfield packing, with range clamping/checking.
+///
+/// - `bits`: field width in bits (must be > 0)
+/// - `signed`: whether to interpret as two's complement signed field
+/// - `strict`: if true, out-of-range or non-integer floats produce errors; otherwise saturate
+pub fn clamp_bitfield_value(
+    value: &DataValue,
+    bits: usize,
+    signed: bool,
+    strict: bool,
+) -> Result<i128, LayoutError> {
+    let raw: i128 = if strict {
+        i128::try_from_strict(value)?
+    } else {
+        i128::try_from(value)?
+    };
+
+    let (min, max) = if signed {
+        let half = 1i128 << (bits - 1);
+        (-half, half - 1)
+    } else {
+        (0, (1i128 << bits) - 1)
+    };
+
+    if strict && (raw < min || raw > max) {
+        return Err(LayoutError::BitfieldOutOfRange {
+            value: raw,
+            bits,
+            signedness: if signed { "signed" } else { "unsigned" },
+            min,
+            max,
+        });
+    }
+    Ok(raw.clamp(min, max))
 }
 
 pub fn convert_value_to_bytes(

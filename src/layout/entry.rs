@@ -1,6 +1,7 @@
 use super::block::BuildConfig;
+use super::conversions::clamp_bitfield_value;
 use super::errors::LayoutError;
-use super::value::ValueSource;
+use super::value::{DataValue, ValueSource};
 use crate::variant::DataSheet;
 use serde::Deserialize;
 
@@ -78,6 +79,43 @@ pub enum EntrySource {
     Name(String),
     #[serde(rename = "value")]
     Value(ValueSource),
+    #[serde(rename = "bitmap")]
+    Bitmap(Vec<BitmapField>),
+}
+
+/// Single bitmap field within a bitmap entry.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BitmapField {
+    pub bits: usize,
+    #[serde(flatten)]
+    pub source: BitmapFieldSource,
+}
+
+/// Source for a bitmap field (no arrays allowed).
+#[derive(Debug, Deserialize)]
+pub enum BitmapFieldSource {
+    #[serde(rename = "name")]
+    Name(String),
+    #[serde(rename = "value")]
+    Value(DataValue),
+}
+
+impl BitmapField {
+    fn resolve_value(&self, data_sheet: Option<&DataSheet>) -> Result<DataValue, LayoutError> {
+        match &self.source {
+            BitmapFieldSource::Name(name) => {
+                let Some(ds) = data_sheet else {
+                    return Err(LayoutError::MissingDataSheet(format!(
+                        "Bitmap field '{}' requires a value from the Excel datasheet, but no datasheet was provided. Use -x to specify an Excel file.",
+                        name
+                    )));
+                };
+                Ok(ds.retrieve_single_value(name)?)
+            }
+            BitmapFieldSource::Value(v) => Ok(v.clone()),
+        }
+    }
 }
 
 impl LeafEntry {
@@ -91,6 +129,11 @@ impl LeafEntry {
         data_sheet: Option<&DataSheet>,
         config: &BuildConfig,
     ) -> Result<Vec<u8>, LayoutError> {
+        if let EntrySource::Bitmap(fields) = &self.source {
+            self.validate_bitmap(fields)?;
+            return self.emit_bitmap(fields, data_sheet, config);
+        }
+
         let (size, strict_len) = self.size_keys.resolve()?;
         match size {
             None => self.emit_bytes_single(data_sheet, config),
@@ -101,6 +144,65 @@ impl LeafEntry {
                 self.emit_bytes_2d(data_sheet, size, config, strict_len)
             }
         }
+    }
+
+    /// Validates bitmap entry rules.
+    fn validate_bitmap(&self, fields: &[BitmapField]) -> Result<(), LayoutError> {
+        if self.size_keys.size.is_some() || self.size_keys.strict_size.is_some() {
+            return Err(LayoutError::DataValueExportFailed(
+                "size/SIZE keys are forbidden with bitmap.".into(),
+            ));
+        }
+
+        if !self.scalar_type.is_integer() {
+            return Err(LayoutError::DataValueExportFailed(
+                "Bitmap requires integer storage type.".into(),
+            ));
+        }
+
+        let mut total_bits = 0usize;
+        for field in fields {
+            if field.bits == 0 {
+                return Err(LayoutError::DataValueExportFailed(
+                    "Bitmap field bits must be > 0.".into(),
+                ));
+            }
+            total_bits += field.bits;
+        }
+
+        let expected_bits = self.scalar_type.size_bytes() * 8;
+        if total_bits != expected_bits {
+            return Err(LayoutError::DataValueExportFailed(format!(
+                "Bitmap total bits ({}) must equal storage width ({}).",
+                total_bits, expected_bits
+            )));
+        }
+
+        Ok(())
+    }
+
+    /// Emits bytes for a bitmap entry. Validation must be called first.
+    fn emit_bitmap(
+        &self,
+        fields: &[BitmapField],
+        data_sheet: Option<&DataSheet>,
+        config: &BuildConfig,
+    ) -> Result<Vec<u8>, LayoutError> {
+        let signed = self.scalar_type.is_signed();
+        let mut accumulator: u128 = 0;
+        let mut offset: usize = 0;
+
+        for field in fields {
+            let value = field.resolve_value(data_sheet)?;
+            let clamped = clamp_bitfield_value(&value, field.bits, signed, config.strict)?;
+
+            let mask = (1u128 << field.bits) - 1;
+            let pattern = (clamped as u128) & mask;
+            accumulator |= pattern << offset;
+            offset += field.bits;
+        }
+
+        DataValue::U64(accumulator as u64).to_bytes(self.scalar_type, config.endianness, false)
     }
 
     fn emit_bytes_single(
@@ -125,6 +227,7 @@ impl LeafEntry {
             EntrySource::Value(_) => Err(LayoutError::DataValueExportFailed(
                 "Single value expected for scalar type.".to_string(),
             )),
+            EntrySource::Bitmap(_) => unreachable!("bitmap handled in emit_bytes"),
         }
     }
 
@@ -184,6 +287,7 @@ impl LeafEntry {
                 }
                 out.extend(v.string_to_bytes()?);
             }
+            EntrySource::Bitmap(_) => unreachable!("bitmap handled in emit_bytes"),
         }
 
         if out.len() > total_bytes {
@@ -273,6 +377,7 @@ impl LeafEntry {
             EntrySource::Value(_) => Err(LayoutError::DataValueExportFailed(
                 "2D arrays within the layout file are not supported.".to_string(),
             )),
+            EntrySource::Bitmap(_) => unreachable!("bitmap handled in emit_bytes"),
         }
     }
 }
@@ -286,5 +391,18 @@ impl ScalarType {
             ScalarType::U32 | ScalarType::I32 | ScalarType::F32 => 4,
             ScalarType::U64 | ScalarType::I64 | ScalarType::F64 => 8,
         }
+    }
+
+    /// Returns true if this is an integer type (not floating-point).
+    pub fn is_integer(&self) -> bool {
+        !matches!(self, ScalarType::F32 | ScalarType::F64)
+    }
+
+    /// Returns true if this is a signed type.
+    pub fn is_signed(&self) -> bool {
+        matches!(
+            self,
+            ScalarType::I8 | ScalarType::I16 | ScalarType::I32 | ScalarType::I64
+        )
     }
 }
