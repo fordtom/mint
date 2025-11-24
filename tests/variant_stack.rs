@@ -16,6 +16,7 @@ fn value_as_i64(value: DataValue) -> i64 {
         DataValue::I64(v) => v,
         DataValue::U64(v) => v as i64,
         DataValue::F64(v) => v as i64,
+        DataValue::Bool(v) => if v { 1 } else { 0 },
         DataValue::Str(s) => panic!("expected numeric value, got {}", s),
     }
 }

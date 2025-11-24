@@ -80,6 +80,12 @@ impl DataSheet {
         let result = (|| match self.retrieve_cell(name)? {
             Data::Int(i) => Ok(DataValue::I64(*i)),
             Data::Float(f) => Ok(DataValue::F64(*f)),
+            Data::Bool(b) => Ok(DataValue::Bool(*b)),
+            Data::String(s) => Self::parse_bool_string(s)
+                .map(DataValue::Bool)
+                .ok_or_else(|| {
+                    VariantError::RetrievalError("Found non-numeric single value".to_string())
+                }),
             _ => Err(VariantError::RetrievalError(
                 "Found non-numeric single value".to_string(),
             )),
@@ -115,16 +121,7 @@ impl DataSheet {
                 for row in sheet.rows().skip(1) {
                     match row.first() {
                         Some(cell) if !Self::cell_is_empty(cell) => {
-                            let v = match cell {
-                                Data::Int(i) => DataValue::I64(*i),
-                                Data::Float(f) => DataValue::F64(*f),
-                                Data::String(s) => DataValue::Str(s.to_owned()),
-                                _ => {
-                                    return Err(VariantError::RetrievalError(
-                                        "Unsupported data type in 1D array".to_string(),
-                                    ));
-                                }
-                            };
+                            let v = Self::convert_sheet_cell(cell, true, "1D array")?;
                             out.push(v);
                         }
                         _ => break,
@@ -168,13 +165,7 @@ impl DataSheet {
             })?;
 
             let convert = |cell: &Data| -> Result<DataValue, VariantError> {
-                match cell {
-                    Data::Int(i) => Ok(DataValue::I64(*i)),
-                    Data::Float(f) => Ok(DataValue::F64(*f)),
-                    _ => Err(VariantError::RetrievalError(
-                        "Unsupported data type in 2D array".to_string(),
-                    )),
-                }
+                Self::convert_sheet_cell(cell, false, "2D array")
             };
 
             let mut rows = sheet.rows();
@@ -314,5 +305,113 @@ impl DataSheet {
         Ok(columns)
     }
 
+    fn parse_bool_string(input: &str) -> Option<bool> {
+        let trimmed = input.trim();
+        if trimmed.eq_ignore_ascii_case("true") {
+            Some(true)
+        } else if trimmed.eq_ignore_ascii_case("false") {
+            Some(false)
+        } else {
+            None
+        }
+    }
+
+    fn convert_sheet_cell(
+        cell: &Data,
+        allow_plain_strings: bool,
+        context: &str,
+    ) -> Result<DataValue, VariantError> {
+        match cell {
+            Data::Int(i) => Ok(DataValue::I64(*i)),
+            Data::Float(f) => Ok(DataValue::F64(*f)),
+            Data::Bool(b) => Ok(DataValue::Bool(*b)),
+            Data::String(s) => {
+                if let Some(b) = Self::parse_bool_string(s) {
+                    Ok(DataValue::Bool(b))
+                } else if allow_plain_strings {
+                    Ok(DataValue::Str(s.to_owned()))
+                } else {
+                    Err(VariantError::RetrievalError(format!(
+                        "Unsupported data type in {}",
+                        context
+                    )))
+                }
+            }
+            _ => Err(VariantError::RetrievalError(format!(
+                "Unsupported data type in {}",
+                context
+            ))),
+        }
+    }
     // TODO: retrieve sheets by name, data format to be decided
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    fn datasheet_with_default(value: Data) -> DataSheet {
+        DataSheet {
+            names: vec!["Flag".to_string()],
+            default_values: vec![value],
+            variant_columns: Vec::new(),
+            sheets: HashMap::new(),
+        }
+    }
+
+    #[test]
+    fn retrieve_single_value_accepts_bool_cell() {
+        let ds = datasheet_with_default(Data::Bool(true));
+        let value = ds.retrieve_single_value("Flag").expect("bool cell");
+        match value {
+            DataValue::Bool(v) => assert!(v),
+            _ => panic!("expected bool value"),
+        }
+    }
+
+    #[test]
+    fn retrieve_single_value_accepts_bool_string() {
+        let ds = datasheet_with_default(Data::String(" False ".to_string()));
+        let value = ds.retrieve_single_value("Flag").expect("bool string");
+        match value {
+            DataValue::Bool(v) => assert!(!v),
+            _ => panic!("expected bool value"),
+        }
+    }
+
+    #[test]
+    fn convert_sheet_cell_handles_bool_strings() {
+        let bool_cell = Data::Bool(false);
+        let value = DataSheet::convert_sheet_cell(&bool_cell, true, "1D array").expect("bool cell");
+        match value {
+            DataValue::Bool(v) => assert!(!v),
+            _ => panic!("expected bool"),
+        }
+
+        let bool_str = Data::String("TRUE".to_string());
+        let value =
+            DataSheet::convert_sheet_cell(&bool_str, false, "2D array").expect("bool string");
+        match value {
+            DataValue::Bool(v) => assert!(v),
+            _ => panic!("expected bool"),
+        }
+
+        let plain_str = Data::String("Hello".to_string());
+        let value =
+            DataSheet::convert_sheet_cell(&plain_str, true, "1D array").expect("plain string");
+        match value {
+            DataValue::Str(s) => assert_eq!(s, "Hello"),
+            _ => panic!("expected string"),
+        }
+
+        let err = DataSheet::convert_sheet_cell(&plain_str, false, "2D array")
+            .expect_err("should reject non-bool string in 2D arrays");
+        match err {
+            VariantError::RetrievalError(msg) => {
+                assert!(msg.contains("2D array"), "unexpected message: {}", msg)
+            }
+            other => panic!("unexpected error: {:?}", other),
+        }
+    }
 }
