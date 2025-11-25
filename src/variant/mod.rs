@@ -2,7 +2,7 @@ pub mod args;
 pub mod errors;
 mod helpers;
 
-use calamine::{Data, Range, Reader, Xlsx, open_workbook};
+use calamine::{open_workbook, Data, Range, Reader, Xlsx};
 use std::collections::{HashMap, HashSet};
 
 use crate::layout::value::{DataValue, ValueSource};
@@ -230,17 +230,17 @@ impl DataSheet {
                 ))?;
 
         for column in &self.variant_columns {
-            if let Some(value) = column.get(index)
-                && !Self::cell_is_empty(value)
-            {
-                return Ok(value);
+            if let Some(value) = column.get(index) {
+                if !Self::cell_is_empty(value) {
+                    return Ok(value);
+                }
             }
         }
 
-        if let Some(default) = self.default_values.get(index)
-            && !Self::cell_is_empty(default)
-        {
-            return Ok(default);
+        if let Some(default) = self.default_values.get(index) {
+            if !Self::cell_is_empty(default) {
+                return Ok(default);
+            }
         }
 
         Err(VariantError::RetrievalError(
