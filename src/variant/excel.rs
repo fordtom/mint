@@ -15,7 +15,6 @@ pub struct ExcelDataSource {
 }
 
 impl ExcelDataSource {
-    /// Creates a new Excel data source. Caller must ensure `args.xlsx` is `Some`.
     pub(crate) fn new(args: &VariantArgs) -> Result<Self, VariantError> {
         let xlsx_path = args.xlsx.as_ref().expect("xlsx path required");
 

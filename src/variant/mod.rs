@@ -2,10 +2,12 @@ pub mod args;
 pub mod errors;
 mod excel;
 mod helpers;
+mod pg;
 
 use crate::layout::value::{DataValue, ValueSource};
 use errors::VariantError;
 use excel::ExcelDataSource;
+use pg::PostgresDataSource;
 
 /// Trait for data sources that provide variant values by name.
 pub trait DataSource: Sync {
@@ -25,10 +27,9 @@ pub trait DataSource: Sync {
 pub fn create_data_source(
     args: &args::VariantArgs,
 ) -> Result<Option<Box<dyn DataSource>>, VariantError> {
-    // We need to check that if one of these is provided, -v also exists
-    if args.xlsx.is_some() {
-        Ok(Some(Box::new(ExcelDataSource::new(args)?)))
-    } else {
-        Ok(None)
+    match (&args.xlsx, &args.postgres) {
+        (Some(_), _) => Ok(Some(Box::new(ExcelDataSource::new(args)?))),
+        (_, Some(_)) => Ok(Some(Box::new(PostgresDataSource::new(args)?))),
+        _ => Ok(None),
     }
 }
