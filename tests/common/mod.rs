@@ -6,7 +6,7 @@ use std::path::Path;
 use mint_cli::args::Args;
 use mint_cli::layout::args::{BlockNames, LayoutArgs};
 use mint_cli::output::args::{OutputArgs, OutputFormat};
-use mint_cli::variant::{self, DataSheet};
+use mint_cli::variant::{self, DataSource};
 
 pub fn ensure_out_dir() {
     fs::create_dir_all("out").unwrap();
@@ -47,7 +47,7 @@ pub fn build_args(layout_path: &str, block_name: &str, format: OutputFormat) -> 
     }
 }
 
-pub fn find_working_datasheet() -> Option<DataSheet> {
+pub fn find_working_datasource() -> Option<Box<dyn DataSource>> {
     let variant_candidates: [Option<&str>; 2] = [None, Some("VarA")];
     let debug_candidates = [false, true];
 
@@ -60,7 +60,7 @@ pub fn find_working_datasheet() -> Option<DataSheet> {
                 debug: dbg,
                 main_sheet: "Main".to_string(),
             };
-            if let Ok(Some(ds)) = DataSheet::new(&var_args) {
+            if let Ok(Some(ds)) = variant::create_data_source(&var_args) {
                 return Some(ds);
             }
         }

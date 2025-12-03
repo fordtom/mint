@@ -10,7 +10,7 @@ fn test_file_expands_all_blocks() {
 
     let layout_path = "examples/block_no_excel.toml";
 
-    let Some(_ds) = common::find_working_datasheet() else {
+    let Some(_ds) = common::find_working_datasource() else {
         return;
     };
 

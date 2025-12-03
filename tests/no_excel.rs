@@ -1,5 +1,5 @@
 use mint_cli::commands;
-use mint_cli::variant::DataSheet;
+use mint_cli::variant::create_data_source;
 
 #[path = "common/mod.rs"]
 mod common;
@@ -99,15 +99,15 @@ fn test_error_when_name_without_excel() {
     let err_str = format!("{}", err);
     assert!(
         err_str.contains("Missing datasheet")
-            || err_str.contains("requires a value from the Excel datasheet"),
-        "Error should mention missing datasheet, got: {}",
+            || err_str.contains("requires a value from a data source"),
+        "Error should mention missing data source, got: {}",
         err_str
     );
 }
 
 #[test]
-fn test_warning_validation() {
-    // Test that DataSheet::new returns None when no xlsx is provided
+fn test_factory_returns_none_without_xlsx() {
+    // Test that create_data_source returns None when no xlsx is provided
     let args_no_excel = mint_cli::variant::args::VariantArgs {
         xlsx: None,
         variant: None,
@@ -115,10 +115,10 @@ fn test_warning_validation() {
         main_sheet: "Main".to_string(),
     };
 
-    let result = DataSheet::new(&args_no_excel).expect("should return Ok(None)");
+    let result = create_data_source(&args_no_excel).expect("should return Ok(None)");
     assert!(
         result.is_none(),
-        "DataSheet should be None when no xlsx provided"
+        "create_data_source should return None when no xlsx provided"
     );
 
     // Test with variant flag (would produce warning in main.rs)
@@ -129,10 +129,10 @@ fn test_warning_validation() {
         main_sheet: "Main".to_string(),
     };
 
-    let result = DataSheet::new(&args_variant_no_excel).expect("should return Ok(None)");
+    let result = create_data_source(&args_variant_no_excel).expect("should return Ok(None)");
     assert!(
         result.is_none(),
-        "DataSheet should be None when no xlsx provided, even with variant flag"
+        "create_data_source should return None when no xlsx provided, even with variant flag"
     );
 
     // Test with debug flag (would produce warning in main.rs)
@@ -143,9 +143,9 @@ fn test_warning_validation() {
         main_sheet: "Main".to_string(),
     };
 
-    let result = DataSheet::new(&args_debug_no_excel).expect("should return Ok(None)");
+    let result = create_data_source(&args_debug_no_excel).expect("should return Ok(None)");
     assert!(
         result.is_none(),
-        "DataSheet should be None when no xlsx provided, even with debug flag"
+        "create_data_source should return None when no xlsx provided, even with debug flag"
     );
 }

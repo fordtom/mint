@@ -46,10 +46,10 @@ ok.int_exact_to_f32   = { value = 16777216, type = "f32" }
         debug: false,
         main_sheet: "Main".to_string(),
     };
-    let ds = mint_cli::variant::DataSheet::new(&var_args).expect("datasheet loads");
+    let ds = mint_cli::variant::create_data_source(&var_args).expect("datasource loads");
 
     let (bytes, _padding) = block
-        .build_bytestream(ds.as_ref(), &cfg.settings, true)
+        .build_bytestream(ds.as_deref(), &cfg.settings, true)
         .expect("strict conversions should succeed");
     assert!(!bytes.is_empty());
 }
@@ -96,9 +96,9 @@ bad.frac_to_u8 = { value = 1.5, type = "u8" }
         debug: false,
         main_sheet: "Main".to_string(),
     };
-    let ds = mint_cli::variant::DataSheet::new(&var_args).expect("datasheet loads");
+    let ds = mint_cli::variant::create_data_source(&var_args).expect("datasource loads");
 
-    let res = block.build_bytestream(ds.as_ref(), &cfg.settings, true);
+    let res = block.build_bytestream(ds.as_deref(), &cfg.settings, true);
     assert!(
         res.is_err(),
         "strict mode should reject fractional float to int"
@@ -147,9 +147,9 @@ bad.large_int_to_f64 = { value = 9007199254740993, type = "f64" }
         debug: false,
         main_sheet: "Main".to_string(),
     };
-    let ds = mint_cli::variant::DataSheet::new(&var_args).expect("datasheet loads");
+    let ds = mint_cli::variant::create_data_source(&var_args).expect("datasource loads");
 
-    let res = block.build_bytestream(ds.as_ref(), &cfg.settings, true);
+    let res = block.build_bytestream(ds.as_deref(), &cfg.settings, true);
     assert!(
         res.is_err(),
         "strict mode should reject lossy int to f64 conversion"

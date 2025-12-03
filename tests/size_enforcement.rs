@@ -130,9 +130,9 @@ matrix = { name = "CalibrationMatrix", type = "i16", SIZE = [5, 3] }
         debug: false,
         main_sheet: "Main".to_string(),
     };
-    let ds = mint_cli::variant::DataSheet::new(&var_args).expect("datasheet loads");
+    let ds = mint_cli::variant::create_data_source(&var_args).expect("datasource loads");
 
-    let res = block.build_bytestream(ds.as_ref(), &cfg.settings, false);
+    let res = block.build_bytestream(ds.as_deref(), &cfg.settings, false);
     assert!(res.is_err(), "SIZE should reject underfilled 2D array");
     let err_msg = format!("{:?}", res.unwrap_err());
     assert!(err_msg.contains("smaller than defined size"));

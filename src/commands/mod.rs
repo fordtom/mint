@@ -9,9 +9,9 @@ use crate::layout::block::Config;
 use crate::layout::errors::LayoutError;
 use crate::layout::settings::Endianness;
 use crate::output;
-use crate::output::DataRange;
 use crate::output::errors::OutputError;
-use crate::variant::DataSheet;
+use crate::output::DataRange;
+use crate::variant::DataSource;
 use rayon::prelude::*;
 use stats::{BlockStat, BuildStats};
 use std::collections::{HashMap, HashSet};
@@ -72,19 +72,19 @@ fn resolve_blocks(
 fn build_bytestreams(
     blocks: &[ResolvedBlock],
     layouts: &HashMap<String, Config>,
-    data_sheet: Option<&DataSheet>,
+    data_source: Option<&dyn DataSource>,
     strict: bool,
 ) -> Result<Vec<BlockBuildResult>, NvmError> {
     blocks
         .par_iter()
-        .map(|resolved| build_single_bytestream(resolved, layouts, data_sheet, strict))
+        .map(|resolved| build_single_bytestream(resolved, layouts, data_source, strict))
         .collect()
 }
 
 fn build_single_bytestream(
     resolved: &ResolvedBlock,
     layouts: &HashMap<String, Config>,
-    data_sheet: Option<&DataSheet>,
+    data_source: Option<&dyn DataSource>,
     strict: bool,
 ) -> Result<BlockBuildResult, NvmError> {
     let result = (|| {
@@ -92,7 +92,7 @@ fn build_single_bytestream(
         let block = &layout.blocks[&resolved.name];
 
         let (bytestream, padding_bytes) =
-            block.build_bytestream(data_sheet, &layout.settings, strict)?;
+            block.build_bytestream(data_source, &layout.settings, strict)?;
 
         let data_range = output::bytestream_to_datarange(
             bytestream,
@@ -251,11 +251,11 @@ fn check_overlaps(block_ranges: &[(String, u32, u32)]) -> Result<(), NvmError> {
     Ok(())
 }
 
-pub fn build(args: &Args, data_sheet: Option<&DataSheet>) -> Result<BuildStats, NvmError> {
+pub fn build(args: &Args, data_source: Option<&dyn DataSource>) -> Result<BuildStats, NvmError> {
     let start_time = Instant::now();
 
     let (resolved_blocks, layouts) = resolve_blocks(&args.layout.blocks)?;
-    let results = build_bytestreams(&resolved_blocks, &layouts, data_sheet, args.layout.strict)?;
+    let results = build_bytestreams(&resolved_blocks, &layouts, data_source, args.layout.strict)?;
 
     let mut stats = if args.output.combined {
         output_combined_file(results, &layouts, args)?
