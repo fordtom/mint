@@ -26,11 +26,4 @@ pub struct VariantArgs {
         help = "Variant columns to use in priority order (separate with '/')"
     )]
     pub variant: Option<String>,
-
-    #[arg(
-        short = 'd',
-        long,
-        help = "Use the Debug column when present (deprecated, prefer -v Debug)"
-    )]
-    pub debug: bool,
 }

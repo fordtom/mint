@@ -22,7 +22,6 @@ fn test_build_without_excel() {
         variant: mint_cli::variant::args::VariantArgs {
             xlsx: None,
             variant: None,
-            debug: false,
             main_sheet: "Main".to_string(),
         },
         output: mint_cli::output::args::OutputArgs {
@@ -73,7 +72,6 @@ fn test_error_when_name_without_excel() {
         variant: mint_cli::variant::args::VariantArgs {
             xlsx: None,
             variant: None,
-            debug: false,
             main_sheet: "Main".to_string(),
         },
         output: mint_cli::output::args::OutputArgs {
@@ -111,7 +109,6 @@ fn test_factory_returns_none_without_xlsx() {
     let args_no_excel = mint_cli::variant::args::VariantArgs {
         xlsx: None,
         variant: None,
-        debug: false,
         main_sheet: "Main".to_string(),
     };
 
@@ -125,7 +122,6 @@ fn test_factory_returns_none_without_xlsx() {
     let args_variant_no_excel = mint_cli::variant::args::VariantArgs {
         xlsx: None,
         variant: Some("VarA".to_string()),
-        debug: false,
         main_sheet: "Main".to_string(),
     };
 
@@ -139,7 +135,6 @@ fn test_factory_returns_none_without_xlsx() {
     let args_debug_no_excel = mint_cli::variant::args::VariantArgs {
         xlsx: None,
         variant: None,
-        debug: true,
         main_sheet: "Main".to_string(),
     };
 

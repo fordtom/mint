@@ -12,13 +12,6 @@ fn main() -> Result<(), NvmError> {
 
     let data_source = variant::create_data_source(&args.variant)?;
 
-    // Warn if variant or debug flags are used without a data source
-    if data_source.is_none() && (args.variant.variant.is_some() || args.variant.debug) {
-        eprintln!(
-            "Warning: --variant or --debug flag specified without an Excel file (-x). These flags will be ignored."
-        );
-    }
-
     // Check if blocks are provided
     args.layout
         .blocks

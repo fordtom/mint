@@ -10,7 +10,6 @@ use crate::layout::value::{DataValue, ValueSource};
 /// Excel-backed data source for variant values.
 pub struct ExcelDataSource {
     names: Vec<String>,
-    default_values: Vec<Data>,
     variant_columns: Vec<Vec<Data>>,
     sheets: HashMap<String, Range<Data>>,
 }
@@ -42,11 +41,6 @@ impl ExcelDataSource {
             .position(|cell| Self::cell_eq_ascii(cell, "Name"))
             .ok_or(VariantError::ColumnNotFound("Name".to_string()))?;
 
-        let default_index = headers
-            .iter()
-            .position(|cell| Self::cell_eq_ascii(cell, "Default"))
-            .ok_or(VariantError::ColumnNotFound("Default".to_string()))?;
-
         let mut names: Vec<String> = Vec::with_capacity(data_rows);
         names.extend(rows.iter().skip(1).map(|row| {
             row.get(name_index)
@@ -54,8 +48,6 @@ impl ExcelDataSource {
                 .unwrap_or_default()
         }));
         helpers::warn_duplicate_names(&names);
-
-        let default_values = Self::collect_column(&rows, default_index, data_rows);
 
         let variant_columns = Self::collect_variant_columns(headers, &rows, data_rows, args)?;
 
@@ -69,7 +61,6 @@ impl ExcelDataSource {
 
         Ok(Self {
             names,
-            default_values,
             variant_columns,
             sheets,
         })
@@ -89,12 +80,6 @@ impl ExcelDataSource {
                 if !Self::cell_is_empty(value) {
                     return Ok(value);
                 }
-            }
-        }
-
-        if let Some(default) = self.default_values.get(index) {
-            if !Self::cell_is_empty(default) {
-                return Ok(default);
             }
         }
 
@@ -142,16 +127,11 @@ impl ExcelDataSource {
         data_rows: usize,
         args: &VariantArgs,
     ) -> Result<Vec<Vec<Data>>, VariantError> {
-        let mut names: Vec<String> = Vec::new();
-
-        if args.debug {
-            eprintln!("Warning: --debug flag is deprecated; include 'Debug' in --variant instead.");
-            names.push("Debug".to_string());
-        }
-
-        if let Some(raw) = &args.variant {
-            names.extend(Self::parse_variant_stack(raw));
-        }
+        let names = args
+            .variant
+            .as_ref()
+            .map(|raw| Self::parse_variant_stack(raw))
+            .unwrap_or_default();
 
         let mut seen = HashSet::new();
         let mut columns = Vec::new();
@@ -325,18 +305,17 @@ mod tests {
     use calamine::Data;
     use std::collections::HashMap;
 
-    fn datasource_with_default(value: Data) -> ExcelDataSource {
+    fn datasource_with_variant(value: Data) -> ExcelDataSource {
         ExcelDataSource {
             names: vec!["Flag".to_string()],
-            default_values: vec![value],
-            variant_columns: Vec::new(),
+            variant_columns: vec![vec![value]],
             sheets: HashMap::new(),
         }
     }
 
     #[test]
     fn retrieve_single_value_accepts_bool_cell() {
-        let ds = datasource_with_default(Data::Bool(true));
+        let ds = datasource_with_variant(Data::Bool(true));
         let value = ds.retrieve_single_value("Flag").expect("bool cell");
         match value {
             DataValue::Bool(v) => assert!(v),

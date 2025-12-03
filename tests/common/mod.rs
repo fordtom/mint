@@ -30,8 +30,7 @@ pub fn build_args(layout_path: &str, block_name: &str, format: OutputFormat) -> 
         },
         variant: variant::args::VariantArgs {
             xlsx: Some("examples/data.xlsx".to_string()),
-            variant: None,
-            debug: false,
+            variant: Some("Default".to_string()),
             main_sheet: "Main".to_string(),
         },
         output: OutputArgs {
@@ -48,21 +47,16 @@ pub fn build_args(layout_path: &str, block_name: &str, format: OutputFormat) -> 
 }
 
 pub fn find_working_datasource() -> Option<Box<dyn DataSource>> {
-    let variant_candidates: [Option<&str>; 2] = [None, Some("VarA")];
-    let debug_candidates = [false, true];
+    let variant_candidates: [&str; 2] = ["Default", "VarA/Default"];
 
-    for &dbg in &debug_candidates {
-        for var in &variant_candidates {
-            let var_opt: Option<String> = var.map(|s| s.to_string());
-            let var_args = variant::args::VariantArgs {
-                xlsx: Some("examples/data.xlsx".to_string()),
-                variant: var_opt,
-                debug: dbg,
-                main_sheet: "Main".to_string(),
-            };
-            if let Ok(Some(ds)) = variant::create_data_source(&var_args) {
-                return Some(ds);
-            }
+    for var in &variant_candidates {
+        let var_args = variant::args::VariantArgs {
+            xlsx: Some("examples/data.xlsx".to_string()),
+            variant: Some(var.to_string()),
+            main_sheet: "Main".to_string(),
+        };
+        if let Ok(Some(ds)) = variant::create_data_source(&var_args) {
+            return Some(ds);
         }
     }
     None
@@ -99,8 +93,7 @@ pub fn build_args_for_layouts(layouts: Vec<BlockNames>, format: OutputFormat) ->
         },
         variant: variant::args::VariantArgs {
             xlsx: Some("examples/data.xlsx".to_string()),
-            variant: None,
-            debug: false,
+            variant: Some("Default".to_string()),
             main_sheet: "Main".to_string(),
         },
         output: OutputArgs {

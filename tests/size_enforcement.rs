@@ -126,8 +126,7 @@ matrix = { name = "CalibrationMatrix", type = "i16", SIZE = [5, 3] }
 
     let var_args = mint_cli::variant::args::VariantArgs {
         xlsx: Some("examples/data.xlsx".to_string()),
-        variant: None,
-        debug: false,
+        variant: Some("Default".to_string()),
         main_sheet: "Main".to_string(),
     };
     let ds = mint_cli::variant::create_data_source(&var_args).expect("datasource loads");

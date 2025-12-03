@@ -2,12 +2,11 @@ use mint_cli::layout::value::DataValue;
 use mint_cli::variant::args::VariantArgs;
 use mint_cli::variant::create_data_source;
 
-fn build_args(variant: Option<&str>, debug: bool) -> VariantArgs {
+fn build_args(variant: &str) -> VariantArgs {
     VariantArgs {
         xlsx: Some("examples/data.xlsx".to_string()),
         main_sheet: "Main".to_string(),
-        variant: variant.map(|v| v.to_string()),
-        debug,
+        variant: Some(variant.to_string()),
     }
 }
 
@@ -23,7 +22,7 @@ fn value_as_i64(value: DataValue) -> i64 {
 
 #[test]
 fn stacked_variants_respect_order() {
-    let args = build_args(Some("VarA/Debug"), false);
+    let args = build_args("VarA/Debug/Default");
     let ds = create_data_source(&args)
         .expect("datasource load")
         .expect("datasource exists");
@@ -37,7 +36,7 @@ fn stacked_variants_respect_order() {
 
 #[test]
 fn stacked_variants_fall_back_when_empty() {
-    let args = build_args(Some(" VarA / Debug "), false);
+    let args = build_args(" VarA / Debug / Default ");
     let ds = create_data_source(&args)
         .expect("datasource load")
         .expect("datasource exists");
@@ -48,22 +47,8 @@ fn stacked_variants_fall_back_when_empty() {
 }
 
 #[test]
-fn legacy_debug_flag_still_applies_first() {
-    let args = build_args(Some("VarA"), true);
-    let ds = create_data_source(&args)
-        .expect("datasource load")
-        .expect("datasource exists");
-
-    let value = ds
-        .retrieve_single_value("TemperatureMax")
-        .expect("value present");
-
-    assert_eq!(value_as_i64(value), 60);
-}
-
-#[test]
 fn boolean_cell_retrieves_default_true() {
-    let args = build_args(None, false);
+    let args = build_args("Default");
     let ds = create_data_source(&args)
         .expect("datasource load")
         .expect("datasource exists");
@@ -77,7 +62,7 @@ fn boolean_cell_retrieves_default_true() {
 
 #[test]
 fn boolean_cell_retrieves_debug_true() {
-    let args = build_args(Some("Debug"), false);
+    let args = build_args("Debug/Default");
     let ds = create_data_source(&args)
         .expect("datasource load")
         .expect("datasource exists");
@@ -91,7 +76,7 @@ fn boolean_cell_retrieves_debug_true() {
 
 #[test]
 fn boolean_cell_retrieves_vara_false() {
-    let args = build_args(Some("VarA"), false);
+    let args = build_args("VarA/Default");
     let ds = create_data_source(&args)
         .expect("datasource load")
         .expect("datasource exists");

@@ -25,6 +25,7 @@ pub trait DataSource: Sync {
 pub fn create_data_source(
     args: &args::VariantArgs,
 ) -> Result<Option<Box<dyn DataSource>>, VariantError> {
+    // We need to check that if one of these is provided, -v also exists
     if args.xlsx.is_some() {
         Ok(Some(Box::new(ExcelDataSource::new(args)?)))
     } else {
