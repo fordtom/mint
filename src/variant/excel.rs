@@ -113,40 +113,26 @@ impl ExcelDataSource {
         column
     }
 
-    fn parse_variant_stack(raw: &str) -> Vec<String> {
-        raw.split('/')
-            .map(|name| name.trim())
-            .filter(|name| !name.is_empty())
-            .map(|name| name.to_string())
-            .collect()
-    }
-
     fn collect_variant_columns(
         headers: &[Data],
         rows: &[&[Data]],
         data_rows: usize,
         args: &VariantArgs,
     ) -> Result<Vec<Vec<Data>>, VariantError> {
-        let names = args
-            .variant
-            .as_ref()
-            .map(|raw| Self::parse_variant_stack(raw))
-            .unwrap_or_default();
+        let variants = args.get_variant_list();
 
         let mut seen = HashSet::new();
         let mut columns = Vec::new();
 
-        for name in names {
-            if !seen.insert(name.clone()) {
-                continue;
+        for v in variants {
+            if seen.insert(v.clone()) {
+                let index = headers
+                    .iter()
+                    .position(|cell| Self::cell_eq_ascii(cell, &v))
+                    .ok_or_else(|| VariantError::ColumnNotFound(v.clone()))?;
+
+                columns.push(Self::collect_column(rows, index, data_rows));
             }
-
-            let index = headers
-                .iter()
-                .position(|cell| Self::cell_eq_ascii(cell, &name))
-                .ok_or_else(|| VariantError::ColumnNotFound(name.clone()))?;
-
-            columns.push(Self::collect_column(rows, index, data_rows));
         }
 
         Ok(columns)

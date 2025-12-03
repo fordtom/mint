@@ -45,6 +45,8 @@ pub struct PostgresDataSource {
 
 impl PostgresDataSource {
     pub(crate) fn new(args: &VariantArgs) -> Result<Self, VariantError> {
+        let variants = args.get_variant_list();
+
         Err(VariantError::MiscError(
             "Postgres data source not implemented".to_string(),
         ))

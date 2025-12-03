@@ -34,3 +34,19 @@ pub struct VariantArgs {
     )]
     pub variant: Option<String>,
 }
+
+impl VariantArgs {
+    /// Parses the variant stack from the raw slash-separated string.
+    pub fn get_variant_list(&self) -> Vec<String> {
+        self.variant
+            .as_deref()
+            .map(|raw| {
+                raw.split('/')
+                    .map(|name| name.trim())
+                    .filter(|name| !name.is_empty())
+                    .map(|name| name.to_string())
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+}
