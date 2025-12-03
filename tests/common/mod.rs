@@ -31,7 +31,7 @@ pub fn build_args(layout_path: &str, block_name: &str, format: OutputFormat) -> 
         variant: variant::args::VariantArgs {
             xlsx: Some("examples/data.xlsx".to_string()),
             variant: Some("Default".to_string()),
-            main_sheet: None,
+            ..Default::default()
         },
         output: OutputArgs {
             out: "out".to_string(),
@@ -53,7 +53,7 @@ pub fn find_working_datasource() -> Option<Box<dyn DataSource>> {
         let var_args = variant::args::VariantArgs {
             xlsx: Some("examples/data.xlsx".to_string()),
             variant: Some(var.to_string()),
-            main_sheet: None,
+            ..Default::default()
         };
         if let Ok(Some(ds)) = variant::create_data_source(&var_args) {
             return Some(ds);
@@ -94,7 +94,7 @@ pub fn build_args_for_layouts(layouts: Vec<BlockNames>, format: OutputFormat) ->
         variant: variant::args::VariantArgs {
             xlsx: Some("examples/data.xlsx".to_string()),
             variant: Some("Default".to_string()),
-            main_sheet: None,
+            ..Default::default()
         },
         output: OutputArgs {
             out: "out".to_string(),

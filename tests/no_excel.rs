@@ -19,11 +19,7 @@ fn test_build_without_excel() {
             }],
             strict: false,
         },
-        variant: mint_cli::variant::args::VariantArgs {
-            xlsx: None,
-            variant: None,
-            main_sheet: None,
-        },
+        variant: Default::default(),
         output: mint_cli::output::args::OutputArgs {
             out: "out".to_string(),
             prefix: "TEST".to_string(),
@@ -69,11 +65,7 @@ fn test_error_when_name_without_excel() {
             blocks: vec![input.clone()],
             strict: false,
         },
-        variant: mint_cli::variant::args::VariantArgs {
-            xlsx: None,
-            variant: None,
-            main_sheet: None,
-        },
+        variant: Default::default(),
         output: mint_cli::output::args::OutputArgs {
             out: "out".to_string(),
             prefix: "TEST".to_string(),
@@ -106,11 +98,7 @@ fn test_error_when_name_without_excel() {
 #[test]
 fn test_factory_returns_none_without_xlsx() {
     // Test that create_data_source returns None when no xlsx is provided
-    let args_no_excel = mint_cli::variant::args::VariantArgs {
-        xlsx: None,
-        variant: None,
-        main_sheet: None,
-    };
+    let args_no_excel = mint_cli::variant::args::VariantArgs::default();
 
     let result = create_data_source(&args_no_excel).expect("should return Ok(None)");
     assert!(
@@ -120,9 +108,8 @@ fn test_factory_returns_none_without_xlsx() {
 
     // Test with variant flag (would produce warning in main.rs)
     let args_variant_no_excel = mint_cli::variant::args::VariantArgs {
-        xlsx: None,
         variant: Some("VarA".to_string()),
-        main_sheet: None,
+        ..Default::default()
     };
 
     let result = create_data_source(&args_variant_no_excel).expect("should return Ok(None)");
@@ -132,11 +119,7 @@ fn test_factory_returns_none_without_xlsx() {
     );
 
     // Test with debug flag (would produce warning in main.rs)
-    let args_debug_no_excel = mint_cli::variant::args::VariantArgs {
-        xlsx: None,
-        variant: None,
-        main_sheet: None,
-    };
+    let args_debug_no_excel = mint_cli::variant::args::VariantArgs::default();
 
     let result = create_data_source(&args_debug_no_excel).expect("should return Ok(None)");
     assert!(
