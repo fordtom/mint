@@ -2,6 +2,7 @@ target
 .DS_Store
 .direnv
 out
+.pg_data
 
 examples/~$*.xlsx
 
