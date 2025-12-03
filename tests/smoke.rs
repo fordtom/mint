@@ -15,7 +15,7 @@ fn smoke_build_examples_all_formats_and_options() {
     let blocks = ["block", "block2", "block3"];
 
     for layout_path in layouts {
-        let Some(ds) = common::find_working_datasheet() else {
+        let Some(ds) = common::find_working_datasource() else {
             continue;
         };
 
@@ -29,13 +29,13 @@ fn smoke_build_examples_all_formats_and_options() {
             // Hex
             let args_hex =
                 common::build_args(layout_path, blk, mint_cli::output::args::OutputFormat::Hex);
-            commands::build(&args_hex, Some(&ds)).expect("build hex");
+            commands::build(&args_hex, Some(ds.as_ref())).expect("build hex");
             common::assert_out_file_exists(blk, mint_cli::output::args::OutputFormat::Hex);
 
             // Mot
             let args_mot =
                 common::build_args(layout_path, blk, mint_cli::output::args::OutputFormat::Mot);
-            commands::build(&args_mot, Some(&ds)).expect("build mot");
+            commands::build(&args_mot, Some(ds.as_ref())).expect("build mot");
             common::assert_out_file_exists(blk, mint_cli::output::args::OutputFormat::Mot);
         }
 
@@ -55,7 +55,7 @@ fn smoke_build_examples_all_formats_and_options() {
             );
             args_combined.output.combined = true;
 
-            commands::build(&args_combined, Some(&ds)).expect("build combined");
+            commands::build(&args_combined, Some(ds.as_ref())).expect("build combined");
             common::assert_out_file_exists("combined", mint_cli::output::args::OutputFormat::Hex);
         }
     }

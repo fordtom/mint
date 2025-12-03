@@ -2,7 +2,7 @@ use super::entry::LeafEntry;
 use super::errors::LayoutError;
 use super::header::{CrcLocation, Header};
 use super::settings::{Endianness, Settings};
-use crate::variant::DataSheet;
+use crate::variant::DataSource;
 
 use indexmap::IndexMap;
 use serde::Deserialize;
@@ -46,7 +46,7 @@ pub enum Entry {
 impl Block {
     pub fn build_bytestream(
         &self,
-        data_sheet: Option<&DataSheet>,
+        data_source: Option<&dyn DataSource>,
         settings: &Settings,
         strict: bool,
     ) -> Result<(Vec<u8>, u32), LayoutError> {
@@ -61,7 +61,7 @@ impl Block {
             strict,
         };
 
-        Self::build_bytestream_inner(&self.data, data_sheet, &mut state, &config)?;
+        Self::build_bytestream_inner(&self.data, data_source, &mut state, &config)?;
 
         if matches!(self.header.crc_location, CrcLocation::Keyword(_)) {
             // Padding out to the 4 byte boundary for appended/prepended CRC32
@@ -77,7 +77,7 @@ impl Block {
 
     fn build_bytestream_inner(
         table: &Entry,
-        data_sheet: Option<&DataSheet>,
+        data_source: Option<&dyn DataSource>,
         state: &mut BuildState,
         config: &BuildConfig,
     ) -> Result<(), LayoutError> {
@@ -90,13 +90,13 @@ impl Block {
                     state.padding_count += 1;
                 }
 
-                let bytes = leaf.emit_bytes(data_sheet, config)?;
+                let bytes = leaf.emit_bytes(data_source, config)?;
                 state.offset += bytes.len();
                 state.buffer.extend(bytes);
             }
             Entry::Branch(branch) => {
                 for (field_name, v) in branch.iter() {
-                    Self::build_bytestream_inner(v, data_sheet, state, config).map_err(|e| {
+                    Self::build_bytestream_inner(v, data_source, state, config).map_err(|e| {
                         LayoutError::InField {
                             field: field_name.clone(),
                             source: Box::new(e),

@@ -12,7 +12,7 @@ fn test_block_stat_collection() {
 
     let layout_path = "examples/block.toml";
 
-    let Some(ds) = common::find_working_datasheet() else {
+    let Some(ds) = common::find_working_datasource() else {
         return;
     };
 
@@ -22,7 +22,7 @@ fn test_block_stat_collection() {
         mint_cli::output::args::OutputFormat::Hex,
     );
 
-    let stats = commands::build(&args, Some(&ds)).expect("build should succeed");
+    let stats = commands::build(&args, Some(ds.as_ref())).expect("build should succeed");
 
     assert_eq!(stats.blocks_processed, 1);
     let block_stat = &stats.block_stats[0];
@@ -38,7 +38,7 @@ fn test_build_stats_aggregation() {
 
     let layout_path = "examples/block.toml";
 
-    let Some(ds) = common::find_working_datasheet() else {
+    let Some(ds) = common::find_working_datasource() else {
         return;
     };
 
@@ -63,7 +63,7 @@ fn test_build_stats_aggregation() {
     );
     args.output.combined = true;
 
-    let stats = commands::build(&args, Some(&ds)).expect("build should succeed");
+    let stats = commands::build(&args, Some(ds.as_ref())).expect("build should succeed");
 
     assert_eq!(stats.blocks_processed, block_inputs.len());
     assert!(stats.total_allocated > 0);
@@ -117,7 +117,7 @@ fn test_combined_mode_stats() {
 
     let layout_path = "examples/block.toml";
 
-    let Some(ds) = common::find_working_datasheet() else {
+    let Some(ds) = common::find_working_datasource() else {
         return;
     };
 
@@ -141,7 +141,7 @@ fn test_combined_mode_stats() {
     );
     args.output.combined = true;
 
-    let stats = commands::build(&args, Some(&ds)).expect("build should succeed");
+    let stats = commands::build(&args, Some(ds.as_ref())).expect("build should succeed");
 
     assert_eq!(stats.blocks_processed, block_inputs.len());
 

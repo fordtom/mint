@@ -4,20 +4,13 @@ use mint_cli::args::Args;
 use mint_cli::commands;
 use mint_cli::error::*;
 use mint_cli::layout;
-use mint_cli::variant::DataSheet;
+use mint_cli::variant;
 use mint_cli::visuals;
 
 fn main() -> Result<(), NvmError> {
     let args = Args::parse();
 
-    let data_sheet = DataSheet::new(&args.variant)?;
-
-    // Warn if variant or debug flags are used without an Excel file
-    if data_sheet.is_none() && (args.variant.variant.is_some() || args.variant.debug) {
-        eprintln!(
-            "Warning: --variant or --debug flag specified without an Excel file (-x). These flags will be ignored."
-        );
-    }
+    let data_source = variant::create_data_source(&args.variant)?;
 
     // Check if blocks are provided
     args.layout
@@ -32,7 +25,7 @@ fn main() -> Result<(), NvmError> {
         )))
     })?;
 
-    let stats = commands::build(&args, data_sheet.as_ref())?;
+    let stats = commands::build(&args, data_source.as_deref())?;
 
     if !args.output.quiet {
         if args.output.stats {

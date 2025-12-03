@@ -10,7 +10,7 @@ fn test_file_expands_all_blocks() {
 
     let layout_path = "examples/block_no_excel.toml";
 
-    let Some(_ds) = common::find_working_datasheet() else {
+    let Some(_ds) = common::find_working_datasource() else {
         return;
     };
 
@@ -22,12 +22,7 @@ fn test_file_expands_all_blocks() {
             }],
             strict: false,
         },
-        variant: mint_cli::variant::args::VariantArgs {
-            xlsx: None,
-            variant: None,
-            debug: false,
-            main_sheet: "Main".to_string(),
-        },
+        variant: Default::default(),
         output: mint_cli::output::args::OutputArgs {
             out: "out".to_string(),
             prefix: "EXPAND".to_string(),
@@ -79,12 +74,7 @@ fn test_deduplication_file_and_specific() {
             ],
             strict: false,
         },
-        variant: mint_cli::variant::args::VariantArgs {
-            xlsx: None,
-            variant: None,
-            debug: false,
-            main_sheet: "Main".to_string(),
-        },
+        variant: Default::default(),
         output: mint_cli::output::args::OutputArgs {
             out: "out".to_string(),
             prefix: "DEDUP".to_string(),
@@ -121,12 +111,7 @@ fn test_file_expansion_with_combined() {
             }],
             strict: false,
         },
-        variant: mint_cli::variant::args::VariantArgs {
-            xlsx: None,
-            variant: None,
-            debug: false,
-            main_sheet: "Main".to_string(),
-        },
+        variant: Default::default(),
         output: mint_cli::output::args::OutputArgs {
             out: "out".to_string(),
             prefix: "COMBINED".to_string(),

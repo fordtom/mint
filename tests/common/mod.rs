@@ -6,7 +6,7 @@ use std::path::Path;
 use mint_cli::args::Args;
 use mint_cli::layout::args::{BlockNames, LayoutArgs};
 use mint_cli::output::args::{OutputArgs, OutputFormat};
-use mint_cli::variant::{self, DataSheet};
+use mint_cli::variant::{self, DataSource};
 
 pub fn ensure_out_dir() {
     fs::create_dir_all("out").unwrap();
@@ -30,9 +30,8 @@ pub fn build_args(layout_path: &str, block_name: &str, format: OutputFormat) -> 
         },
         variant: variant::args::VariantArgs {
             xlsx: Some("examples/data.xlsx".to_string()),
-            variant: None,
-            debug: false,
-            main_sheet: "Main".to_string(),
+            variant: Some("Default".to_string()),
+            ..Default::default()
         },
         output: OutputArgs {
             out: "out".to_string(),
@@ -47,22 +46,17 @@ pub fn build_args(layout_path: &str, block_name: &str, format: OutputFormat) -> 
     }
 }
 
-pub fn find_working_datasheet() -> Option<DataSheet> {
-    let variant_candidates: [Option<&str>; 2] = [None, Some("VarA")];
-    let debug_candidates = [false, true];
+pub fn find_working_datasource() -> Option<Box<dyn DataSource>> {
+    let variant_candidates: [&str; 2] = ["Default", "VarA/Default"];
 
-    for &dbg in &debug_candidates {
-        for var in &variant_candidates {
-            let var_opt: Option<String> = var.map(|s| s.to_string());
-            let var_args = variant::args::VariantArgs {
-                xlsx: Some("examples/data.xlsx".to_string()),
-                variant: var_opt,
-                debug: dbg,
-                main_sheet: "Main".to_string(),
-            };
-            if let Ok(Some(ds)) = DataSheet::new(&var_args) {
-                return Some(ds);
-            }
+    for var in &variant_candidates {
+        let var_args = variant::args::VariantArgs {
+            xlsx: Some("examples/data.xlsx".to_string()),
+            variant: Some(var.to_string()),
+            ..Default::default()
+        };
+        if let Ok(Some(ds)) = variant::create_data_source(&var_args) {
+            return Some(ds);
         }
     }
     None
@@ -99,9 +93,8 @@ pub fn build_args_for_layouts(layouts: Vec<BlockNames>, format: OutputFormat) ->
         },
         variant: variant::args::VariantArgs {
             xlsx: Some("examples/data.xlsx".to_string()),
-            variant: None,
-            debug: false,
-            main_sheet: "Main".to_string(),
+            variant: Some("Default".to_string()),
+            ..Default::default()
         },
         output: OutputArgs {
             out: "out".to_string(),

@@ -2,7 +2,7 @@ use super::block::BuildConfig;
 use super::conversions::clamp_bitfield_value;
 use super::errors::LayoutError;
 use super::value::{DataValue, ValueSource};
-use crate::variant::DataSheet;
+use crate::variant::DataSource;
 use serde::Deserialize;
 
 /// Leaf entry representing an item to add to the flash block.
@@ -102,12 +102,15 @@ pub enum BitmapFieldSource {
 }
 
 impl BitmapField {
-    fn resolve_value(&self, data_sheet: Option<&DataSheet>) -> Result<DataValue, LayoutError> {
+    fn resolve_value(
+        &self,
+        data_source: Option<&dyn DataSource>,
+    ) -> Result<DataValue, LayoutError> {
         match &self.source {
             BitmapFieldSource::Name(name) => {
-                let Some(ds) = data_sheet else {
+                let Some(ds) = data_source else {
                     return Err(LayoutError::MissingDataSheet(format!(
-                        "Bitmap field '{}' requires a value from the Excel datasheet, but no datasheet was provided. Use -x to specify an Excel file.",
+                        "Bitmap field '{}' requires a value from a data source, but none was provided.",
                         name
                     )));
                 };
@@ -126,22 +129,22 @@ impl LeafEntry {
 
     pub fn emit_bytes(
         &self,
-        data_sheet: Option<&DataSheet>,
+        data_source: Option<&dyn DataSource>,
         config: &BuildConfig,
     ) -> Result<Vec<u8>, LayoutError> {
         if let EntrySource::Bitmap(fields) = &self.source {
             self.validate_bitmap(fields)?;
-            return self.emit_bitmap(fields, data_sheet, config);
+            return self.emit_bitmap(fields, data_source, config);
         }
 
         let (size, strict_len) = self.size_keys.resolve()?;
         match size {
-            None => self.emit_bytes_single(data_sheet, config),
+            None => self.emit_bytes_single(data_source, config),
             Some(SizeSource::OneD(size)) => {
-                self.emit_bytes_1d(data_sheet, size, config, strict_len)
+                self.emit_bytes_1d(data_source, size, config, strict_len)
             }
             Some(SizeSource::TwoD(size)) => {
-                self.emit_bytes_2d(data_sheet, size, config, strict_len)
+                self.emit_bytes_2d(data_source, size, config, strict_len)
             }
         }
     }
@@ -185,7 +188,7 @@ impl LeafEntry {
     fn emit_bitmap(
         &self,
         fields: &[BitmapField],
-        data_sheet: Option<&DataSheet>,
+        data_source: Option<&dyn DataSource>,
         config: &BuildConfig,
     ) -> Result<Vec<u8>, LayoutError> {
         let signed = self.scalar_type.is_signed();
@@ -193,7 +196,7 @@ impl LeafEntry {
         let mut offset: usize = 0;
 
         for field in fields {
-            let value = field.resolve_value(data_sheet)?;
+            let value = field.resolve_value(data_source)?;
             let clamped = clamp_bitfield_value(&value, field.bits, signed, config.strict)?;
 
             let mask = (1u128 << field.bits) - 1;
@@ -207,18 +210,18 @@ impl LeafEntry {
 
     fn emit_bytes_single(
         &self,
-        data_sheet: Option<&DataSheet>,
+        data_source: Option<&dyn DataSource>,
         config: &BuildConfig,
     ) -> Result<Vec<u8>, LayoutError> {
         match &self.source {
             EntrySource::Name(name) => {
-                let Some(data_sheet) = data_sheet else {
+                let Some(ds) = data_source else {
                     return Err(LayoutError::MissingDataSheet(format!(
-                        "Field '{}' requires a value from the Excel datasheet, but no datasheet was provided. Use -x to specify an Excel file.",
+                        "Field '{}' requires a value from a data source, but none was provided.",
                         name
                     )));
                 };
-                let value = data_sheet.retrieve_single_value(name)?;
+                let value = ds.retrieve_single_value(name)?;
                 value.to_bytes(self.scalar_type, config.endianness, config.strict)
             }
             EntrySource::Value(ValueSource::Single(v)) => {
@@ -233,7 +236,7 @@ impl LeafEntry {
 
     fn emit_bytes_1d(
         &self,
-        data_sheet: Option<&DataSheet>,
+        data_source: Option<&dyn DataSource>,
         size: usize,
         config: &BuildConfig,
         strict_len: bool,
@@ -248,13 +251,13 @@ impl LeafEntry {
 
         match &self.source {
             EntrySource::Name(name) => {
-                let Some(data_sheet) = data_sheet else {
+                let Some(ds) = data_source else {
                     return Err(LayoutError::MissingDataSheet(format!(
-                        "Field '{}' requires a value from the Excel datasheet, but no datasheet was provided. Use -x to specify an Excel file.",
+                        "Field '{}' requires a value from a data source, but none was provided.",
                         name
                     )));
                 };
-                match data_sheet.retrieve_1d_array_or_string(name)? {
+                match ds.retrieve_1d_array_or_string(name)? {
                     ValueSource::Single(v) => {
                         if !matches!(self.scalar_type, ScalarType::U8) {
                             return Err(LayoutError::DataValueExportFailed(
@@ -308,20 +311,20 @@ impl LeafEntry {
 
     fn emit_bytes_2d(
         &self,
-        data_sheet: Option<&DataSheet>,
+        data_source: Option<&dyn DataSource>,
         size: [usize; 2],
         config: &BuildConfig,
         strict_len: bool,
     ) -> Result<Vec<u8>, LayoutError> {
         match &self.source {
             EntrySource::Name(name) => {
-                let Some(data_sheet) = data_sheet else {
+                let Some(ds) = data_source else {
                     return Err(LayoutError::MissingDataSheet(format!(
-                        "Field '{}' requires a value from the Excel datasheet, but no datasheet was provided. Use -x to specify an Excel file.",
+                        "Field '{}' requires a value from a data source, but none was provided.",
                         name
                     )));
                 };
-                let data = data_sheet.retrieve_2d_array(name)?;
+                let data = ds.retrieve_2d_array(name)?;
 
                 let rows = size[0];
                 let cols = size[1];
