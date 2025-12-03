@@ -37,6 +37,8 @@ fn setup_test_data() {
                 ('Default', 'arrayFloats', '"1.5 2.5 3.5"'),
                 ('Default', 'arrayNegative', '"-1 -2 -3"'),
                 ('Default', 'literalString', '"hello world"'),
+                ('Default', 'nativeArray1d', '[10, 20, 30]'),
+                ('Default', 'nativeArray2d', '[[1, 2], [3, 4], [5, 6]]'),
                 ('Debug', 'TemperatureMax', '60'),
                 ('Debug', 'debugMode', 'true'),
                 ('VarA', 'TemperatureMax', '55'),
@@ -244,4 +246,41 @@ fn postgres_retrieve_1d_literal_string() {
         panic!("expected single string");
     };
     assert_eq!(s, "hello world");
+}
+
+#[test]
+#[ignore = "requires running postgres server"]
+fn postgres_retrieve_1d_native_json_array() {
+    setup_test_data();
+
+    let args = build_pg_args("Default");
+    let ds = create_data_source(&args).unwrap().unwrap();
+
+    let value = ds.retrieve_1d_array_or_string("nativeArray1d").unwrap();
+    println!("nativeArray1d: {:?}", value);
+    let ValueSource::Array(arr) = value else {
+        panic!("expected array");
+    };
+    assert_eq!(arr.len(), 3);
+    assert!(matches!(arr[0], DataValue::U64(10)));
+    assert!(matches!(arr[1], DataValue::U64(20)));
+    assert!(matches!(arr[2], DataValue::U64(30)));
+}
+
+#[test]
+#[ignore = "requires running postgres server"]
+fn postgres_retrieve_2d_native_json_array() {
+    setup_test_data();
+
+    let args = build_pg_args("Default");
+    let ds = create_data_source(&args).unwrap().unwrap();
+
+    let value = ds.retrieve_2d_array("nativeArray2d").unwrap();
+    println!("nativeArray2d: {:?}", value);
+    assert_eq!(value.len(), 3);
+    assert_eq!(value[0].len(), 2);
+    assert!(matches!(value[0][0], DataValue::U64(1)));
+    assert!(matches!(value[0][1], DataValue::U64(2)));
+    assert!(matches!(value[2][0], DataValue::U64(5)));
+    assert!(matches!(value[2][1], DataValue::U64(6)));
 }

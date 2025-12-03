@@ -1,6 +1,6 @@
 ## mint
 
-Build flash blocks from a layout file (TOML/YAML/JSON) and an Excel workbook, then emit hex files.
+Build flash blocks from a layout file (TOML/YAML/JSON) and a data source (currently Excel or Postgres), then emit hex files.
 
 ![img](img.png)
 
@@ -60,3 +60,28 @@ Arrays from Excel sheets:
 | ... | ... | ... |
 
 Strings and undersized arrays are padded to their expected size by default. If you want to enforce strict length, use the `SIZE` in place of `size` in the layout file (e.g. `SIZE = 8`).
+
+### Postgres data source
+
+As an alternative to Excel, you can use a Postgres database via `-p`/`--postgres`:
+
+```bash
+mint build layout.toml -p config.json -v Debug/Default
+# or inline JSON:
+mint build layout.toml -p '{"database":{"url":"..."},"query":{"template":"..."}}' -v Debug/Default
+```
+
+Config format (JSON file or inline string):
+
+```json
+{
+  "database": { "url": "postgres://user:pass@host/db" },
+  "query": {
+    "template": "SELECT json_object_agg(name, value)::text FROM config WHERE variant = $1"
+  }
+}
+```
+
+The query is executed once per variant (passed as `$1`) and must return a single row with column 0 containing a JSON object mapping names to values. Native JSON arrays are supported for 1D/2D arrays; space/comma/semicolon-delimited strings are also parsed as numeric arrays.
+
+See [`examples/block_postgres.toml`](examples/block_postgres.toml) for an example layout.

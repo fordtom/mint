@@ -1,5 +1,6 @@
 use postgres::{Client, NoTls};
 use serde::Deserialize;
+use serde_json::Value;
 use std::collections::HashMap;
 
 use super::args::VariantArgs;
@@ -39,11 +40,11 @@ fn load_config(input: &str) -> Result<PostgresConfig, VariantError> {
 
 /// Query executed once per variant with $1 = variant string.
 /// Query must return a single row with column 0 containing a JSON object.
-/// Result: `Vec<HashMap<String, DataValue>>` in variant priority order.
+/// Result: `Vec<HashMap<String, Value>>` in variant priority order.
 ///
 /// Example query: `SELECT json_object_agg(name, value) FROM config WHERE variant = $1`
 pub struct PostgresDataSource {
-    variant_columns: Vec<HashMap<String, DataValue>>,
+    variant_columns: Vec<HashMap<String, Value>>,
 }
 
 impl PostgresDataSource {
@@ -79,7 +80,7 @@ impl PostgresDataSource {
                 ))
             })?;
 
-            let map: HashMap<String, DataValue> = serde_json::from_str(&json_str).map_err(|e| {
+            let map: HashMap<String, Value> = serde_json::from_str(&json_str).map_err(|e| {
                 VariantError::RetrievalError(format!(
                     "failed to parse JSON for variant '{}': {}",
                     variant, e
@@ -93,8 +94,49 @@ impl PostgresDataSource {
     }
 
     /// Looks up a key across variant columns in priority order, returning first match.
-    fn lookup(&self, name: &str) -> Option<&DataValue> {
-        self.variant_columns.iter().find_map(|map| map.get(name))
+    fn lookup(&self, name: &str) -> Option<&Value> {
+        self.variant_columns
+            .iter()
+            .find_map(|map| map.get(name).filter(|v| !v.is_null()))
+    }
+
+    /// Converts a JSON Value to a DataValue (scalars only).
+    fn value_to_data_value(value: &Value) -> Result<DataValue, VariantError> {
+        match value {
+            Value::Bool(b) => Ok(DataValue::Bool(*b)),
+            Value::Number(n) => {
+                if let Some(u) = n.as_u64() {
+                    Ok(DataValue::U64(u))
+                } else if let Some(i) = n.as_i64() {
+                    Ok(DataValue::I64(i))
+                } else if let Some(f) = n.as_f64() {
+                    Ok(DataValue::F64(f))
+                } else {
+                    Err(VariantError::RetrievalError(
+                        "unsupported numeric type".to_string(),
+                    ))
+                }
+            }
+            Value::String(s) => Ok(DataValue::Str(s.clone())),
+            _ => Err(VariantError::RetrievalError(
+                "expected scalar value".to_string(),
+            )),
+        }
+    }
+
+    /// Parses a space/comma/semicolon-delimited string into numeric DataValues.
+    fn parse_delimited_numbers(s: &str) -> Option<Vec<DataValue>> {
+        s.split(|c: char| c.is_whitespace() || c == ',' || c == ';')
+            .map(|p| p.trim())
+            .filter(|p| !p.is_empty())
+            .map(|p| {
+                p.parse::<u64>()
+                    .map(DataValue::U64)
+                    .ok()
+                    .or_else(|| p.parse::<i64>().map(DataValue::I64).ok())
+                    .or_else(|| p.parse::<f64>().map(DataValue::F64).ok())
+            })
+            .collect()
     }
 }
 
@@ -105,11 +147,12 @@ impl DataSource for PostgresDataSource {
                 VariantError::RetrievalError("key not found in any variant".into())
             })?;
 
-            match value {
+            let dv = Self::value_to_data_value(value)?;
+            match dv {
                 DataValue::Str(_) => Err(VariantError::RetrievalError(
                     "Found non-numeric single value".to_string(),
                 )),
-                _ => Ok(value.clone()),
+                _ => Ok(dv),
             }
         })();
 
@@ -125,33 +168,21 @@ impl DataSource for PostgresDataSource {
                 VariantError::RetrievalError("key not found in any variant".into())
             })?;
 
-            let DataValue::Str(s) = value else {
-                return Err(VariantError::RetrievalError(
-                    "expected string value for 1D array or string".to_string(),
-                ));
-            };
-
-            // Try parsing as delimited numbers; fallback to literal string
-            let parts: Vec<&str> = s
-                .split(|c: char| c.is_whitespace() || c == ',' || c == ';')
-                .map(|p| p.trim())
-                .filter(|p| !p.is_empty())
-                .collect();
-
-            let parsed: Option<Vec<DataValue>> = parts
-                .iter()
-                .map(|p| {
-                    p.parse::<u64>()
-                        .map(DataValue::U64)
-                        .ok()
-                        .or_else(|| p.parse::<i64>().map(DataValue::I64).ok())
-                        .or_else(|| p.parse::<f64>().map(DataValue::F64).ok())
-                })
-                .collect();
-
-            match parsed {
-                Some(arr) if !arr.is_empty() => Ok(ValueSource::Array(arr)),
-                _ => Ok(ValueSource::Single(DataValue::Str(s.clone()))),
+            match value {
+                // Native JSON array
+                Value::Array(arr) => {
+                    let items: Result<Vec<_>, _> =
+                        arr.iter().map(Self::value_to_data_value).collect();
+                    Ok(ValueSource::Array(items?))
+                }
+                // String: try parsing as delimited numbers, fallback to literal
+                Value::String(s) => match Self::parse_delimited_numbers(s) {
+                    Some(arr) if !arr.is_empty() => Ok(ValueSource::Array(arr)),
+                    _ => Ok(ValueSource::Single(DataValue::Str(s.clone()))),
+                },
+                _ => Err(VariantError::RetrievalError(
+                    "expected array or string for 1D array".to_string(),
+                )),
             }
         })();
 
@@ -162,9 +193,33 @@ impl DataSource for PostgresDataSource {
     }
 
     fn retrieve_2d_array(&self, name: &str) -> Result<Vec<Vec<DataValue>>, VariantError> {
-        _ = name;
-        Err(VariantError::MiscError(
-            "2D array not yet supported for Postgres".to_string(),
-        ))
+        let result = (|| {
+            let value = self.lookup(name).ok_or_else(|| {
+                VariantError::RetrievalError("key not found in any variant".into())
+            })?;
+
+            let Value::Array(outer) = value else {
+                return Err(VariantError::RetrievalError(
+                    "expected 2D array (array of arrays)".to_string(),
+                ));
+            };
+
+            outer
+                .iter()
+                .map(|row_val| {
+                    let Value::Array(inner) = row_val else {
+                        return Err(VariantError::RetrievalError(
+                            "expected array for 2D array row".to_string(),
+                        ));
+                    };
+                    inner.iter().map(Self::value_to_data_value).collect()
+                })
+                .collect()
+        })();
+
+        result.map_err(|e| VariantError::WhileRetrieving {
+            name: name.to_string(),
+            source: Box::new(e),
+        })
     }
 }
