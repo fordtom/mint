@@ -11,13 +11,8 @@ pub struct VariantArgs {
     )]
     pub xlsx: Option<String>,
 
-    #[arg(
-        long,
-        value_name = "NAME",
-        default_value = "Main",
-        help = "Main sheet name in Excel"
-    )]
-    pub main_sheet: String,
+    #[arg(long, value_name = "NAME", help = "Main sheet name in Excel")]
+    pub main_sheet: Option<String>,
 
     #[arg(
         short = 'v',

@@ -5,7 +5,7 @@ use mint_cli::variant::create_data_source;
 fn build_args(variant: &str) -> VariantArgs {
     VariantArgs {
         xlsx: Some("examples/data.xlsx".to_string()),
-        main_sheet: "Main".to_string(),
+        main_sheet: None,
         variant: Some(variant.to_string()),
     }
 }

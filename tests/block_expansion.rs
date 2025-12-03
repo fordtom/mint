@@ -25,7 +25,7 @@ fn test_file_expands_all_blocks() {
         variant: mint_cli::variant::args::VariantArgs {
             xlsx: None,
             variant: None,
-            main_sheet: "Main".to_string(),
+            main_sheet: None,
         },
         output: mint_cli::output::args::OutputArgs {
             out: "out".to_string(),
@@ -81,7 +81,7 @@ fn test_deduplication_file_and_specific() {
         variant: mint_cli::variant::args::VariantArgs {
             xlsx: None,
             variant: None,
-            main_sheet: "Main".to_string(),
+            main_sheet: None,
         },
         output: mint_cli::output::args::OutputArgs {
             out: "out".to_string(),
@@ -122,7 +122,7 @@ fn test_file_expansion_with_combined() {
         variant: mint_cli::variant::args::VariantArgs {
             xlsx: None,
             variant: None,
-            main_sheet: "Main".to_string(),
+            main_sheet: None,
         },
         output: mint_cli::output::args::OutputArgs {
             out: "out".to_string(),

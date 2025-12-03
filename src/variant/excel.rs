@@ -22,8 +22,9 @@ impl ExcelDataSource {
         let mut workbook: Xlsx<_> = open_workbook(xlsx_path)
             .map_err(|_| VariantError::FileError(format!("failed to open file: {}", xlsx_path)))?;
 
+        let main_sheet_name = args.main_sheet.as_deref().unwrap_or("Main");
         let main_sheet = workbook
-            .worksheet_range(&args.main_sheet)
+            .worksheet_range(main_sheet_name)
             .map_err(|_| VariantError::MiscError("Main sheet not found.".to_string()))?;
 
         let rows: Vec<_> = main_sheet.rows().collect();
@@ -54,7 +55,7 @@ impl ExcelDataSource {
         let mut sheets: HashMap<String, Range<Data>> =
             HashMap::with_capacity(workbook.worksheets().len().saturating_sub(1));
         for (name, sheet) in workbook.worksheets() {
-            if name != args.main_sheet {
+            if name != main_sheet_name {
                 sheets.insert(name.to_string(), sheet);
             }
         }

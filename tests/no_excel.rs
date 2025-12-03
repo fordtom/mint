@@ -22,7 +22,7 @@ fn test_build_without_excel() {
         variant: mint_cli::variant::args::VariantArgs {
             xlsx: None,
             variant: None,
-            main_sheet: "Main".to_string(),
+            main_sheet: None,
         },
         output: mint_cli::output::args::OutputArgs {
             out: "out".to_string(),
@@ -72,7 +72,7 @@ fn test_error_when_name_without_excel() {
         variant: mint_cli::variant::args::VariantArgs {
             xlsx: None,
             variant: None,
-            main_sheet: "Main".to_string(),
+            main_sheet: None,
         },
         output: mint_cli::output::args::OutputArgs {
             out: "out".to_string(),
@@ -109,7 +109,7 @@ fn test_factory_returns_none_without_xlsx() {
     let args_no_excel = mint_cli::variant::args::VariantArgs {
         xlsx: None,
         variant: None,
-        main_sheet: "Main".to_string(),
+        main_sheet: None,
     };
 
     let result = create_data_source(&args_no_excel).expect("should return Ok(None)");
@@ -122,7 +122,7 @@ fn test_factory_returns_none_without_xlsx() {
     let args_variant_no_excel = mint_cli::variant::args::VariantArgs {
         xlsx: None,
         variant: Some("VarA".to_string()),
-        main_sheet: "Main".to_string(),
+        main_sheet: None,
     };
 
     let result = create_data_source(&args_variant_no_excel).expect("should return Ok(None)");
@@ -135,7 +135,7 @@ fn test_factory_returns_none_without_xlsx() {
     let args_debug_no_excel = mint_cli::variant::args::VariantArgs {
         xlsx: None,
         variant: None,
-        main_sheet: "Main".to_string(),
+        main_sheet: None,
     };
 
     let result = create_data_source(&args_debug_no_excel).expect("should return Ok(None)");
