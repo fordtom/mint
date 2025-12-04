@@ -3,11 +3,13 @@ pub mod errors;
 mod excel;
 mod helpers;
 mod pg;
+mod rest;
 
 use crate::layout::value::{DataValue, ValueSource};
 use errors::VariantError;
 use excel::ExcelDataSource;
 use pg::PostgresDataSource;
+use rest::RestDataSource;
 
 /// Trait for data sources that provide variant values by name.
 pub trait DataSource: Sync {
@@ -27,9 +29,10 @@ pub trait DataSource: Sync {
 pub fn create_data_source(
     args: &args::VariantArgs,
 ) -> Result<Option<Box<dyn DataSource>>, VariantError> {
-    match (&args.xlsx, &args.postgres) {
-        (Some(_), _) => Ok(Some(Box::new(ExcelDataSource::new(args)?))),
-        (_, Some(_)) => Ok(Some(Box::new(PostgresDataSource::new(args)?))),
+    match (&args.xlsx, &args.postgres, &args.rest) {
+        (Some(_), _, _) => Ok(Some(Box::new(ExcelDataSource::new(args)?))),
+        (_, Some(_), _) => Ok(Some(Box::new(PostgresDataSource::new(args)?))),
+        (_, _, Some(_)) => Ok(Some(Box::new(RestDataSource::new(args)?))),
         _ => Ok(None),
     }
 }

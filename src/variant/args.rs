@@ -26,6 +26,16 @@ pub struct VariantArgs {
     pub postgres: Option<String>,
 
     #[arg(
+        short = 'r',
+        long,
+        value_name = "PATH or json string",
+        group = "datasource",
+        requires = "variant",
+        help = "Path to the JSON file or a JSON string containing the REST API configuration options and template"
+    )]
+    pub rest: Option<String>,
+
+    #[arg(
         short = 'v',
         long,
         value_name = "NAME[/NAME...]",
