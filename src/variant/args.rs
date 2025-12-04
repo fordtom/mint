@@ -36,6 +36,16 @@ pub struct VariantArgs {
     pub rest: Option<String>,
 
     #[arg(
+        short = 'j',
+        long,
+        value_name = "PATH or json string",
+        group = "datasource",
+        requires = "variant",
+        help = "Path to the JSON file or a JSON string containing variant data as an object with variant names as keys"
+    )]
+    pub json: Option<String>,
+
+    #[arg(
         short = 'v',
         long,
         value_name = "NAME[/NAME...]",
