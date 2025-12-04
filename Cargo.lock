@@ -674,6 +674,7 @@ dependencies = [
  "clap",
  "comfy-table",
  "indexmap",
+ "percent-encoding",
  "postgres",
  "rayon",
  "serde",

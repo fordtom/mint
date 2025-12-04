@@ -58,7 +58,9 @@ impl RestDataSource {
         let mut variant_columns = Vec::with_capacity(variants.len());
 
         for variant in &variants {
-            let url = config.url.replace("$1", variant);
+            let encoded_variant =
+                percent_encoding::utf8_percent_encode(variant, percent_encoding::NON_ALPHANUMERIC);
+            let url = config.url.replace("$1", &encoded_variant.to_string());
 
             let mut request = ureq::get(&url);
             for (key, value) in &config.headers {
