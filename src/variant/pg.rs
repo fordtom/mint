@@ -10,19 +10,9 @@ use crate::layout::value::{DataValue, ValueSource};
 
 #[derive(Debug, Deserialize)]
 struct PostgresConfig {
-    database: DatabaseConfig,
-    query: QueryConfig,
-}
-
-#[derive(Debug, Deserialize)]
-struct DatabaseConfig {
     // TODO: support token substitution via environment variables for more secure credential handling
     url: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct QueryConfig {
-    template: String,
+    query_template: String,
 }
 
 fn load_config(input: &str) -> Result<PostgresConfig, VariantError> {
@@ -56,7 +46,7 @@ impl PostgresDataSource {
 
         let config = load_config(pg_config_str)?;
 
-        let mut client = Client::connect(&config.database.url, NoTls).map_err(|e| {
+        let mut client = Client::connect(&config.url, NoTls).map_err(|e| {
             VariantError::MiscError(format!("failed to connect to Postgres: {}", e))
         })?;
 
@@ -65,7 +55,7 @@ impl PostgresDataSource {
 
         for variant in &variants {
             let row = client
-                .query_one(&config.query.template, &[variant])
+                .query_one(&config.query_template, &[variant])
                 .map_err(|e| {
                     VariantError::RetrievalError(format!(
                         "query failed for variant '{}': {}",

@@ -14,9 +14,7 @@ const TEST_SERVER_URL: &str = "http://localhost:3000/item?variant=$1";
 fn build_rest_args(variant: &str) -> VariantArgs {
     let config = format!(
         r#"{{
-            "request": {{
-                "url": "{}"
-            }}
+            "url": "{}"
         }}"#,
         TEST_SERVER_URL
     );

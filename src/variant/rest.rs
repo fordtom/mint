@@ -9,11 +9,6 @@ use crate::layout::value::{DataValue, ValueSource};
 
 #[derive(Debug, Deserialize)]
 struct RestConfig {
-    request: RequestConfig,
-}
-
-#[derive(Debug, Deserialize)]
-struct RequestConfig {
     url: String,
     #[serde(default)]
     headers: HashMap<String, String>,
@@ -40,11 +35,9 @@ fn load_config(input: &str) -> Result<RestConfig, VariantError> {
 /// Example config:
 /// ```json
 /// {
-///   "request": {
-///     "url": "https://api.example.com/config?variant=$1",
-///     "headers": {
-///       "Authorization": "Bearer token123"
-///     }
+///   "url": "https://api.example.com/config?variant=$1",
+///   "headers": {
+///     "Authorization": "Bearer token123"
 ///   }
 /// }
 /// ```
@@ -65,10 +58,10 @@ impl RestDataSource {
         let mut variant_columns = Vec::with_capacity(variants.len());
 
         for variant in &variants {
-            let url = config.request.url.replace("$1", variant);
+            let url = config.url.replace("$1", variant);
 
             let mut request = ureq::get(&url);
-            for (key, value) in &config.request.headers {
+            for (key, value) in &config.headers {
                 request = request.header(key, value);
             }
 

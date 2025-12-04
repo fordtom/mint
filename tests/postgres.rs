@@ -51,8 +51,8 @@ fn setup_test_data() {
 fn build_pg_args(variant: &str) -> VariantArgs {
     let config = format!(
         r#"{{
-            "database": {{ "url": "{}" }},
-            "query": {{ "template": "SELECT json_object_agg(name, value)::text FROM config WHERE variant = $1" }}
+            "url": "{}",
+            "query_template": "SELECT json_object_agg(name, value)::text FROM config WHERE variant = $1"
         }}"#,
         TEST_DB_URL
     );
