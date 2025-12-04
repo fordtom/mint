@@ -69,8 +69,10 @@ Use PostgreSQL as the data source. Accepts a JSON file path or inline JSON strin
 mint layout.toml -p pg_config.json -v Default
 
 # Using inline JSON
-mint layout.toml -p '{"url":"postgres://localhost/db","query_template":"SELECT json_object_agg(name,value)::text FROM config WHERE variant=$1"}' -v Default
+mint layout.toml -p '{"url":"...","query_template":"..."}' -v Default
 ```
+
+See [Data Sources](sources.md#postgres--p---postgres) for config format details.
 
 ### `-r, --rest <PATH or JSON>`
 
@@ -81,8 +83,10 @@ Use REST API as the data source. Accepts a JSON file path or inline JSON string.
 mint layout.toml -r rest_config.json -v Default
 
 # Using inline JSON
-mint layout.toml -r '{"url":"https://api.example.com/config?variant=$1","headers":{"Authorization":"Bearer token123"}}' -v Default
+mint layout.toml -r '{"url":"...","headers":{...}}' -v Default
 ```
+
+See [Data Sources](sources.md#rest--r---rest) for config format details.
 
 ### `-v, --variant <NAME[/NAME...]>`
 
@@ -316,16 +320,20 @@ mint \
 
 ```bash
 mint layout.toml \
-  -p '{"url":"postgres://user:pass@localhost/config","query_template":"SELECT json_object_agg(name,value)::text FROM settings WHERE variant=$1"}' \
+  -p pg_config.json \
   -v Production/Default \
   --combined
 ```
+
+See [Data Sources](sources.md#postgres--p---postgres) for config format.
 
 ### Build with REST backend
 
 ```bash
 mint layout.toml \
-  -r '{"url":"https://api.example.com/config?variant=$1","headers":{"Authorization":"Bearer token123"}}' \
+  -r rest_config.json \
   -v Production/Default \
   --combined
 ```
+
+See [Data Sources](sources.md#rest--r---rest) for config format.
