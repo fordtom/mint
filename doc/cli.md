@@ -37,7 +37,7 @@ mint header@layout.toml calibration.toml -x data.xlsx -v Default
 
 ## Data Source Options
 
-You must specify exactly one data source (`-x` or `-p`) along with a variant (`-v`).
+You must specify exactly one data source (`-x`, `-p`, or `-r`) along with a variant (`-v`).
 
 ### `-x, --xlsx <FILE>`
 
@@ -69,7 +69,19 @@ Use PostgreSQL as the data source. Accepts a JSON file path or inline JSON strin
 mint layout.toml -p pg_config.json -v Default
 
 # Using inline JSON
-mint layout.toml -p '{"database":{"url":"postgres://localhost/db"},"query":{"template":"SELECT json_object_agg(name,value)::text FROM config WHERE variant=$1"}}' -v Default
+mint layout.toml -p '{"url":"postgres://localhost/db","query_template":"SELECT json_object_agg(name,value)::text FROM config WHERE variant=$1"}' -v Default
+```
+
+### `-r, --rest <PATH or JSON>`
+
+Use REST API as the data source. Accepts a JSON file path or inline JSON string.
+
+```bash
+# Using a config file
+mint layout.toml -r rest_config.json -v Default
+
+# Using inline JSON
+mint layout.toml -r '{"url":"https://api.example.com/config?variant=$1","headers":{"Authorization":"Bearer token123"}}' -v Default
 ```
 
 ### `-v, --variant <NAME[/NAME...]>`
@@ -304,7 +316,16 @@ mint \
 
 ```bash
 mint layout.toml \
-  -p '{"database":{"url":"postgres://user:pass@localhost/config"},"query":{"template":"SELECT json_object_agg(name,value)::text FROM settings WHERE variant=$1"}}' \
+  -p '{"url":"postgres://user:pass@localhost/config","query_template":"SELECT json_object_agg(name,value)::text FROM settings WHERE variant=$1"}' \
+  -v Production/Default \
+  --combined
+```
+
+### Build with REST backend
+
+```bash
+mint layout.toml \
+  -r '{"url":"https://api.example.com/config?variant=$1","headers":{"Authorization":"Bearer token123"}}' \
   -v Production/Default \
   --combined
 ```

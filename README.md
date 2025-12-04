@@ -1,6 +1,6 @@
 ## mint
 
-Build flash blocks from a layout file (TOML/YAML/JSON) and a data source (Excel or Postgres), then emit hex files.
+Build flash blocks from a layout file (TOML/YAML/JSON) and a data source (Excel, Postgres, or REST), then emit hex files.
 
 ![img](doc/img.png)
 
@@ -9,8 +9,8 @@ Install with `cargo install mint-cli` or via nix flakes.
 ### Documentation
 
 - [CLI reference](doc/cli.md)
-- [Layout files](doc/layout.md) (TOML/YAML/JSON)
-- [Data sources](doc/sources.md) (Excel & Postgres)
+- [Layout files](doc/layout.md)
+- [Data sources](doc/sources.md)
 - [Example layouts & data](doc/examples/)
 
 ### Quick Start
@@ -21,6 +21,9 @@ mint layout.toml -x data.xlsx -v Default
 
 # Postgres data source
 mint layout.toml -p config.json -v Debug/Default
+
+# REST data source
+mint layout.toml -r config.json -v Debug/Default
 
 # Multiple blocks with options
 mint config@layout.toml calibration@layout.toml -x data.xlsx -v Production/Default --stats
