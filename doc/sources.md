@@ -1,11 +1,11 @@
 # Data Sources
 
-mint supports three data source types: Excel workbooks, Postgres databases, and REST APIs. A source is not strictly necessary - if a layout contains only values it will build without one. You cannot use more than one source in a single build.
+mint supports four data source types: Excel workbooks, Postgres databases, REST APIs, and raw JSON. A source is not strictly necessary - if a layout contains only values it will build without one. You cannot use more than one source in a single build.
 
-## Excel (`-x, --xlsx`)
+## Excel (`--xlsx`)
 
 ```bash
-mint layout.toml -x data.xlsx -v Default
+mint layout.toml --xlsx data.xlsx -v Default
 ```
 
 ### Main Sheet Structure
@@ -40,12 +40,12 @@ For 1D/2D arrays, reference a sheet by name with `#` prefix:
 
 ---
 
-## Postgres (`-p, --postgres`)
+## Postgres (`--postgres`)
 
 ```bash
-mint layout.toml -p config.json -v Debug/Default
+mint layout.toml --postgres config.json -v Debug/Default
 # or inline:
-mint layout.toml -p '{"url":"...","query_template":"..."}' -v Debug/Default
+mint layout.toml --postgres '{"url":"...","query_template":"..."}' -v Debug/Default
 ```
 
 ### Config Format
@@ -66,12 +66,12 @@ mint layout.toml -p '{"url":"...","query_template":"..."}' -v Debug/Default
 
 ---
 
-## REST (`-r, --rest`)
+## REST (`--rest`)
 
 ```bash
-mint layout.toml -r config.json -v Debug/Default
+mint layout.toml --rest config.json -v Debug/Default
 # or inline:
-mint layout.toml -r '{"url":"...","headers":{...}}' -v Debug/Default
+mint layout.toml --rest '{"url":"...","headers":{...}}' -v Debug/Default
 ```
 
 ### Config Format
@@ -94,3 +94,45 @@ mint layout.toml -r '{"url":"...","headers":{...}}' -v Debug/Default
 - Native JSON arrays are supported for 1D/2D arrays
 - Space/comma/semicolon-delimited strings are also parsed as numeric arrays
 - Request is made once per variant with `$1` replaced by the URL-encoded variant string
+
+---
+
+## JSON (`--json`)
+
+```bash
+mint layout.toml --json data.json -v Debug/Default
+# or inline:
+mint layout.toml --json '{"Default":{"key1":123,"key2":"value"},"Debug":{"key1":456}}' -v Debug/Default
+```
+
+### Format
+
+The JSON data source expects an object where:
+- **Top-level keys** are variant names (e.g., `"Default"`, `"Debug"`, `"Production"`)
+- **Each variant's value** is an object containing name:value pairs
+
+```json
+{
+  "Default": {
+    "DeviceName": "MyDevice",
+    "FWVersionMajor": 3,
+    "Coefficients1D": [1.0, 2.0, 3.0],
+    "CalibrationMatrix": [[1, 2], [3, 4]]
+  },
+  "Debug": {
+    "DeviceName": "DebugDevice",
+    "FWVersionMajor": 4,
+    "Coefficients1D": [0.5, 1.5, 2.5]
+  }
+}
+```
+
+### Value Types
+
+- **Scalars**: numbers, booleans, strings
+- **1D Arrays**: native JSON arrays or space/comma/semicolon-delimited strings (e.g., `"1 2 3"` or `"1,2,3"`)
+- **2D Arrays**: arrays of arrays (native JSON only)
+
+### Variant Priority
+
+Values are resolved using the variant priority order specified by `-v`. The first non-empty value found wins.

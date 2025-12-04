@@ -37,7 +37,7 @@ pub struct VariantArgs {
         value_name = "PATH or json string",
         group = "datasource",
         requires = "variant",
-        help = "Path to the JSON file or a JSON string containing variant data as an object with variant names as keys"
+        help = "Path to JSON file or JSON string. Format: object with variant names as keys, each containing an object with name:value pairs (e.g., {\"VariantName\": {\"key1\": value1, \"key2\": value2}})"
     )]
     pub json: Option<String>,
 

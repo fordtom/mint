@@ -160,7 +160,7 @@ coefficients = { name = "Coefficients", type = "f32", size = 16 }
 Build specific blocks with `blockname@file.toml` syntax:
 
 ```bash
-mint config@layout.toml -x data.xlsx -v Default
+mint config@layout.toml --xlsx data.xlsx -v Default
 ```
 
 ---
