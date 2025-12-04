@@ -2,14 +2,12 @@ pub mod args;
 pub mod errors;
 mod excel;
 mod helpers;
-mod pg;
-mod rest;
+mod json;
 
 use crate::layout::value::{DataValue, ValueSource};
 use errors::VariantError;
 use excel::ExcelDataSource;
-use pg::PostgresDataSource;
-use rest::RestDataSource;
+use json::JsonDataSource;
 
 /// Trait for data sources that provide variant values by name.
 pub trait DataSource: Sync {
@@ -29,10 +27,11 @@ pub trait DataSource: Sync {
 pub fn create_data_source(
     args: &args::VariantArgs,
 ) -> Result<Option<Box<dyn DataSource>>, VariantError> {
-    match (&args.xlsx, &args.postgres, &args.rest) {
-        (Some(_), _, _) => Ok(Some(Box::new(ExcelDataSource::new(args)?))),
-        (_, Some(_), _) => Ok(Some(Box::new(PostgresDataSource::new(args)?))),
-        (_, _, Some(_)) => Ok(Some(Box::new(RestDataSource::new(args)?))),
+    match (&args.xlsx, &args.postgres, &args.rest, &args.json) {
+        (Some(_), _, _, _) => Ok(Some(Box::new(ExcelDataSource::new(args)?))),
+        (_, Some(_), _, _) => Ok(Some(Box::new(JsonDataSource::from_postgres(args)?))),
+        (_, _, Some(_), _) => Ok(Some(Box::new(JsonDataSource::from_rest(args)?))),
+        (_, _, _, Some(_)) => Ok(Some(Box::new(JsonDataSource::from_json(args)?))),
         _ => Ok(None),
     }
 }

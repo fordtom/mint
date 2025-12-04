@@ -11,6 +11,7 @@ mint is an embedded development tool that works with layout files (toml/yaml/jso
   - **Excel** (`.xlsx`): Uses `Name` column for lookups; arrays referenced by sheet name (prefixed with `#`).
   - **Postgres**: JSON config with `url` and `query_template`; query returns JSON object per variant.
   - **REST**: JSON config with `url` (using `$1` placeholder) and optional `headers`; response must be JSON object per variant.
+  - **JSON**: Raw JSON object with variant names as top-level keys, each containing an object with name:value pairs.
   - Supports variant priority ordering (e.g., `-v Debug/Default`).
 - **Output**: Generates binary files, handling block overlaps and CRC calculations (`src/output`).
 

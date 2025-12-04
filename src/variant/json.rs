@@ -8,43 +8,49 @@ use super::errors::VariantError;
 use super::DataSource;
 use crate::layout::value::{DataValue, ValueSource};
 
+fn load_json_string_or_file(input: &str) -> Result<String, VariantError> {
+    if input.ends_with(".json") {
+        std::fs::read_to_string(input)
+            .map_err(|_| VariantError::FileError(format!("failed to open file: {}", input)))
+    } else {
+        Ok(input.to_string())
+    }
+}
+
 #[derive(Debug, Deserialize)]
 struct PostgresConfig {
-    // TODO: support token substitution via environment variables for more secure credential handling
     url: String,
     query_template: String,
 }
 
-fn load_config(input: &str) -> Result<PostgresConfig, VariantError> {
-    let json = if input.ends_with(".json") {
-        std::fs::read_to_string(input)
-            .map_err(|_| VariantError::FileError(format!("failed to open file: {}", input)))?
-    } else {
-        input.to_string()
-    };
-
-    let config: PostgresConfig = serde_json::from_str(&json)
-        .map_err(|e| VariantError::FileError(format!("failed to parse JSON: {}", e)))?;
-    Ok(config)
+#[derive(Debug, Deserialize)]
+struct RestConfig {
+    url: String,
+    #[serde(default)]
+    headers: HashMap<String, String>,
 }
 
-/// Query executed once per variant with $1 = variant string.
-/// Query must return a single row with column 0 containing a JSON object.
+/// Shared JSON-based data source that reads variant data from JSON objects.
 /// Result: `Vec<HashMap<String, Value>>` in variant priority order.
-///
-/// Example query: `SELECT json_object_agg(name, value) FROM config WHERE variant = $1`
-pub struct PostgresDataSource {
+pub struct JsonDataSource {
     variant_columns: Vec<HashMap<String, Value>>,
 }
 
-impl PostgresDataSource {
-    pub(crate) fn new(args: &VariantArgs) -> Result<Self, VariantError> {
+impl JsonDataSource {
+    fn new(variant_columns: Vec<HashMap<String, Value>>) -> Self {
+        JsonDataSource { variant_columns }
+    }
+
+    /// Creates a JSON data source from Postgres queries.
+    pub(crate) fn from_postgres(args: &VariantArgs) -> Result<Self, VariantError> {
         let pg_config_str = args
             .postgres
             .as_ref()
             .ok_or_else(|| VariantError::MiscError("missing postgres config".to_string()))?;
 
-        let config = load_config(pg_config_str)?;
+        let json_str = load_json_string_or_file(pg_config_str)?;
+        let config: PostgresConfig = serde_json::from_str(&json_str)
+            .map_err(|e| VariantError::FileError(format!("failed to parse JSON: {}", e)))?;
 
         let mut client = Client::connect(&config.url, NoTls).map_err(|e| {
             VariantError::MiscError(format!("failed to connect to Postgres: {}", e))
@@ -80,17 +86,97 @@ impl PostgresDataSource {
             variant_columns.push(map);
         }
 
-        Ok(PostgresDataSource { variant_columns })
+        Ok(Self::new(variant_columns))
     }
 
-    /// Looks up a key across variant columns in priority order, returning first match.
+    /// Creates a JSON data source from REST API calls.
+    pub(crate) fn from_rest(args: &VariantArgs) -> Result<Self, VariantError> {
+        let rest_config_str = args
+            .rest
+            .as_ref()
+            .ok_or_else(|| VariantError::MiscError("missing rest config".to_string()))?;
+
+        let json_str = load_json_string_or_file(rest_config_str)?;
+        let config: RestConfig = serde_json::from_str(&json_str)
+            .map_err(|e| VariantError::FileError(format!("failed to parse JSON: {}", e)))?;
+
+        let variants = args.get_variant_list();
+        let mut variant_columns = Vec::with_capacity(variants.len());
+
+        for variant in &variants {
+            let encoded_variant =
+                percent_encoding::utf8_percent_encode(variant, percent_encoding::NON_ALPHANUMERIC);
+            let url = config.url.replace("$1", &encoded_variant.to_string());
+
+            let mut request = ureq::get(&url);
+            for (key, value) in &config.headers {
+                request = request.header(key, value);
+            }
+
+            let response = request.call().map_err(|e| {
+                VariantError::RetrievalError(format!(
+                    "REST request failed for variant '{}': {}",
+                    variant, e
+                ))
+            })?;
+
+            let json_str = response.into_body().read_to_string().map_err(|e| {
+                VariantError::RetrievalError(format!(
+                    "failed to read response body for variant '{}': {}",
+                    variant, e
+                ))
+            })?;
+
+            let map: HashMap<String, Value> = serde_json::from_str(&json_str).map_err(|e| {
+                VariantError::RetrievalError(format!(
+                    "failed to parse JSON for variant '{}': {}",
+                    variant, e
+                ))
+            })?;
+
+            variant_columns.push(map);
+        }
+
+        Ok(Self::new(variant_columns))
+    }
+
+    /// Creates a JSON data source from a JSON object.
+    /// Expected format: `{ "VariantName": { "key1": value1, "key2": value2, ... }, ... }`
+    pub(crate) fn from_json(args: &VariantArgs) -> Result<Self, VariantError> {
+        let json_str = args
+            .json
+            .as_ref()
+            .ok_or_else(|| VariantError::MiscError("missing json config".to_string()))?;
+
+        let json_content = load_json_string_or_file(json_str)?;
+        let data: HashMap<String, HashMap<String, Value>> = serde_json::from_str(&json_content)
+            .map_err(|e| VariantError::FileError(format!("failed to parse JSON: {}", e)))?;
+
+        let variants = args.get_variant_list();
+        let mut variant_columns = Vec::with_capacity(variants.len());
+
+        for variant in &variants {
+            let map = data
+                .get(variant)
+                .ok_or_else(|| {
+                    VariantError::RetrievalError(format!(
+                        "variant '{}' not found in JSON data",
+                        variant
+                    ))
+                })?
+                .clone();
+            variant_columns.push(map);
+        }
+
+        Ok(Self::new(variant_columns))
+    }
+
     fn lookup(&self, name: &str) -> Option<&Value> {
         self.variant_columns
             .iter()
             .find_map(|map| map.get(name).filter(|v| !v.is_null()))
     }
 
-    /// Converts a JSON Value to a DataValue (scalars only).
     fn value_to_data_value(value: &Value) -> Result<DataValue, VariantError> {
         match value {
             Value::Bool(b) => Ok(DataValue::Bool(*b)),
@@ -114,7 +200,6 @@ impl PostgresDataSource {
         }
     }
 
-    /// Parses a space/comma/semicolon-delimited string into numeric DataValues.
     fn parse_delimited_numbers(s: &str) -> Option<Vec<DataValue>> {
         s.split(|c: char| c.is_whitespace() || c == ',' || c == ';')
             .map(|p| p.trim())
@@ -130,7 +215,7 @@ impl PostgresDataSource {
     }
 }
 
-impl DataSource for PostgresDataSource {
+impl DataSource for JsonDataSource {
     fn retrieve_single_value(&self, name: &str) -> Result<DataValue, VariantError> {
         let result = (|| {
             let value = self.lookup(name).ok_or_else(|| {
@@ -159,13 +244,11 @@ impl DataSource for PostgresDataSource {
             })?;
 
             match value {
-                // Native JSON array
                 Value::Array(arr) => {
                     let items: Result<Vec<_>, _> =
                         arr.iter().map(Self::value_to_data_value).collect();
                     Ok(ValueSource::Array(items?))
                 }
-                // String: try parsing as delimited numbers, fallback to literal
                 Value::String(s) => match Self::parse_delimited_numbers(s) {
                     Some(arr) if !arr.is_empty() => Ok(ValueSource::Array(arr)),
                     _ => Ok(ValueSource::Single(DataValue::Str(s.clone()))),
