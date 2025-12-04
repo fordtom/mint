@@ -113,7 +113,9 @@ fn json_retrieve_missing_variant_errors() {
     let args = build_json_args("NonExistent", json_data);
     let result = create_data_source(&args);
     assert!(result.is_err());
-    println!("Missing variant error: {:?}", result.unwrap_err());
+    if let Err(e) = result {
+        println!("Missing variant error: {:?}", e);
+    }
 }
 
 #[test]
