@@ -37,7 +37,7 @@ mint header@layout.toml calibration.toml -x data.xlsx -v Default
 
 ## Data Source Options
 
-You must specify exactly one data source (`-x`, `-p`, or `-r`) along with a variant (`-v`).
+You can specify exactly one data source (`-x`, `-p`, or `-r`) along with a variant (`-v`).
 
 ### `-x, --xlsx <FILE>`
 
@@ -47,14 +47,9 @@ Path to Excel workbook containing variant data.
 mint layout.toml -x data.xlsx -v Default
 ```
 
-The workbook should have:
-
-- A main sheet with columns: `Name`, `Default`, and optional variant columns
-- Optional array sheets referenced with `#SheetName` syntax
-
 ### `--main-sheet <NAME>`
 
-Override the default main sheet name (first sheet) in the Excel workbook.
+Override the default main sheet name (`Main`) for the excel data source.
 
 ```bash
 mint layout.toml -x data.xlsx --main-sheet Config -v Default
@@ -168,17 +163,6 @@ mint layout.toml -x data.xlsx -v Default --record-width 16
 
 # 64 bytes per record (longer lines)
 mint layout.toml -x data.xlsx -v Default --record-width 64
-```
-
-**Effect on output:**
-
-```
-# --record-width 16
-:10000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00
-:10001000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00
-
-# --record-width 32
-:20000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00
 ```
 
 ### `--combined`

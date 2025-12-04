@@ -1,6 +1,6 @@
 # Data Sources
 
-mint supports three data source types: Excel workbooks, Postgres databases, and REST APIs.
+mint supports three data source types: Excel workbooks, Postgres databases, and REST APIs. A source is not strictly necessary - if a layout contains only values it will build without one. You cannot use more than one source in a single build.
 
 ## Excel (`-x, --xlsx`)
 
@@ -10,7 +10,7 @@ mint layout.toml -x data.xlsx -v Default
 
 ### Main Sheet Structure
 
-The first sheet (or one specified via `--main-sheet`) contains variant data:
+The `Main` sheet (or one specified via `--main-sheet`) contains variant data:
 
 | Name              | Default            | Debug | VarA |
 | ----------------- | ------------------ | ----- | ---- |
@@ -34,7 +34,7 @@ For 1D/2D arrays, reference a sheet by name with `#` prefix:
 | 4   | 5   | 6   |
 | 7   | 8   | 9   |
 
-- First row defines headers (and width for 2D arrays)
+- First row ignored as headers (and defines width for 2D arrays)
 - Values read row-by-row until an empty cell is encountered
 - Strings and undersized arrays are padded by default; use `SIZE` (uppercase) in layout to enforce strict length
 

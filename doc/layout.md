@@ -1,6 +1,6 @@
 # Layout Files
 
-Layout files define memory blocks and their data fields. Supported formats: TOML, YAML, JSON.
+Layout files define memory blocks and their data fields. Supported formats: TOML, YAML, JSON. The data in the layout file helps mint understand the structure of the data, and how you want to represent the data in the output. Each block represents a contiguous region of memory (typically a single struct stored in a known location in flash). For an example of a block, see [`doc/examples/blocks.h`](doc/examples/blocks.h) and compare it to the layout file [`doc/examples/block.toml`](doc/examples/block.toml).
 
 ## Structure
 
@@ -25,8 +25,8 @@ Global settings apply to all blocks. All fields are optional.
 [settings]
 endianness = "little"      # "little" (default) or "big"
 virtual_offset = 0x0       # Offset added to all addresses
-byte_swap = false          # Swap bytes in multi-byte values
-pad_to_end = false         # Pad block to full length
+byte_swap = false          # Swap byte pairs across the block (used to emulate word-addressable memory)
+pad_to_end = false         # Pad outputted block to full length
 
 [settings.crc]
 polynomial = 0x04C11DB7    # CRC polynomial
@@ -34,7 +34,7 @@ start = 0xFFFFFFFF         # Initial CRC value
 xor_out = 0xFFFFFFFF       # XOR applied to final CRC
 ref_in = true              # Reflect input bytes
 ref_out = true             # Reflect output CRC
-area = "data"              # CRC coverage: "data" or "all"
+area = "data"              # CRC coverage: "data" (padded to 4 byte boundary) or "all" (padded to block boundary)
 ```
 
 ---
@@ -47,19 +47,9 @@ Each block requires a header section defining memory layout.
 [blockname.header]
 start_address = 0x8B000    # Start address in memory (required)
 length = 0x1000            # Block size in bytes (required)
-crc_location = "end"       # CRC placement (optional)
-padding = 0xFF             # Padding byte value (default: 0x00)
+crc_location = "end"       # CRC placement: "end" to append to data struct as a u32 value, or absolute address (e.g. 0x8BFF0)
+padding = 0xFF             # Padding byte value (default: 0xFF)
 ```
-
-### CRC Location
-
-| Value       | Description                   |
-| ----------- | ----------------------------- |
-| `"end"`     | Place CRC at end of data      |
-| `0x8BFF0`   | Place CRC at absolute address |
-| _(omitted)_ | No CRC                        |
-
----
 
 ## Block Data
 
@@ -67,29 +57,13 @@ Data fields are key-value pairs where the key is a dotted path (matching C struc
 
 ### Field Attributes
 
-| Attribute | Description                                              |
-| --------- | -------------------------------------------------------- |
-| `type`    | Data type (required)                                     |
-| `value`   | Literal value (mutually exclusive with `name`)           |
-| `name`    | Data source lookup key (mutually exclusive with `value`) |
-| `size`    | Array size; pads if data is shorter                      |
-| `SIZE`    | Strict array size; errors if data is shorter             |
-| `bitmap`  | Bitmap field definitions (see below)                     |
-
-### Supported Types
-
-| Type  | Description     |
-| ----- | --------------- |
-| `u8`  | Unsigned 8-bit  |
-| `u16` | Unsigned 16-bit |
-| `u32` | Unsigned 32-bit |
-| `u64` | Unsigned 64-bit |
-| `i8`  | Signed 8-bit    |
-| `i16` | Signed 16-bit   |
-| `i32` | Signed 32-bit   |
-| `i64` | Signed 64-bit   |
-| `f32` | 32-bit float    |
-| `f64` | 64-bit float    |
+| Attribute     | Description                                                                   |
+| ------------- | ----------------------------------------------------------------------------- |
+| `type`        | Data type (required)                                                          |
+| `value`       | Literal value (mutually exclusive with `name`)                                |
+| `name`        | Data source lookup key (mutually exclusive with `value`)                      |
+| `size`/`SIZE` | Array size; `size` pads if data is shorter, `SIZE` errors if data is shorter. |
+| `bitmap`      | Bitmap field definitions (see below)                                          |
 
 ---
 
@@ -154,7 +128,7 @@ config.flags = { type = "u16", bitmap = [
 ] }
 ```
 
-Bitmap fields are packed LSB-first into the specified type.
+Bitmap fields are packed LSB-first into the specified type. signedness of fields match the type. Negative values are represented as two's complement. The sum of the bits in the bitmap must match the type size.
 
 ---
 
