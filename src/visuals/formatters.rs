@@ -14,7 +14,7 @@ pub fn format_bytes(bytes: usize) -> String {
 
 pub fn format_address_range(start: u32, allocated: u32) -> String {
     let end = start + allocated - 1;
-    format!("0x{:08X}-0x{:08X}", start, end)
+    format!("0x{:X}-0x{:X}", start, end)
 }
 
 pub fn format_efficiency(used: u32, allocated: u32) -> String {
