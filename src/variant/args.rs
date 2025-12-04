@@ -3,7 +3,6 @@ use clap::Args;
 #[derive(Args, Debug, Clone, Default)]
 pub struct VariantArgs {
     #[arg(
-        short = 'x',
         long,
         value_name = "FILE",
         group = "datasource",
@@ -16,7 +15,6 @@ pub struct VariantArgs {
     pub main_sheet: Option<String>,
 
     #[arg(
-        short = 'p',
         long,
         value_name = "PATH or json string",
         group = "datasource",
@@ -26,7 +24,6 @@ pub struct VariantArgs {
     pub postgres: Option<String>,
 
     #[arg(
-        short = 'r',
         long,
         value_name = "PATH or json string",
         group = "datasource",
@@ -36,7 +33,6 @@ pub struct VariantArgs {
     pub rest: Option<String>,
 
     #[arg(
-        short = 'j',
         long,
         value_name = "PATH or json string",
         group = "datasource",

@@ -1,3 +1,5 @@
+use postgres::{Client, NoTls};
+use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
 
@@ -6,34 +8,150 @@ use super::errors::VariantError;
 use super::DataSource;
 use crate::layout::value::{DataValue, ValueSource};
 
-fn load_json(input: &str) -> Result<HashMap<String, HashMap<String, Value>>, VariantError> {
-    let json_str = if input.ends_with(".json") {
+fn load_json_string_or_file(input: &str) -> Result<String, VariantError> {
+    if input.ends_with(".json") {
         std::fs::read_to_string(input)
-            .map_err(|_| VariantError::FileError(format!("failed to open file: {}", input)))?
+            .map_err(|_| VariantError::FileError(format!("failed to open file: {}", input)))
     } else {
-        input.to_string()
-    };
-
-    let map: HashMap<String, HashMap<String, Value>> = serde_json::from_str(&json_str)
-        .map_err(|e| VariantError::FileError(format!("failed to parse JSON: {}", e)))?;
-    Ok(map)
+        Ok(input.to_string())
+    }
 }
 
-/// JSON data source that reads variant data directly from a JSON object.
-/// Expected format: `{ "VariantName": { "key1": value1, "key2": value2, ... }, ... }`
+#[derive(Debug, Deserialize)]
+struct PostgresConfig {
+    url: String,
+    query_template: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct RestConfig {
+    url: String,
+    #[serde(default)]
+    headers: HashMap<String, String>,
+}
+
+/// Shared JSON-based data source that reads variant data from JSON objects.
 /// Result: `Vec<HashMap<String, Value>>` in variant priority order.
 pub struct JsonDataSource {
     variant_columns: Vec<HashMap<String, Value>>,
 }
 
 impl JsonDataSource {
-    pub(crate) fn new(args: &VariantArgs) -> Result<Self, VariantError> {
+    fn new(variant_columns: Vec<HashMap<String, Value>>) -> Self {
+        JsonDataSource { variant_columns }
+    }
+
+    /// Creates a JSON data source from Postgres queries.
+    pub(crate) fn from_postgres(args: &VariantArgs) -> Result<Self, VariantError> {
+        let pg_config_str = args
+            .postgres
+            .as_ref()
+            .ok_or_else(|| VariantError::MiscError("missing postgres config".to_string()))?;
+
+        let json_str = load_json_string_or_file(pg_config_str)?;
+        let config: PostgresConfig = serde_json::from_str(&json_str)
+            .map_err(|e| VariantError::FileError(format!("failed to parse JSON: {}", e)))?;
+
+        let mut client = Client::connect(&config.url, NoTls).map_err(|e| {
+            VariantError::MiscError(format!("failed to connect to Postgres: {}", e))
+        })?;
+
+        let variants = args.get_variant_list();
+        let mut variant_columns = Vec::with_capacity(variants.len());
+
+        for variant in &variants {
+            let row = client
+                .query_one(&config.query_template, &[variant])
+                .map_err(|e| {
+                    VariantError::RetrievalError(format!(
+                        "query failed for variant '{}': {}",
+                        variant, e
+                    ))
+                })?;
+
+            let json_str: String = row.try_get(0).map_err(|e| {
+                VariantError::RetrievalError(format!(
+                    "failed to get JSON column for variant '{}': {}",
+                    variant, e
+                ))
+            })?;
+
+            let map: HashMap<String, Value> = serde_json::from_str(&json_str).map_err(|e| {
+                VariantError::RetrievalError(format!(
+                    "failed to parse JSON for variant '{}': {}",
+                    variant, e
+                ))
+            })?;
+
+            variant_columns.push(map);
+        }
+
+        Ok(Self::new(variant_columns))
+    }
+
+    /// Creates a JSON data source from REST API calls.
+    pub(crate) fn from_rest(args: &VariantArgs) -> Result<Self, VariantError> {
+        let rest_config_str = args
+            .rest
+            .as_ref()
+            .ok_or_else(|| VariantError::MiscError("missing rest config".to_string()))?;
+
+        let json_str = load_json_string_or_file(rest_config_str)?;
+        let config: RestConfig = serde_json::from_str(&json_str)
+            .map_err(|e| VariantError::FileError(format!("failed to parse JSON: {}", e)))?;
+
+        let variants = args.get_variant_list();
+        let mut variant_columns = Vec::with_capacity(variants.len());
+
+        for variant in &variants {
+            let encoded_variant =
+                percent_encoding::utf8_percent_encode(variant, percent_encoding::NON_ALPHANUMERIC);
+            let url = config.url.replace("$1", &encoded_variant.to_string());
+
+            let mut request = ureq::get(&url);
+            for (key, value) in &config.headers {
+                request = request.header(key, value);
+            }
+
+            let response = request.call().map_err(|e| {
+                VariantError::RetrievalError(format!(
+                    "REST request failed for variant '{}': {}",
+                    variant, e
+                ))
+            })?;
+
+            let json_str = response.into_body().read_to_string().map_err(|e| {
+                VariantError::RetrievalError(format!(
+                    "failed to read response body for variant '{}': {}",
+                    variant, e
+                ))
+            })?;
+
+            let map: HashMap<String, Value> = serde_json::from_str(&json_str).map_err(|e| {
+                VariantError::RetrievalError(format!(
+                    "failed to parse JSON for variant '{}': {}",
+                    variant, e
+                ))
+            })?;
+
+            variant_columns.push(map);
+        }
+
+        Ok(Self::new(variant_columns))
+    }
+
+    /// Creates a JSON data source from a JSON object.
+    /// Expected format: `{ "VariantName": { "key1": value1, "key2": value2, ... }, ... }`
+    pub(crate) fn from_json(args: &VariantArgs) -> Result<Self, VariantError> {
         let json_str = args
             .json
             .as_ref()
             .ok_or_else(|| VariantError::MiscError("missing json config".to_string()))?;
 
-        let data = load_json(json_str)?;
+        let json_content = load_json_string_or_file(json_str)?;
+        let data: HashMap<String, HashMap<String, Value>> = serde_json::from_str(&json_content)
+            .map_err(|e| VariantError::FileError(format!("failed to parse JSON: {}", e)))?;
+
         let variants = args.get_variant_list();
         let mut variant_columns = Vec::with_capacity(variants.len());
 
@@ -50,7 +168,7 @@ impl JsonDataSource {
             variant_columns.push(map);
         }
 
-        Ok(JsonDataSource { variant_columns })
+        Ok(Self::new(variant_columns))
     }
 
     fn lookup(&self, name: &str) -> Option<&Value> {
