@@ -10,6 +10,7 @@ start = 0xFFFFFFFF
 xor_out = 0xFFFFFFFF
 ref_in = true
 ref_out = true
+area = "data"
 
 [config.header]
 start_address = 0x8000

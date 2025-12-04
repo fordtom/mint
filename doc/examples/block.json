@@ -6,7 +6,8 @@
       "start": 4294967295,
       "xor_out": 4294967295,
       "ref_in": true,
-      "ref_out": true
+      "ref_out": true,
+      "area": "data"
     }
   },
   "config": {
