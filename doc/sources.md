@@ -1,6 +1,6 @@
 # Data Sources
 
-mint supports two data source types: Excel workbooks and Postgres databases.
+mint supports three data source types: Excel workbooks, Postgres databases, and REST APIs.
 
 ## Excel (`-x, --xlsx`)
 
@@ -45,17 +45,15 @@ For 1D/2D arrays, reference a sheet by name with `#` prefix:
 ```bash
 mint layout.toml -p config.json -v Debug/Default
 # or inline:
-mint layout.toml -p '{"database":{"url":"..."},"query":{"template":"..."}}' -v Debug/Default
+mint layout.toml -p '{"url":"...","query_template":"..."}' -v Debug/Default
 ```
 
 ### Config Format
 
 ```json
 {
-  "database": { "url": "postgres://user:pass@host/db" },
-  "query": {
-    "template": "SELECT json_object_agg(name, value)::text FROM config WHERE variant = $1"
-  }
+  "url": "postgres://user:pass@host/db",
+  "query_template": "SELECT json_object_agg(name, value)::text FROM config WHERE variant = $1"
 }
 ```
 
@@ -66,3 +64,33 @@ mint layout.toml -p '{"database":{"url":"..."},"query":{"template":"..."}}' -v D
 - Native JSON arrays are supported for 1D/2D arrays
 - Space/comma/semicolon-delimited strings are also parsed as numeric arrays
 
+---
+
+## REST (`-r, --rest`)
+
+```bash
+mint layout.toml -r config.json -v Debug/Default
+# or inline:
+mint layout.toml -r '{"url":"...","headers":{...}}' -v Debug/Default
+```
+
+### Config Format
+
+```json
+{
+  "url": "https://api.example.com/config?variant=$1",
+  "headers": {
+    "Authorization": "Bearer token123"
+  }
+}
+```
+
+- **url**: HTTP endpoint URL template using `$1` as placeholder for the variant string (URL-encoded)
+- **headers**: Optional HTTP headers map
+
+### Response Requirements
+
+- Must return a JSON object mapping names to values
+- Native JSON arrays are supported for 1D/2D arrays
+- Space/comma/semicolon-delimited strings are also parsed as numeric arrays
+- Request is made once per variant with `$1` replaced by the URL-encoded variant string
