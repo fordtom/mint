@@ -12,10 +12,10 @@ mint [OPTIONS] [BLOCK@FILE | FILE]...
 
 Specifies which blocks to build. Two formats are supported:
 
-| Format | Description |
-|--------|-------------|
-| `block@layout.toml` | Build specific block from layout file |
-| `layout.toml` | Build all blocks defined in layout file |
+| Format              | Description                             |
+| ------------------- | --------------------------------------- |
+| `block@layout.toml` | Build specific block from layout file   |
+| `layout.toml`       | Build all blocks defined in layout file |
 
 **Examples:**
 
@@ -48,6 +48,7 @@ mint layout.toml -x data.xlsx -v Default
 ```
 
 The workbook should have:
+
 - A main sheet with columns: `Name`, `Default`, and optional variant columns
 - Optional array sheets referenced with `#SheetName` syntax
 
@@ -126,10 +127,10 @@ mint config@layout.toml -x data.xlsx -v Default --suffix _v2
 
 Output file format.
 
-| Value | Description | Extension |
-|-------|-------------|-----------|
-| `hex` | Intel HEX (default) | `.hex` |
-| `mot` | Motorola S-Record | `.mot` |
+| Value | Description         | Extension |
+| ----- | ------------------- | --------- |
+| `hex` | Intel HEX (default) | `.hex`    |
+| `mot` | Motorola S-Record   | `.mot`    |
 
 ```bash
 # Intel HEX (default)
@@ -189,10 +190,12 @@ mint layout.toml -x data.xlsx -v Default --strict
 ```
 
 **Without `--strict`:**
+
 - Float `1.5` → `u8` becomes `1` (truncated)
 - Value `300` → `u8` becomes `255` (saturated)
 
 **With `--strict`:**
+
 - Float `1.5` → `u8` produces an error
 - Value `300` → `u8` produces an error
 
@@ -211,15 +214,35 @@ mint layout.toml -x data.xlsx -v Default --stats
 **Example output:**
 
 ```
-┌────────────┬───────────┬───────────┬──────────┬────────────┐
-│ Block      │ Address   │ Allocated │ Used     │ CRC        │
-├────────────┼───────────┼───────────┼──────────┼────────────┤
-│ config     │ 0x08B000  │ 4096      │ 312      │ 0xA1B2C3D4 │
-│ calibration│ 0x08C000  │ 4096      │ 1024     │ 0xE5F6A7B8 │
-├────────────┼───────────┼───────────┼──────────┼────────────┤
-│ Total      │           │ 8192      │ 1336     │            │
-└────────────┴───────────┴───────────┴──────────┴────────────┘
-Space efficiency: 16.3%
++------------------+--------------+
+| Build Summary    |              |
++=================================+
+| Build Time       | 4.878ms      |
+|------------------+--------------|
+| Blocks Processed | 6            |
+|------------------+--------------|
+| Total Allocated  | 13,056 bytes |
+|------------------+--------------|
+| Total Used       | 627 bytes    |
+|------------------+--------------|
+| Space Efficiency | 4.8%         |
++------------------+--------------+
+
++--------------+-----------------------+-----------------------+------------+------------+
+| Block        | Address Range         | Used/Alloc            | Efficiency | CRC Value  |
++========================================================================================+
+| block        | 0x0008B000-0x0008BFFF | 308 bytes/4,096 bytes | 7.5%       | 0xB1FAC7CA |
+|--------------+-----------------------+-----------------------+------------+------------|
+| block2       | 0x0008C000-0x0008CFFF | 80 bytes/4,096 bytes  | 2.0%       | 0x8CF01930 |
+|--------------+-----------------------+-----------------------+------------+------------|
+| block3       | 0x0008D000-0x0008DFFF | 160 bytes/4,096 bytes | 3.9%       | 0x0E8D6A3D |
+|--------------+-----------------------+-----------------------+------------+------------|
+| block_bitmap | 0x0008E000-0x0008E0FF | 19 bytes/256 bytes    | 7.4%       | 0x54A08471 |
+|--------------+-----------------------+-----------------------+------------+------------|
+| simple_block | 0x00008000-0x000080FF | 49 bytes/256 bytes    | 19.1%      | 0xFEBB07BD |
+|--------------+-----------------------+-----------------------+------------+------------|
+| pg_block     | 0x00001000-0x000010FF | 11 bytes/256 bytes    | 4.3%       | 0x5F67F442 |
++--------------+-----------------------+-----------------------+------------+------------+
 ```
 
 ### `--quiet`

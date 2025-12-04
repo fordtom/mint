@@ -1,16 +1,16 @@
 ## Project Overview
 
-mint is an embedded development tool that works with layout files (toml/yaml/json) and excel sheets to assemble, export, sign (and more) static binary files for flashing to microcontrollers.
+mint is an embedded development tool that works with layout files (toml/yaml/json) and data sources (Excel or Postgres) to assemble, export, sign (and more) static binary files for flashing to microcontrollers.
 
 ## Architecture & Codebase
 
 ### Core Concepts
 
 - **Layouts**: TOML/YAML/JSON files defining memory blocks (`src/layout`).
-- **DataSheet**: Excel workbook (`.xlsx`) serving as the data source (`src/variant`).
-  - Uses `Name` column for lookups.
-  - Supports variants via columns (e.g., `Debug`, `VarA`).
-  - Arrays are referenced by sheet name (prefixed with `#`).
+- **DataSource**: Provides variant values by name (`src/variant`).
+  - **Excel** (`.xlsx`): Uses `Name` column for lookups; arrays referenced by sheet name (prefixed with `#`).
+  - **Postgres**: JSON config with `database.url` and `query.template`; query returns JSON object per variant.
+  - Supports variant priority ordering (e.g., `-v Debug/Default`).
 - **Output**: Generates binary files, handling block overlaps and CRC calculations (`src/output`).
 
 ### Build Flow
