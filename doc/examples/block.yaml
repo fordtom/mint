@@ -9,6 +9,7 @@ settings:
     xor_out: 0xFFFFFFFF
     ref_in: true
     ref_out: true
+    area: data
 
 config:
   header:
