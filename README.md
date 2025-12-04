@@ -6,11 +6,11 @@ Build flash blocks from a layout file (TOML/YAML/JSON) and a data source (curren
 
 Install with `cargo install mint-cli` or via nix flakes.
 
-Run `mint --help` for all available options. Example layouts and data are in the `examples/` directory.
+Run `mint --help` for all available options, or see the [CLI documentation](doc/cli.md). Example layouts and data are in [`doc/examples/`](doc/examples/).
 
 ### Input formats
 
-Brief TOML illustrating common patterns (see examples: [`examples/block.toml`](examples/block.toml), [`examples/block.yaml`](examples/block.yaml), [`examples/block.json`](examples/block.json)):
+Brief TOML illustrating common patterns (see [`doc/examples/block.toml`](doc/examples/block.toml)):
 
 ```toml
 [block.data]
@@ -31,7 +31,7 @@ message = { value = "Hello", type = "u8", size = 16 }
 net.ip  = { value = [192, 168, 1, 100], type = "u8", size = 4 }
 ```
 
-Datasheet view (how the Excel workbook is interpreted). See workbook in [`examples/data.xlsx`](examples/data.xlsx).
+Datasheet view (how the Excel workbook is interpreted). See workbook in [`doc/examples/data.xlsx`](doc/examples/data.xlsx).
 
 Main sheet (first row is headers):
 
@@ -66,9 +66,9 @@ Strings and undersized arrays are padded to their expected size by default. If y
 As an alternative to Excel, you can use a Postgres database via `-p`/`--postgres`:
 
 ```bash
-mint build layout.toml -p config.json -v Debug/Default
+mint layout.toml -p config.json -v Debug/Default
 # or inline JSON:
-mint build layout.toml -p '{"database":{"url":"..."},"query":{"template":"..."}}' -v Debug/Default
+mint layout.toml -p '{"database":{"url":"..."},"query":{"template":"..."}}' -v Debug/Default
 ```
 
 Config format (JSON file or inline string):
