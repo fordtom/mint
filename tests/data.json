@@ -1,0 +1,25 @@
+{
+  "Default": {
+    "TemperatureMax": 50,
+    "Value2": 2,
+    "enabled": true,
+    "arraySpaces": "0 100 200 300",
+    "arrayCommas": "1,2,3,4",
+    "arraySemicolons": "10; 20; 30",
+    "arrayMixed": "5, 10; 15 20",
+    "arraySingle": "42",
+    "arrayFloats": "1.5 2.5 3.5",
+    "arrayNegative": "-1 -2 -3",
+    "literalString": "hello world",
+    "nativeArray1d": [10, 20, 30],
+    "nativeArray2d": [[1, 2], [3, 4], [5, 6]]
+  },
+  "Debug": {
+    "TemperatureMax": 60,
+    "debugMode": true
+  },
+  "VarA": {
+    "TemperatureMax": 55,
+    "enabled": false
+  }
+}

@@ -1,75 +1,35 @@
-//! Integration tests for PostgresDataSource.
+//! Integration tests for RestDataSource.
 //!
-//! Requires a running Postgres server. Skip with: cargo test --test postgres -- --ignored
-//! Or run specifically: cargo test --test postgres -- --include-ignored
+//! Requires a running REST server. Skip with: cargo test --test rest -- --ignored
+//! Or run specifically: cargo test --test rest -- --include-ignored
+//!
+//! Expected server: serves tests/data.json at http://localhost:3000/item?variant=<name>
 
 use mint_cli::layout::value::{DataValue, ValueSource};
 use mint_cli::variant::args::VariantArgs;
 use mint_cli::variant::create_data_source;
 
-const TEST_DB_URL: &str = "postgres://localhost/mint_test";
+const TEST_SERVER_URL: &str = "http://localhost:3000/item?variant=$1";
 
-fn setup_test_data() {
-    use postgres::{Client, NoTls};
-
-    let mut client = Client::connect(TEST_DB_URL, NoTls).expect("connect to test db");
-
-    client
-        .batch_execute(
-            r#"
-            DROP TABLE IF EXISTS config CASCADE;
-            CREATE TABLE config (
-                variant TEXT NOT NULL,
-                name TEXT NOT NULL,
-                value JSONB NOT NULL,
-                PRIMARY KEY (variant, name)
-            );
-
-            INSERT INTO config (variant, name, value) VALUES
-                ('Default', 'TemperatureMax', '50'),
-                ('Default', 'Value2', '2'),
-                ('Default', 'enabled', 'true'),
-                ('Default', 'arraySpaces', '"0 100 200 300"'),
-                ('Default', 'arrayCommas', '"1,2,3,4"'),
-                ('Default', 'arraySemicolons', '"10; 20; 30"'),
-                ('Default', 'arrayMixed', '"5, 10; 15 20"'),
-                ('Default', 'arraySingle', '"42"'),
-                ('Default', 'arrayFloats', '"1.5 2.5 3.5"'),
-                ('Default', 'arrayNegative', '"-1 -2 -3"'),
-                ('Default', 'literalString', '"hello world"'),
-                ('Default', 'nativeArray1d', '[10, 20, 30]'),
-                ('Default', 'nativeArray2d', '[[1, 2], [3, 4], [5, 6]]'),
-                ('Debug', 'TemperatureMax', '60'),
-                ('Debug', 'debugMode', 'true'),
-                ('VarA', 'TemperatureMax', '55'),
-                ('VarA', 'enabled', 'false');
-            "#,
-        )
-        .expect("setup test data");
-}
-
-fn build_pg_args(variant: &str) -> VariantArgs {
+fn build_rest_args(variant: &str) -> VariantArgs {
     let config = format!(
         r#"{{
-            "url": "{}",
-            "query_template": "SELECT json_object_agg(name, value)::text FROM config WHERE variant = $1"
+            "url": "{}"
         }}"#,
-        TEST_DB_URL
+        TEST_SERVER_URL
     );
 
     VariantArgs {
-        postgres: Some(config),
+        rest: Some(config),
         variant: Some(variant.to_string()),
         ..Default::default()
     }
 }
 
 #[test]
-#[ignore = "requires running postgres server"]
-fn postgres_retrieve_single_value_priority_order() {
-    setup_test_data();
-
-    let args = build_pg_args("VarA/Debug/Default");
+#[ignore = "requires running REST server"]
+fn rest_retrieve_single_value_priority_order() {
+    let args = build_rest_args("VarA/Debug/Default");
     let ds = create_data_source(&args)
         .expect("datasource load")
         .expect("datasource exists");
@@ -96,11 +56,9 @@ fn postgres_retrieve_single_value_priority_order() {
 }
 
 #[test]
-#[ignore = "requires running postgres server"]
-fn postgres_retrieve_single_value_fallback() {
-    setup_test_data();
-
-    let args = build_pg_args("Debug/Default");
+#[ignore = "requires running REST server"]
+fn rest_retrieve_single_value_fallback() {
+    let args = build_rest_args("Debug/Default");
     let ds = create_data_source(&args)
         .expect("datasource load")
         .expect("datasource exists");
@@ -117,11 +75,9 @@ fn postgres_retrieve_single_value_fallback() {
 }
 
 #[test]
-#[ignore = "requires running postgres server"]
-fn postgres_retrieve_missing_key_errors() {
-    setup_test_data();
-
-    let args = build_pg_args("Default");
+#[ignore = "requires running REST server"]
+fn rest_retrieve_missing_key_errors() {
+    let args = build_rest_args("Default");
     let ds = create_data_source(&args)
         .expect("datasource load")
         .expect("datasource exists");
@@ -132,11 +88,9 @@ fn postgres_retrieve_missing_key_errors() {
 }
 
 #[test]
-#[ignore = "requires running postgres server"]
-fn postgres_retrieve_1d_array_space_delimited() {
-    setup_test_data();
-
-    let args = build_pg_args("Default");
+#[ignore = "requires running REST server"]
+fn rest_retrieve_1d_array_space_delimited() {
+    let args = build_rest_args("Default");
     let ds = create_data_source(&args).unwrap().unwrap();
 
     let value = ds.retrieve_1d_array_or_string("arraySpaces").unwrap();
@@ -150,11 +104,9 @@ fn postgres_retrieve_1d_array_space_delimited() {
 }
 
 #[test]
-#[ignore = "requires running postgres server"]
-fn postgres_retrieve_1d_array_comma_delimited() {
-    setup_test_data();
-
-    let args = build_pg_args("Default");
+#[ignore = "requires running REST server"]
+fn rest_retrieve_1d_array_comma_delimited() {
+    let args = build_rest_args("Default");
     let ds = create_data_source(&args).unwrap().unwrap();
 
     let value = ds.retrieve_1d_array_or_string("arrayCommas").unwrap();
@@ -166,11 +118,9 @@ fn postgres_retrieve_1d_array_comma_delimited() {
 }
 
 #[test]
-#[ignore = "requires running postgres server"]
-fn postgres_retrieve_1d_array_mixed_delimiters() {
-    setup_test_data();
-
-    let args = build_pg_args("Default");
+#[ignore = "requires running REST server"]
+fn rest_retrieve_1d_array_mixed_delimiters() {
+    let args = build_rest_args("Default");
     let ds = create_data_source(&args).unwrap().unwrap();
 
     let value = ds.retrieve_1d_array_or_string("arrayMixed").unwrap();
@@ -182,11 +132,9 @@ fn postgres_retrieve_1d_array_mixed_delimiters() {
 }
 
 #[test]
-#[ignore = "requires running postgres server"]
-fn postgres_retrieve_1d_array_single_value() {
-    setup_test_data();
-
-    let args = build_pg_args("Default");
+#[ignore = "requires running REST server"]
+fn rest_retrieve_1d_array_single_value() {
+    let args = build_rest_args("Default");
     let ds = create_data_source(&args).unwrap().unwrap();
 
     let value = ds.retrieve_1d_array_or_string("arraySingle").unwrap();
@@ -199,11 +147,9 @@ fn postgres_retrieve_1d_array_single_value() {
 }
 
 #[test]
-#[ignore = "requires running postgres server"]
-fn postgres_retrieve_1d_array_floats() {
-    setup_test_data();
-
-    let args = build_pg_args("Default");
+#[ignore = "requires running REST server"]
+fn rest_retrieve_1d_array_floats() {
+    let args = build_rest_args("Default");
     let ds = create_data_source(&args).unwrap().unwrap();
 
     let value = ds.retrieve_1d_array_or_string("arrayFloats").unwrap();
@@ -216,11 +162,9 @@ fn postgres_retrieve_1d_array_floats() {
 }
 
 #[test]
-#[ignore = "requires running postgres server"]
-fn postgres_retrieve_1d_array_negative() {
-    setup_test_data();
-
-    let args = build_pg_args("Default");
+#[ignore = "requires running REST server"]
+fn rest_retrieve_1d_array_negative() {
+    let args = build_rest_args("Default");
     let ds = create_data_source(&args).unwrap().unwrap();
 
     let value = ds.retrieve_1d_array_or_string("arrayNegative").unwrap();
@@ -233,11 +177,9 @@ fn postgres_retrieve_1d_array_negative() {
 }
 
 #[test]
-#[ignore = "requires running postgres server"]
-fn postgres_retrieve_1d_literal_string() {
-    setup_test_data();
-
-    let args = build_pg_args("Default");
+#[ignore = "requires running REST server"]
+fn rest_retrieve_1d_literal_string() {
+    let args = build_rest_args("Default");
     let ds = create_data_source(&args).unwrap().unwrap();
 
     let value = ds.retrieve_1d_array_or_string("literalString").unwrap();
@@ -249,11 +191,9 @@ fn postgres_retrieve_1d_literal_string() {
 }
 
 #[test]
-#[ignore = "requires running postgres server"]
-fn postgres_retrieve_1d_native_json_array() {
-    setup_test_data();
-
-    let args = build_pg_args("Default");
+#[ignore = "requires running REST server"]
+fn rest_retrieve_1d_native_json_array() {
+    let args = build_rest_args("Default");
     let ds = create_data_source(&args).unwrap().unwrap();
 
     let value = ds.retrieve_1d_array_or_string("nativeArray1d").unwrap();
@@ -268,11 +208,9 @@ fn postgres_retrieve_1d_native_json_array() {
 }
 
 #[test]
-#[ignore = "requires running postgres server"]
-fn postgres_retrieve_2d_native_json_array() {
-    setup_test_data();
-
-    let args = build_pg_args("Default");
+#[ignore = "requires running REST server"]
+fn rest_retrieve_2d_native_json_array() {
+    let args = build_rest_args("Default");
     let ds = create_data_source(&args).unwrap().unwrap();
 
     let value = ds.retrieve_2d_array("nativeArray2d").unwrap();
