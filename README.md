@@ -9,6 +9,7 @@ Install with `cargo install mint-cli` or via nix flakes.
 ### Documentation
 
 - [CLI reference](doc/cli.md)
+- [Layout files](doc/layout.md) (TOML/YAML/JSON)
 - [Data sources](doc/sources.md) (Excel & Postgres)
 - [Example layouts & data](doc/examples/)
 
