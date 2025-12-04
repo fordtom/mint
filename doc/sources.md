@@ -108,6 +108,7 @@ mint layout.toml --json '{"Default":{"key1":123,"key2":"value"},"Debug":{"key1":
 ### Format
 
 The JSON data source expects an object where:
+
 - **Top-level keys** are variant names (e.g., `"Default"`, `"Debug"`, `"Production"`)
 - **Each variant's value** is an object containing name:value pairs
 
@@ -117,7 +118,10 @@ The JSON data source expects an object where:
     "DeviceName": "MyDevice",
     "FWVersionMajor": 3,
     "Coefficients1D": [1.0, 2.0, 3.0],
-    "CalibrationMatrix": [[1, 2], [3, 4]]
+    "CalibrationMatrix": [
+      [1, 2],
+      [3, 4]
+    ]
   },
   "Debug": {
     "DeviceName": "DebugDevice",
@@ -126,6 +130,8 @@ The JSON data source expects an object where:
   }
 }
 ```
+
+Note that this is basically what the REST and Postgres data sources resolve to under the hood - this option is provided if you have a more complex way of retrieving this data in a script/separate process before calling mint.
 
 ### Value Types
 
