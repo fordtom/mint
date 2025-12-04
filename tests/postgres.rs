@@ -14,6 +14,10 @@ fn setup_test_data() {
 
     let mut client = Client::connect(TEST_DB_URL, NoTls).expect("connect to test db");
 
+    // Uses names compatible with Excel data.xlsx for interchangeable testing:
+    // - "TemperatureMax" matches block3
+    // - "Value 2" matches block
+    // - "boolean" matches Excel boolean cell
     client
         .batch_execute(
             r#"
@@ -27,8 +31,8 @@ fn setup_test_data() {
 
             INSERT INTO config (variant, name, value) VALUES
                 ('Default', 'TemperatureMax', '50'),
-                ('Default', 'Value2', '2'),
-                ('Default', 'enabled', 'true'),
+                ('Default', 'Value 2', '2'),
+                ('Default', 'boolean', 'true'),
                 ('Default', 'arraySpaces', '"0 100 200 300"'),
                 ('Default', 'arrayCommas', '"1,2,3,4"'),
                 ('Default', 'arraySemicolons', '"10; 20; 30"'),
@@ -42,7 +46,7 @@ fn setup_test_data() {
                 ('Debug', 'TemperatureMax', '60'),
                 ('Debug', 'debugMode', 'true'),
                 ('VarA', 'TemperatureMax', '55'),
-                ('VarA', 'enabled', 'false');
+                ('VarA', 'boolean', 'false');
             "#,
         )
         .expect("setup test data");
@@ -79,9 +83,9 @@ fn postgres_retrieve_single_value_priority_order() {
     println!("TemperatureMax (VarA/Debug/Default): {:?}", value);
     assert!(matches!(value, DataValue::U64(55)));
 
-    // VarA has enabled=false
-    let value = ds.retrieve_single_value("enabled").unwrap();
-    println!("enabled (VarA/Debug/Default): {:?}", value);
+    // VarA has boolean=false
+    let value = ds.retrieve_single_value("boolean").unwrap();
+    println!("boolean (VarA/Debug/Default): {:?}", value);
     assert!(matches!(value, DataValue::Bool(false)));
 
     // debugMode only in Debug
@@ -89,9 +93,9 @@ fn postgres_retrieve_single_value_priority_order() {
     println!("debugMode (VarA/Debug/Default): {:?}", value);
     assert!(matches!(value, DataValue::Bool(true)));
 
-    // Value2 only in Default
-    let value = ds.retrieve_single_value("Value2").unwrap();
-    println!("Value2 (VarA/Debug/Default): {:?}", value);
+    // "Value 2" only in Default
+    let value = ds.retrieve_single_value("Value 2").unwrap();
+    println!("Value 2 (VarA/Debug/Default): {:?}", value);
     assert!(matches!(value, DataValue::U64(2)));
 }
 
@@ -110,9 +114,9 @@ fn postgres_retrieve_single_value_fallback() {
     println!("TemperatureMax (Debug/Default): {:?}", value);
     assert!(matches!(value, DataValue::U64(60)));
 
-    // enabled not in Debug, falls back to Default's true
-    let value = ds.retrieve_single_value("enabled").unwrap();
-    println!("enabled (Debug/Default): {:?}", value);
+    // boolean not in Debug, falls back to Default's true
+    let value = ds.retrieve_single_value("boolean").unwrap();
+    println!("boolean (Debug/Default): {:?}", value);
     assert!(matches!(value, DataValue::Bool(true)));
 }
 

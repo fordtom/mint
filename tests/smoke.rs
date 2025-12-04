@@ -8,9 +8,9 @@ fn smoke_build_examples_all_formats_and_options() {
     common::ensure_out_dir();
 
     let layouts = [
-        "examples/block.toml",
-        "examples/block.yaml",
-        "examples/block.json",
+        "tests/data/blocks.toml",
+        "tests/data/blocks.yaml",
+        "tests/data/blocks.json",
     ];
     let blocks = ["block", "block2", "block3"];
 

@@ -41,7 +41,7 @@ ok.int_exact_to_f32   = { value = 16777216, type = "f32" }
     let block = cfg.blocks.get("block").expect("block present");
 
     let var_args = mint_cli::variant::args::VariantArgs {
-        xlsx: Some("examples/data.xlsx".to_string()),
+        xlsx: Some("tests/data/data.xlsx".to_string()),
         variant: Some("Default".to_string()),
         ..Default::default()
     };
@@ -90,7 +90,7 @@ bad.frac_to_u8 = { value = 1.5, type = "u8" }
     let block = cfg.blocks.get("block").expect("block present");
 
     let var_args = mint_cli::variant::args::VariantArgs {
-        xlsx: Some("examples/data.xlsx".to_string()),
+        xlsx: Some("tests/data/data.xlsx".to_string()),
         variant: Some("Default".to_string()),
         ..Default::default()
     };
@@ -140,7 +140,7 @@ bad.large_int_to_f64 = { value = 9007199254740993, type = "f64" }
     let block = cfg.blocks.get("block").expect("block present");
 
     let var_args = mint_cli::variant::args::VariantArgs {
-        xlsx: Some("examples/data.xlsx".to_string()),
+        xlsx: Some("tests/data/data.xlsx".to_string()),
         variant: Some("Default".to_string()),
         ..Default::default()
     };

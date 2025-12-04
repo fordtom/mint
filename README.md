@@ -83,5 +83,3 @@ Config format (JSON file or inline string):
 ```
 
 The query is executed once per variant (passed as `$1`) and must return a single row with column 0 containing a JSON object mapping names to values. Native JSON arrays are supported for 1D/2D arrays; space/comma/semicolon-delimited strings are also parsed as numeric arrays.
-
-See [`examples/block_postgres.toml`](examples/block_postgres.toml) for an example layout.

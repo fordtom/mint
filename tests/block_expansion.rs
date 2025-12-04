@@ -8,9 +8,9 @@ mod common;
 fn test_file_expands_all_blocks() {
     common::ensure_out_dir();
 
-    let layout_path = "examples/block_no_excel.toml";
+    let layout_path = "tests/data/blocks.toml";
 
-    let Some(_ds) = common::find_working_datasource() else {
+    let Some(ds) = common::find_working_datasource() else {
         return;
     };
 
@@ -35,7 +35,7 @@ fn test_file_expands_all_blocks() {
         },
     };
 
-    let stats = commands::build(&args, None).expect("build should succeed");
+    let stats = commands::build(&args, Some(ds.as_ref())).expect("build should succeed");
 
     let cfg = mint_cli::layout::load_layout(layout_path).expect("layout loads");
     assert_eq!(
@@ -58,7 +58,11 @@ fn test_file_expands_all_blocks() {
 fn test_deduplication_file_and_specific() {
     common::ensure_out_dir();
 
-    let layout_path = "examples/block_no_excel.toml";
+    let layout_path = "tests/data/blocks.toml";
+
+    let Some(ds) = common::find_working_datasource() else {
+        return;
+    };
 
     let args = mint_cli::args::Args {
         layout: mint_cli::layout::args::LayoutArgs {
@@ -67,8 +71,9 @@ fn test_deduplication_file_and_specific() {
                     name: String::new(),
                     file: layout_path.to_string(),
                 },
+                // Request specific block that exists in the combined file
                 BlockNames {
-                    name: "simple_block".to_string(),
+                    name: "block".to_string(),
                     file: layout_path.to_string(),
                 },
             ],
@@ -87,7 +92,7 @@ fn test_deduplication_file_and_specific() {
         },
     };
 
-    let stats = commands::build(&args, None).expect("build should succeed");
+    let stats = commands::build(&args, Some(ds.as_ref())).expect("build should succeed");
 
     let cfg = mint_cli::layout::load_layout(layout_path).expect("layout loads");
     assert_eq!(
@@ -101,7 +106,11 @@ fn test_deduplication_file_and_specific() {
 fn test_file_expansion_with_combined() {
     common::ensure_out_dir();
 
-    let layout_path = "examples/block_no_excel.toml";
+    let layout_path = "tests/data/blocks.toml";
+
+    let Some(ds) = common::find_working_datasource() else {
+        return;
+    };
 
     let args = mint_cli::args::Args {
         layout: mint_cli::layout::args::LayoutArgs {
@@ -124,7 +133,7 @@ fn test_file_expansion_with_combined() {
         },
     };
 
-    let stats = commands::build(&args, None).expect("build should succeed");
+    let stats = commands::build(&args, Some(ds.as_ref())).expect("build should succeed");
 
     let cfg = mint_cli::layout::load_layout(layout_path).expect("layout loads");
     assert_eq!(

@@ -125,7 +125,7 @@ matrix = { name = "CalibrationMatrix", type = "i16", SIZE = [5, 3] }
     let block = cfg.blocks.get("block").expect("block present");
 
     let var_args = mint_cli::variant::args::VariantArgs {
-        xlsx: Some("examples/data.xlsx".to_string()),
+        xlsx: Some("tests/data/data.xlsx".to_string()),
         variant: Some("Default".to_string()),
         ..Default::default()
     };
