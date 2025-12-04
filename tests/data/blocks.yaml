@@ -1,3 +1,4 @@
+# YAML format test layout - contains block for format parsing verification
 settings:
   endianness: "little"
   virtual_offset: 0x0
@@ -60,7 +61,6 @@ block:
       type: "u8"
       size: 4
 
-    # Use 'size' (lowercase) to allow padding if Excel data is shorter than specified
     calibration.coefficients:
       name: "Coefficients1D"
       type: "f32"
@@ -69,11 +69,6 @@ block:
       name: "CalibrationMatrix"
       type: "i16"
       size: [3, 3]
-    # Use 'SIZE' (uppercase) to enforce exact length - error if Excel data is shorter
-    # calibration.strict_coefficients:
-    #   name: "SomeArray"
-    #   type: "f32"
-    #   SIZE: 8
 
     message:
       value: "Hello, world!"

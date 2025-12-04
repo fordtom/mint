@@ -66,12 +66,7 @@
                 "size": 64
             },
             "net.ip": {
-                "value": [
-                    192,
-                    168,
-                    1,
-                    100
-                ],
+                "value": [192, 168, 1, 100],
                 "type": "u8",
                 "size": 4
             },
@@ -83,10 +78,7 @@
             "calibration.matrix": {
                 "name": "CalibrationMatrix",
                 "type": "i16",
-                "size": [
-                    3,
-                    3
-                ]
+                "size": [3, 3]
             },
             "message": {
                 "value": "Hello, world!",
@@ -102,22 +94,14 @@
                 "type": "u16"
             },
             "nested.complex.level1.level2.level3.array1d": {
-                "value": [
-                    1,
-                    2,
-                    3,
-                    4
-                ],
+                "value": [1, 2, 3, 4],
                 "type": "i16",
                 "size": 4
             },
             "structs.astruct_array": {
                 "name": "AStructs",
                 "type": "f32",
-                "size": [
-                    10,
-                    2
-                ]
+                "size": [10, 2]
             }
         }
     },
@@ -131,16 +115,10 @@
             "another.struct.value": {
                 "name": "Array",
                 "type": "u16",
-                "size": [
-                    10,
-                    2
-                ]
+                "size": [10, 2]
             },
             "another.struct.arr": {
-                "value": [
-                    2,
-                    2
-                ],
+                "value": [2, 2],
                 "type": "u16",
                 "size": 2
             },

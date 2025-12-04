@@ -10,7 +10,7 @@ mod common;
 fn test_block_stat_collection() {
     common::ensure_out_dir();
 
-    let layout_path = "examples/block.toml";
+    let layout_path = "tests/data/blocks.toml";
 
     let Some(ds) = common::find_working_datasource() else {
         return;
@@ -36,7 +36,7 @@ fn test_block_stat_collection() {
 fn test_build_stats_aggregation() {
     common::ensure_out_dir();
 
-    let layout_path = "examples/block.toml";
+    let layout_path = "tests/data/blocks.toml";
 
     let Some(ds) = common::find_working_datasource() else {
         return;
@@ -115,7 +115,7 @@ fn test_space_efficiency_calculation() {
 fn test_combined_mode_stats() {
     common::ensure_out_dir();
 
-    let layout_path = "examples/block.toml";
+    let layout_path = "tests/data/blocks.toml";
 
     let Some(ds) = common::find_working_datasource() else {
         return;

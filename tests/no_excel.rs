@@ -8,13 +8,13 @@ mod common;
 fn test_build_without_excel() {
     common::ensure_out_dir();
 
-    let layout_path = "examples/block_no_excel.toml";
+    let layout_path = "tests/data/blocks.toml";
 
-    // Build args without Excel file, using FILE syntax (empty name = all blocks)
+    // Build simple_block which has all inline values (no Excel dependency)
     let args = mint_cli::args::Args {
         layout: mint_cli::layout::args::LayoutArgs {
             blocks: vec![mint_cli::layout::args::BlockNames {
-                name: String::new(),
+                name: "simple_block".to_string(),
                 file: layout_path.to_string(),
             }],
             strict: false,
@@ -52,8 +52,8 @@ fn test_build_without_excel() {
 fn test_error_when_name_without_excel() {
     common::ensure_out_dir();
 
-    // Use a layout that references names from Excel
-    let layout_path = "examples/block.toml";
+    // Use a block that references names from Excel
+    let layout_path = "tests/data/blocks.toml";
 
     let input = mint_cli::layout::args::BlockNames {
         name: "block".to_string(),

@@ -1,23 +1,24 @@
 ## Project Overview
 
-mint is an embedded development tool that works with layout files (toml/yaml/json) and excel sheets to assemble, export, sign (and more) static binary files for flashing to microcontrollers.
+mint is an embedded development tool that works with layout files (toml/yaml/json) and data sources (Excel, Postgres, or REST) to assemble, export, sign (and more) static binary files for flashing to microcontrollers.
 
 ## Architecture & Codebase
 
 ### Core Concepts
 
 - **Layouts**: TOML/YAML/JSON files defining memory blocks (`src/layout`).
-- **DataSheet**: Excel workbook (`.xlsx`) serving as the data source (`src/variant`).
-  - Uses `Name` column for lookups.
-  - Supports variants via columns (e.g., `Debug`, `VarA`).
-  - Arrays are referenced by sheet name (prefixed with `#`).
+- **DataSource**: Provides variant values by name (`src/variant`).
+  - **Excel** (`.xlsx`): Uses `Name` column for lookups; arrays referenced by sheet name (prefixed with `#`).
+  - **Postgres**: JSON config with `url` and `query_template`; query returns JSON object per variant.
+  - **REST**: JSON config with `url` (using `$1` placeholder) and optional `headers`; response must be JSON object per variant.
+  - Supports variant priority ordering (e.g., `-v Debug/Default`).
 - **Output**: Generates binary files, handling block overlaps and CRC calculations (`src/output`).
 
 ### Build Flow
 
 1. **Parse Args**: `clap` defines arguments in `src/args.rs`.
 2. **Resolve Blocks**: Parallel loading of layout files (`rayon`).
-3. **Build Bytestreams**: Each block is built by combining layout config with Excel data.
+3. **Build Bytestreams**: Each block is built by combining layout config with data from the selected source.
 4. **Output**: Binary files are generated (either per-block or combined).
 
 ### Key Directories
