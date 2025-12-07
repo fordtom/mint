@@ -3,15 +3,15 @@
 //! Requires a running REST server. Skip with: cargo test --test rest -- --ignored
 //! Or run specifically: cargo test --test rest -- --include-ignored
 //!
-//! Expected server: serves tests/data.json at http://localhost:3000/item?variant=<name>
+//! Expected server: serves tests/data.json at http://localhost:3000/item?version=<name>
 
 use mint_cli::layout::value::{DataValue, ValueSource};
-use mint_cli::variant::args::VariantArgs;
-use mint_cli::variant::create_data_source;
+use mint_cli::version::args::VersionArgs;
+use mint_cli::version::create_data_source;
 
-const TEST_SERVER_URL: &str = "http://localhost:3000/item?variant=$1";
+const TEST_SERVER_URL: &str = "http://localhost:3000/item?version=$1";
 
-fn build_rest_args(variant: &str) -> VariantArgs {
+fn build_rest_args(version: &str) -> VersionArgs {
     let config = format!(
         r#"{{
             "url": "{}"
@@ -19,9 +19,9 @@ fn build_rest_args(variant: &str) -> VariantArgs {
         TEST_SERVER_URL
     );
 
-    VariantArgs {
+    VersionArgs {
         rest: Some(config),
-        variant: Some(variant.to_string()),
+        version: Some(version.to_string()),
         ..Default::default()
     }
 }

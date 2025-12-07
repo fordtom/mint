@@ -1,11 +1,11 @@
 use mint_cli::layout::value::DataValue;
-use mint_cli::variant::args::VariantArgs;
-use mint_cli::variant::create_data_source;
+use mint_cli::version::args::VersionArgs;
+use mint_cli::version::create_data_source;
 
-fn build_args(variant: &str) -> VariantArgs {
-    VariantArgs {
+fn build_args(version: &str) -> VersionArgs {
+    VersionArgs {
         xlsx: Some("tests/data/data.xlsx".to_string()),
-        variant: Some(variant.to_string()),
+        version: Some(version.to_string()),
         ..Default::default()
     }
 }
@@ -21,7 +21,7 @@ fn value_as_i64(value: DataValue) -> i64 {
 }
 
 #[test]
-fn stacked_variants_respect_order() {
+fn stacked_versions_respect_order() {
     let args = build_args("VarA/Debug/Default");
     let ds = create_data_source(&args)
         .expect("datasource load")
@@ -35,7 +35,7 @@ fn stacked_variants_respect_order() {
 }
 
 #[test]
-fn stacked_variants_fall_back_when_empty() {
+fn stacked_versions_fall_back_when_empty() {
     let args = build_args(" VarA / Debug / Default ");
     let ds = create_data_source(&args)
         .expect("datasource load")

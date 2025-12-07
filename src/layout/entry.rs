@@ -2,7 +2,7 @@ use super::block::BuildConfig;
 use super::conversions::clamp_bitfield_value;
 use super::errors::LayoutError;
 use super::value::{DataValue, ValueSource};
-use crate::variant::DataSource;
+use crate::version::DataSource;
 use serde::Deserialize;
 
 /// Leaf entry representing an item to add to the flash block.

@@ -2,7 +2,7 @@ use super::entry::LeafEntry;
 use super::errors::LayoutError;
 use super::header::{CrcLocation, Header};
 use super::settings::{Endianness, Settings};
-use crate::variant::DataSource;
+use crate::version::DataSource;
 
 use indexmap::IndexMap;
 use serde::Deserialize;

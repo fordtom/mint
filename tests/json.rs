@@ -1,13 +1,13 @@
 //! Integration tests for JsonDataSource.
 
 use mint_cli::layout::value::{DataValue, ValueSource};
-use mint_cli::variant::args::VariantArgs;
-use mint_cli::variant::create_data_source;
+use mint_cli::version::args::VersionArgs;
+use mint_cli::version::create_data_source;
 
-fn build_json_args(variant: &str, json_data: &str) -> VariantArgs {
-    VariantArgs {
+fn build_json_args(version: &str, json_data: &str) -> VersionArgs {
+    VersionArgs {
         json: Some(json_data.to_string()),
-        variant: Some(variant.to_string()),
+        version: Some(version.to_string()),
         ..Default::default()
     }
 }
@@ -103,7 +103,7 @@ fn json_retrieve_missing_key_errors() {
 }
 
 #[test]
-fn json_retrieve_missing_variant_errors() {
+fn json_retrieve_missing_version_errors() {
     let json_data = r#"{
         "Default": {
             "TemperatureMax": 50
@@ -114,7 +114,7 @@ fn json_retrieve_missing_variant_errors() {
     let result = create_data_source(&args);
     assert!(result.is_err());
     if let Err(e) = result {
-        println!("Missing variant error: {:?}", e);
+        println!("Missing version error: {:?}", e);
     }
 }
 
@@ -313,9 +313,9 @@ fn json_from_file() {
     let test_file = Path::new("/tmp/mint_test_json.json");
     fs::write(test_file, json_data).expect("write test file");
 
-    let args = VariantArgs {
+    let args = VersionArgs {
         json: Some(test_file.to_str().unwrap().to_string()),
-        variant: Some("Default".to_string()),
+        version: Some("Default".to_string()),
         ..Default::default()
     };
 
