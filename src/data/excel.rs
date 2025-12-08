@@ -7,7 +7,7 @@ use super::helpers;
 use super::DataSource;
 use crate::layout::value::{DataValue, ValueSource};
 
-/// Excel-backed data source for version values.
+/// Excel-backed data source for versions.
 pub struct ExcelDataSource {
     names: Vec<String>,
     version_columns: Vec<Vec<Data>>,
