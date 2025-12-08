@@ -4,13 +4,13 @@ use mint_cli::args::Args;
 use mint_cli::commands;
 use mint_cli::error::*;
 use mint_cli::layout;
-use mint_cli::version;
+use mint_cli::data;
 use mint_cli::visuals;
 
 fn main() -> Result<(), NvmError> {
     let args = Args::parse();
 
-    let data_source = version::create_data_source(&args.version)?;
+    let data_source = data::create_data_source(&args.data)?;
 
     // Check if blocks are provided
     args.layout

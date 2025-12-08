@@ -1,7 +1,7 @@
 use clap::Args;
 
 #[derive(Args, Debug, Clone, Default)]
-pub struct VersionArgs {
+pub struct DataArgs {
     #[arg(
         long,
         value_name = "FILE",
@@ -59,7 +59,7 @@ pub struct VersionArgs {
     pub variant: Option<String>,
 }
 
-impl VersionArgs {
+impl DataArgs {
     /// Parses the version stack from the raw slash-separated string.
     /// Handles fallback from deprecated --variant flag.
     pub fn get_version_list(&self) -> Vec<String> {

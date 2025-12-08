@@ -1,9 +1,9 @@
 use mint_cli::layout::value::DataValue;
-use mint_cli::version::args::VersionArgs;
-use mint_cli::version::create_data_source;
+use mint_cli::data::args::DataArgs;
+use mint_cli::data::create_data_source;
 
-fn build_args(version: &str) -> VersionArgs {
-    VersionArgs {
+fn build_args(version: &str) -> DataArgs {
+    DataArgs {
         xlsx: Some("tests/data/data.xlsx".to_string()),
         version: Some(version.to_string()),
         ..Default::default()

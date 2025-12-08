@@ -6,7 +6,7 @@ use std::path::Path;
 use mint_cli::args::Args;
 use mint_cli::layout::args::{BlockNames, LayoutArgs};
 use mint_cli::output::args::{OutputArgs, OutputFormat};
-use mint_cli::version::{self, DataSource};
+use mint_cli::data::{self, DataSource};
 
 pub fn ensure_out_dir() {
     fs::create_dir_all("out").unwrap();
@@ -28,7 +28,7 @@ pub fn build_args(layout_path: &str, block_name: &str, format: OutputFormat) -> 
             }],
             strict: false,
         },
-        version: version::args::VersionArgs {
+        data: data::args::DataArgs {
             xlsx: Some("tests/data/data.xlsx".to_string()),
             version: Some("Default".to_string()),
             ..Default::default()
@@ -50,12 +50,12 @@ pub fn find_working_datasource() -> Option<Box<dyn DataSource>> {
     let version_candidates: [&str; 2] = ["Default", "VarA/Default"];
 
     for ver in &version_candidates {
-        let ver_args = version::args::VersionArgs {
+        let ver_args = data::args::DataArgs {
             xlsx: Some("tests/data/data.xlsx".to_string()),
             version: Some(ver.to_string()),
             ..Default::default()
         };
-        if let Ok(Some(ds)) = version::create_data_source(&ver_args) {
+        if let Ok(Some(ds)) = data::create_data_source(&ver_args) {
             return Some(ds);
         }
     }
@@ -91,7 +91,7 @@ pub fn build_args_for_layouts(layouts: Vec<BlockNames>, format: OutputFormat) ->
             blocks: layouts,
             strict: false,
         },
-        version: version::args::VersionArgs {
+        data: data::args::DataArgs {
             xlsx: Some("tests/data/data.xlsx".to_string()),
             version: Some("Default".to_string()),
             ..Default::default()

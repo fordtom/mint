@@ -3,15 +3,15 @@ use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
 
-use super::args::VersionArgs;
-use super::errors::VersionError;
+use super::args::DataArgs;
+use super::errors::DataError;
 use super::DataSource;
 use crate::layout::value::{DataValue, ValueSource};
 
-fn load_json_string_or_file(input: &str) -> Result<String, VersionError> {
+fn load_json_string_or_file(input: &str) -> Result<String, DataError> {
     if input.ends_with(".json") {
         std::fs::read_to_string(input)
-            .map_err(|_| VersionError::FileError(format!("failed to open file: {}", input)))
+            .map_err(|_| DataError::FileError(format!("failed to open file: {}", input)))
     } else {
         Ok(input.to_string())
     }
@@ -42,18 +42,18 @@ impl JsonDataSource {
     }
 
     /// Creates a JSON data source from Postgres queries.
-    pub(crate) fn from_postgres(args: &VersionArgs) -> Result<Self, VersionError> {
+    pub(crate) fn from_postgres(args: &DataArgs) -> Result<Self, DataError> {
         let pg_config_str = args
             .postgres
             .as_ref()
-            .ok_or_else(|| VersionError::MiscError("missing postgres config".to_string()))?;
+            .ok_or_else(|| DataError::MiscError("missing postgres config".to_string()))?;
 
         let json_str = load_json_string_or_file(pg_config_str)?;
         let config: PostgresConfig = serde_json::from_str(&json_str)
-            .map_err(|e| VersionError::FileError(format!("failed to parse JSON: {}", e)))?;
+            .map_err(|e| DataError::FileError(format!("failed to parse JSON: {}", e)))?;
 
         let mut client = Client::connect(&config.url, NoTls).map_err(|e| {
-            VersionError::MiscError(format!("failed to connect to Postgres: {}", e))
+            DataError::MiscError(format!("failed to connect to Postgres: {}", e))
         })?;
 
         let versions = args.get_version_list();
@@ -63,21 +63,21 @@ impl JsonDataSource {
             let row = client
                 .query_one(&config.query_template, &[version])
                 .map_err(|e| {
-                    VersionError::RetrievalError(format!(
+                    DataError::RetrievalError(format!(
                         "query failed for version '{}': {}",
                         version, e
                     ))
                 })?;
 
             let json_str: String = row.try_get(0).map_err(|e| {
-                VersionError::RetrievalError(format!(
+                DataError::RetrievalError(format!(
                     "failed to get JSON column for version '{}': {}",
                     version, e
                 ))
             })?;
 
             let map: HashMap<String, Value> = serde_json::from_str(&json_str).map_err(|e| {
-                VersionError::RetrievalError(format!(
+                DataError::RetrievalError(format!(
                     "failed to parse JSON for version '{}': {}",
                     version, e
                 ))
@@ -90,15 +90,15 @@ impl JsonDataSource {
     }
 
     /// Creates a JSON data source from REST API calls.
-    pub(crate) fn from_rest(args: &VersionArgs) -> Result<Self, VersionError> {
+    pub(crate) fn from_rest(args: &DataArgs) -> Result<Self, DataError> {
         let rest_config_str = args
             .rest
             .as_ref()
-            .ok_or_else(|| VersionError::MiscError("missing rest config".to_string()))?;
+            .ok_or_else(|| DataError::MiscError("missing rest config".to_string()))?;
 
         let json_str = load_json_string_or_file(rest_config_str)?;
         let config: RestConfig = serde_json::from_str(&json_str)
-            .map_err(|e| VersionError::FileError(format!("failed to parse JSON: {}", e)))?;
+            .map_err(|e| DataError::FileError(format!("failed to parse JSON: {}", e)))?;
 
         let versions = args.get_version_list();
         let mut version_columns = Vec::with_capacity(versions.len());
@@ -114,21 +114,21 @@ impl JsonDataSource {
             }
 
             let response = request.call().map_err(|e| {
-                VersionError::RetrievalError(format!(
+                DataError::RetrievalError(format!(
                     "REST request failed for version '{}': {}",
                     version, e
                 ))
             })?;
 
             let json_str = response.into_body().read_to_string().map_err(|e| {
-                VersionError::RetrievalError(format!(
+                DataError::RetrievalError(format!(
                     "failed to read response body for version '{}': {}",
                     version, e
                 ))
             })?;
 
             let map: HashMap<String, Value> = serde_json::from_str(&json_str).map_err(|e| {
-                VersionError::RetrievalError(format!(
+                DataError::RetrievalError(format!(
                     "failed to parse JSON for version '{}': {}",
                     version, e
                 ))
@@ -142,15 +142,15 @@ impl JsonDataSource {
 
     /// Creates a JSON data source from a JSON object.
     /// Expected format: `{ "VersionName": { "key1": value1, "key2": value2, ... }, ... }`
-    pub(crate) fn from_json(args: &VersionArgs) -> Result<Self, VersionError> {
+    pub(crate) fn from_json(args: &DataArgs) -> Result<Self, DataError> {
         let json_str = args
             .json
             .as_ref()
-            .ok_or_else(|| VersionError::MiscError("missing json config".to_string()))?;
+            .ok_or_else(|| DataError::MiscError("missing json config".to_string()))?;
 
         let json_content = load_json_string_or_file(json_str)?;
         let data: HashMap<String, HashMap<String, Value>> = serde_json::from_str(&json_content)
-            .map_err(|e| VersionError::FileError(format!("failed to parse JSON: {}", e)))?;
+            .map_err(|e| DataError::FileError(format!("failed to parse JSON: {}", e)))?;
 
         let versions = args.get_version_list();
         let mut version_columns = Vec::with_capacity(versions.len());
@@ -159,7 +159,7 @@ impl JsonDataSource {
             let map = data
                 .get(version)
                 .ok_or_else(|| {
-                    VersionError::RetrievalError(format!(
+                    DataError::RetrievalError(format!(
                         "version '{}' not found in JSON data",
                         version
                     ))
@@ -177,7 +177,7 @@ impl JsonDataSource {
             .find_map(|map| map.get(name).filter(|v| !v.is_null()))
     }
 
-    fn value_to_data_value(value: &Value) -> Result<DataValue, VersionError> {
+    fn value_to_data_value(value: &Value) -> Result<DataValue, DataError> {
         match value {
             Value::Bool(b) => Ok(DataValue::Bool(*b)),
             Value::Number(n) => {
@@ -188,13 +188,13 @@ impl JsonDataSource {
                 } else if let Some(f) = n.as_f64() {
                     Ok(DataValue::F64(f))
                 } else {
-                    Err(VersionError::RetrievalError(
+                    Err(DataError::RetrievalError(
                         "unsupported numeric type".to_string(),
                     ))
                 }
             }
             Value::String(s) => Ok(DataValue::Str(s.clone())),
-            _ => Err(VersionError::RetrievalError(
+            _ => Err(DataError::RetrievalError(
                 "expected scalar value".to_string(),
             )),
         }
@@ -216,31 +216,31 @@ impl JsonDataSource {
 }
 
 impl DataSource for JsonDataSource {
-    fn retrieve_single_value(&self, name: &str) -> Result<DataValue, VersionError> {
+    fn retrieve_single_value(&self, name: &str) -> Result<DataValue, DataError> {
         let result = (|| {
             let value = self.lookup(name).ok_or_else(|| {
-                VersionError::RetrievalError("key not found in any version".into())
+                DataError::RetrievalError("key not found in any version".into())
             })?;
 
             let dv = Self::value_to_data_value(value)?;
             match dv {
-                DataValue::Str(_) => Err(VersionError::RetrievalError(
+                DataValue::Str(_) => Err(DataError::RetrievalError(
                     "Found non-numeric single value".to_string(),
                 )),
                 _ => Ok(dv),
             }
         })();
 
-        result.map_err(|e| VersionError::WhileRetrieving {
+        result.map_err(|e| DataError::WhileRetrieving {
             name: name.to_string(),
             source: Box::new(e),
         })
     }
 
-    fn retrieve_1d_array_or_string(&self, name: &str) -> Result<ValueSource, VersionError> {
+    fn retrieve_1d_array_or_string(&self, name: &str) -> Result<ValueSource, DataError> {
         let result = (|| {
             let value = self.lookup(name).ok_or_else(|| {
-                VersionError::RetrievalError("key not found in any version".into())
+                DataError::RetrievalError("key not found in any version".into())
             })?;
 
             match value {
@@ -253,26 +253,26 @@ impl DataSource for JsonDataSource {
                     Some(arr) if !arr.is_empty() => Ok(ValueSource::Array(arr)),
                     _ => Ok(ValueSource::Single(DataValue::Str(s.clone()))),
                 },
-                _ => Err(VersionError::RetrievalError(
+                _ => Err(DataError::RetrievalError(
                     "expected array or string for 1D array".to_string(),
                 )),
             }
         })();
 
-        result.map_err(|e| VersionError::WhileRetrieving {
+        result.map_err(|e| DataError::WhileRetrieving {
             name: name.to_string(),
             source: Box::new(e),
         })
     }
 
-    fn retrieve_2d_array(&self, name: &str) -> Result<Vec<Vec<DataValue>>, VersionError> {
+    fn retrieve_2d_array(&self, name: &str) -> Result<Vec<Vec<DataValue>>, DataError> {
         let result = (|| {
             let value = self.lookup(name).ok_or_else(|| {
-                VersionError::RetrievalError("key not found in any version".into())
+                DataError::RetrievalError("key not found in any version".into())
             })?;
 
             let Value::Array(outer) = value else {
-                return Err(VersionError::RetrievalError(
+                return Err(DataError::RetrievalError(
                     "expected 2D array (array of arrays)".to_string(),
                 ));
             };
@@ -281,7 +281,7 @@ impl DataSource for JsonDataSource {
                 .iter()
                 .map(|row_val| {
                     let Value::Array(inner) = row_val else {
-                        return Err(VersionError::RetrievalError(
+                        return Err(DataError::RetrievalError(
                             "expected array for 2D array row".to_string(),
                         ));
                     };
@@ -290,7 +290,7 @@ impl DataSource for JsonDataSource {
                 .collect()
         })();
 
-        result.map_err(|e| VersionError::WhileRetrieving {
+        result.map_err(|e| DataError::WhileRetrieving {
             name: name.to_string(),
             source: Box::new(e),
         })

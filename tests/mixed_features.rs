@@ -77,12 +77,12 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
     let le_path = common::write_layout_file("mixed_le", layout_le_no_swap_end);
 
     // Prepare a datasheet (may be no-op for these, but keep realistic flow)
-    let ver_args = mint_cli::version::args::VersionArgs {
+    let ver_args = mint_cli::data::args::DataArgs {
         xlsx: Some("tests/data/data.xlsx".to_string()),
         version: Some("Default".to_string()),
         ..Default::default()
     };
-    let ds = mint_cli::version::create_data_source(&ver_args).expect("datasource loads");
+    let ds = mint_cli::data::create_data_source(&ver_args).expect("datasource loads");
 
     // Case 1: Big endian, swap, pad to end, CRC at explicit address, HEX with width 64
     let args_be_hex = mint_cli::args::Args {
@@ -93,7 +93,7 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
             }],
             strict: false,
         },
-        version: ver_args.clone(),
+        data: ver_args.clone(),
         output: OutputArgs {
             out: "out".to_string(),
             prefix: "MIX".to_string(),
@@ -117,7 +117,7 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
             }],
             strict: false,
         },
-        version: ver_args.clone(),
+        data: ver_args.clone(),
         output: OutputArgs {
             out: "out".to_string(),
             prefix: "MIX".to_string(),
@@ -141,7 +141,7 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
             }],
             strict: true, // exercise strict path on numeric arrays
         },
-        version: ver_args.clone(),
+        data: ver_args.clone(),
         output: OutputArgs {
             out: "out".to_string(),
             prefix: "MIX".to_string(),
@@ -165,7 +165,7 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
             }],
             strict: true,
         },
-        version: ver_args,
+        data: ver_args,
         output: OutputArgs {
             out: "out".to_string(),
             prefix: "MIX".to_string(),

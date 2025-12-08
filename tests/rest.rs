@@ -6,12 +6,12 @@
 //! Expected server: serves tests/data.json at http://localhost:3000/item?version=<name>
 
 use mint_cli::layout::value::{DataValue, ValueSource};
-use mint_cli::version::args::VersionArgs;
-use mint_cli::version::create_data_source;
+use mint_cli::data::args::DataArgs;
+use mint_cli::data::create_data_source;
 
 const TEST_SERVER_URL: &str = "http://localhost:3000/item?version=$1";
 
-fn build_rest_args(version: &str) -> VersionArgs {
+fn build_rest_args(version: &str) -> DataArgs {
     let config = format!(
         r#"{{
             "url": "{}"
@@ -19,7 +19,7 @@ fn build_rest_args(version: &str) -> VersionArgs {
         TEST_SERVER_URL
     );
 
-    VersionArgs {
+    DataArgs {
         rest: Some(config),
         version: Some(version.to_string()),
         ..Default::default()

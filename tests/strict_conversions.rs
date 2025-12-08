@@ -40,12 +40,12 @@ ok.int_exact_to_f32   = { value = 16777216, type = "f32" }
     let cfg = mint_cli::layout::load_layout(path.to_str().unwrap()).expect("parse ok layout");
     let block = cfg.blocks.get("block").expect("block present");
 
-    let ver_args = mint_cli::version::args::VersionArgs {
+    let ver_args = mint_cli::data::args::DataArgs {
         xlsx: Some("tests/data/data.xlsx".to_string()),
         version: Some("Default".to_string()),
         ..Default::default()
     };
-    let ds = mint_cli::version::create_data_source(&ver_args).expect("datasource loads");
+    let ds = mint_cli::data::create_data_source(&ver_args).expect("datasource loads");
 
     let (bytes, _padding) = block
         .build_bytestream(ds.as_deref(), &cfg.settings, true)
@@ -89,12 +89,12 @@ bad.frac_to_u8 = { value = 1.5, type = "u8" }
     let cfg = mint_cli::layout::load_layout(path.to_str().unwrap()).expect("parse bad layout");
     let block = cfg.blocks.get("block").expect("block present");
 
-    let ver_args = mint_cli::version::args::VersionArgs {
+    let ver_args = mint_cli::data::args::DataArgs {
         xlsx: Some("tests/data/data.xlsx".to_string()),
         version: Some("Default".to_string()),
         ..Default::default()
     };
-    let ds = mint_cli::version::create_data_source(&ver_args).expect("datasource loads");
+    let ds = mint_cli::data::create_data_source(&ver_args).expect("datasource loads");
 
     let res = block.build_bytestream(ds.as_deref(), &cfg.settings, true);
     assert!(
@@ -139,12 +139,12 @@ bad.large_int_to_f64 = { value = 9007199254740993, type = "f64" }
     let cfg = mint_cli::layout::load_layout(path.to_str().unwrap()).expect("parse bad layout");
     let block = cfg.blocks.get("block").expect("block present");
 
-    let ver_args = mint_cli::version::args::VersionArgs {
+    let ver_args = mint_cli::data::args::DataArgs {
         xlsx: Some("tests/data/data.xlsx".to_string()),
         version: Some("Default".to_string()),
         ..Default::default()
     };
-    let ds = mint_cli::version::create_data_source(&ver_args).expect("datasource loads");
+    let ds = mint_cli::data::create_data_source(&ver_args).expect("datasource loads");
 
     let res = block.build_bytestream(ds.as_deref(), &cfg.settings, true);
     assert!(

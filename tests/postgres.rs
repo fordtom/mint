@@ -4,8 +4,8 @@
 //! Or run specifically: cargo test --test postgres -- --include-ignored
 
 use mint_cli::layout::value::{DataValue, ValueSource};
-use mint_cli::version::args::VersionArgs;
-use mint_cli::version::create_data_source;
+use mint_cli::data::args::DataArgs;
+use mint_cli::data::create_data_source;
 
 const TEST_DB_URL: &str = "postgres://localhost/mint_test";
 
@@ -52,7 +52,7 @@ fn setup_test_data() {
         .expect("setup test data");
 }
 
-fn build_pg_args(variant: &str) -> VariantArgs {
+fn build_pg_args(version: &str) -> DataArgs {
     let config = format!(
         r#"{{
             "url": "{}",
@@ -61,9 +61,9 @@ fn build_pg_args(variant: &str) -> VariantArgs {
         TEST_DB_URL
     );
 
-    VariantArgs {
+    DataArgs {
         postgres: Some(config),
-        variant: Some(variant.to_string()),
+        version: Some(version.to_string()),
         ..Default::default()
     }
 }

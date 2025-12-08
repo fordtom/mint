@@ -1,5 +1,5 @@
 use mint_cli::commands;
-use mint_cli::version::create_data_source;
+use mint_cli::data::create_data_source;
 
 #[path = "common/mod.rs"]
 mod common;
@@ -98,7 +98,7 @@ fn test_error_when_name_without_excel() {
 #[test]
 fn test_factory_returns_none_without_datasource() {
     // Test that create_data_source returns None when no datasource is provided
-    let args_no_datasource = mint_cli::version::args::VersionArgs::default();
+    let args_no_datasource = mint_cli::data::args::DataArgs::default();
 
     let result = create_data_source(&args_no_datasource).expect("should return Ok(None)");
     assert!(
@@ -107,7 +107,7 @@ fn test_factory_returns_none_without_datasource() {
     );
 
     // Test with deprecated variant flag but no datasource (should produce warning)
-    let args_variant_no_datasource = mint_cli::version::args::VersionArgs {
+    let args_variant_no_datasource = mint_cli::data::args::DataArgs {
         variant: Some("VarA".to_string()),
         ..Default::default()
     };
@@ -119,7 +119,7 @@ fn test_factory_returns_none_without_datasource() {
     );
 
     // Test with version flag but no datasource
-    let args_version_no_datasource = mint_cli::version::args::VersionArgs {
+    let args_version_no_datasource = mint_cli::data::args::DataArgs {
         version: Some("Default".to_string()),
         ..Default::default()
     };

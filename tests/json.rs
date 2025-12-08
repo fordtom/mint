@@ -1,11 +1,11 @@
 //! Integration tests for JsonDataSource.
 
 use mint_cli::layout::value::{DataValue, ValueSource};
-use mint_cli::version::args::VersionArgs;
-use mint_cli::version::create_data_source;
+use mint_cli::data::args::DataArgs;
+use mint_cli::data::create_data_source;
 
-fn build_json_args(version: &str, json_data: &str) -> VersionArgs {
-    VersionArgs {
+fn build_json_args(version: &str, json_data: &str) -> DataArgs {
+    DataArgs {
         json: Some(json_data.to_string()),
         version: Some(version.to_string()),
         ..Default::default()
@@ -313,7 +313,7 @@ fn json_from_file() {
     let test_file = Path::new("/tmp/mint_test_json.json");
     fs::write(test_file, json_data).expect("write test file");
 
-    let args = VersionArgs {
+    let args = DataArgs {
         json: Some(test_file.to_str().unwrap().to_string()),
         version: Some("Default".to_string()),
         ..Default::default()

@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum VersionError {
+pub enum DataError {
     #[error("File error: {0}.")]
     FileError(String),
 
@@ -18,6 +18,6 @@ pub enum VersionError {
     WhileRetrieving {
         name: String,
         #[source]
-        source: Box<VersionError>,
+        source: Box<DataError>,
     },
 }

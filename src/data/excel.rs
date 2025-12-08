@@ -1,8 +1,8 @@
 use calamine::{open_workbook, Data, Range, Reader, Xlsx};
 use std::collections::{HashMap, HashSet};
 
-use super::args::VersionArgs;
-use super::errors::VersionError;
+use super::args::DataArgs;
+use super::errors::DataError;
 use super::helpers;
 use super::DataSource;
 use crate::layout::value::{DataValue, ValueSource};
@@ -15,22 +15,22 @@ pub struct ExcelDataSource {
 }
 
 impl ExcelDataSource {
-    pub(crate) fn new(args: &VersionArgs) -> Result<Self, VersionError> {
+    pub(crate) fn new(args: &DataArgs) -> Result<Self, DataError> {
         let xlsx_path = args.xlsx.as_ref().expect("xlsx path required");
 
         let mut workbook: Xlsx<_> = open_workbook(xlsx_path)
-            .map_err(|_| VersionError::FileError(format!("failed to open file: {}", xlsx_path)))?;
+            .map_err(|_| DataError::FileError(format!("failed to open file: {}", xlsx_path)))?;
 
         let main_sheet_name = args.main_sheet.as_deref().unwrap_or("Main");
         let main_sheet = workbook
             .worksheet_range(main_sheet_name)
-            .map_err(|_| VersionError::MiscError("Main sheet not found.".to_string()))?;
+            .map_err(|_| DataError::MiscError("Main sheet not found.".to_string()))?;
 
         let rows: Vec<_> = main_sheet.rows().collect();
         let (headers, data_rows) = match rows.split_first() {
             Some((hdr, tail)) => (hdr, tail.len()),
             None => {
-                return Err(VersionError::RetrievalError(
+                return Err(DataError::RetrievalError(
                     "invalid main sheet format.".to_string(),
                 ));
             }
@@ -39,7 +39,7 @@ impl ExcelDataSource {
         let name_index = headers
             .iter()
             .position(|cell| Self::cell_eq_ascii(cell, "Name"))
-            .ok_or(VersionError::ColumnNotFound("Name".to_string()))?;
+            .ok_or(DataError::ColumnNotFound("Name".to_string()))?;
 
         let mut names: Vec<String> = Vec::with_capacity(data_rows);
         names.extend(rows.iter().skip(1).map(|row| {
@@ -66,12 +66,12 @@ impl ExcelDataSource {
         })
     }
 
-    fn retrieve_cell(&self, name: &str) -> Result<&Data, VersionError> {
+    fn retrieve_cell(&self, name: &str) -> Result<&Data, DataError> {
         let index =
             self.names
                 .iter()
                 .position(|n| n == name)
-                .ok_or(VersionError::RetrievalError(
+                .ok_or(DataError::RetrievalError(
                     "index not found in data sheet".to_string(),
                 ))?;
 
@@ -83,7 +83,7 @@ impl ExcelDataSource {
             }
         }
 
-        Err(VersionError::RetrievalError(
+        Err(DataError::RetrievalError(
             "data not found in any version column".to_string(),
         ))
     }
@@ -117,8 +117,8 @@ impl ExcelDataSource {
         headers: &[Data],
         rows: &[&[Data]],
         data_rows: usize,
-        args: &VersionArgs,
-    ) -> Result<Vec<Vec<Data>>, VersionError> {
+        args: &DataArgs,
+    ) -> Result<Vec<Vec<Data>>, DataError> {
         let versions = args.get_version_list();
 
         let mut seen = HashSet::new();
@@ -129,7 +129,7 @@ impl ExcelDataSource {
                 let index = headers
                     .iter()
                     .position(|cell| Self::cell_eq_ascii(cell, &v))
-                    .ok_or_else(|| VersionError::ColumnNotFound(v.clone()))?;
+                    .ok_or_else(|| DataError::ColumnNotFound(v.clone()))?;
 
                 columns.push(Self::collect_column(rows, index, data_rows));
             }
@@ -140,26 +140,26 @@ impl ExcelDataSource {
 }
 
 impl DataSource for ExcelDataSource {
-    fn retrieve_single_value(&self, name: &str) -> Result<DataValue, VersionError> {
+    fn retrieve_single_value(&self, name: &str) -> Result<DataValue, DataError> {
         let result = (|| match self.retrieve_cell(name)? {
             Data::Int(i) => Ok(DataValue::I64(*i)),
             Data::Float(f) => Ok(DataValue::F64(*f)),
             Data::Bool(b) => Ok(DataValue::Bool(*b)),
-            _ => Err(VersionError::RetrievalError(
+            _ => Err(DataError::RetrievalError(
                 "Found non-numeric single value".to_string(),
             )),
         })();
 
-        result.map_err(|e| VersionError::WhileRetrieving {
+        result.map_err(|e| DataError::WhileRetrieving {
             name: name.to_string(),
             source: Box::new(e),
         })
     }
 
-    fn retrieve_1d_array_or_string(&self, name: &str) -> Result<ValueSource, VersionError> {
+    fn retrieve_1d_array_or_string(&self, name: &str) -> Result<ValueSource, DataError> {
         let result = (|| {
             let Data::String(cell_string) = self.retrieve_cell(name)? else {
-                return Err(VersionError::RetrievalError(
+                return Err(DataError::RetrievalError(
                     "Expected string value for 1D array or string".to_string(),
                 ));
             };
@@ -168,7 +168,7 @@ impl DataSource for ExcelDataSource {
             if let Some(sheet_name) = cell_string.strip_prefix('#') {
                 let sheet = self.sheets.get(sheet_name).ok_or_else(|| {
                     let available: Vec<_> = self.sheets.keys().map(|s| s.as_str()).collect();
-                    VersionError::RetrievalError(format!(
+                    DataError::RetrievalError(format!(
                         "Sheet not found: '{}'. Available sheets: {}",
                         sheet_name,
                         available.join(", ")
@@ -186,7 +186,7 @@ impl DataSource for ExcelDataSource {
                                 Data::Bool(b) => DataValue::Bool(*b),
                                 Data::String(s) => DataValue::Str(s.to_owned()),
                                 _ => {
-                                    return Err(VersionError::RetrievalError(
+                                    return Err(DataError::RetrievalError(
                                         "Unsupported data type in 1D array".to_string(),
                                     ));
                                 }
@@ -203,22 +203,22 @@ impl DataSource for ExcelDataSource {
             Ok(ValueSource::Single(DataValue::Str(cell_string.to_owned())))
         })();
 
-        result.map_err(|e| VersionError::WhileRetrieving {
+        result.map_err(|e| DataError::WhileRetrieving {
             name: name.to_string(),
             source: Box::new(e),
         })
     }
 
-    fn retrieve_2d_array(&self, name: &str) -> Result<Vec<Vec<DataValue>>, VersionError> {
+    fn retrieve_2d_array(&self, name: &str) -> Result<Vec<Vec<DataValue>>, DataError> {
         let result = (|| {
             let Data::String(cell_string) = self.retrieve_cell(name)? else {
-                return Err(VersionError::RetrievalError(
+                return Err(DataError::RetrievalError(
                     "Expected string value for 2D array".to_string(),
                 ));
             };
 
             let sheet_name = cell_string.strip_prefix('#').ok_or_else(|| {
-                VersionError::RetrievalError(format!(
+                DataError::RetrievalError(format!(
                     "2D array reference must start with '#' prefix, got: {}",
                     cell_string
                 ))
@@ -226,19 +226,19 @@ impl DataSource for ExcelDataSource {
 
             let sheet = self.sheets.get(sheet_name).ok_or_else(|| {
                 let available: Vec<_> = self.sheets.keys().map(|s| s.as_str()).collect();
-                VersionError::RetrievalError(format!(
+                DataError::RetrievalError(format!(
                     "Sheet not found: '{}'. Available sheets: {}",
                     sheet_name,
                     available.join(", ")
                 ))
             })?;
 
-            let convert = |cell: &Data| -> Result<DataValue, VersionError> {
+            let convert = |cell: &Data| -> Result<DataValue, DataError> {
                 match cell {
                     Data::Int(i) => Ok(DataValue::I64(*i)),
                     Data::Float(f) => Ok(DataValue::F64(*f)),
                     Data::Bool(b) => Ok(DataValue::Bool(*b)),
-                    _ => Err(VersionError::RetrievalError(
+                    _ => Err(DataError::RetrievalError(
                         "Unsupported data type in 2D array".to_string(),
                     )),
                 }
@@ -246,11 +246,11 @@ impl DataSource for ExcelDataSource {
 
             let mut rows = sheet.rows();
             let hdrs = rows.next().ok_or_else(|| {
-                VersionError::RetrievalError("No headers found in 2D array".to_string())
+                DataError::RetrievalError("No headers found in 2D array".to_string())
             })?;
             let width = hdrs.iter().take_while(|c| !Self::cell_is_empty(c)).count();
             if width == 0 {
-                return Err(VersionError::RetrievalError(
+                return Err(DataError::RetrievalError(
                     "Detected zero width 2D array".to_string(),
                 ));
             }
@@ -278,7 +278,7 @@ impl DataSource for ExcelDataSource {
             Ok(out)
         })();
 
-        result.map_err(|e| VersionError::WhileRetrieving {
+        result.map_err(|e| DataError::WhileRetrieving {
             name: name.to_string(),
             source: Box::new(e),
         })

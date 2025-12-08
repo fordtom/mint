@@ -124,12 +124,12 @@ matrix = { name = "CalibrationMatrix", type = "i16", SIZE = [5, 3] }
     let cfg = mint_cli::layout::load_layout(path.to_str().unwrap()).expect("parse layout");
     let block = cfg.blocks.get("block").expect("block present");
 
-    let ver_args = mint_cli::version::args::VersionArgs {
+    let ver_args = mint_cli::data::args::DataArgs {
         xlsx: Some("tests/data/data.xlsx".to_string()),
         version: Some("Default".to_string()),
         ..Default::default()
     };
-    let ds = mint_cli::version::create_data_source(&ver_args).expect("datasource loads");
+    let ds = mint_cli::data::create_data_source(&ver_args).expect("datasource loads");
 
     let res = block.build_bytestream(ds.as_deref(), &cfg.settings, false);
     assert!(res.is_err(), "SIZE should reject underfilled 2D array");
