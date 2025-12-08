@@ -1,10 +1,12 @@
 use serde::Deserialize;
 
+/// Block header defining memory layout.
 #[derive(Debug, Deserialize)]
 pub struct Header {
     pub start_address: u32,
     pub length: u32,
-    pub crc_location: CrcLocation,
+    /// CRC location. If omitted, no CRC is written for this block.
+    pub crc_location: Option<CrcLocation>,
     #[serde(default = "default_padding")]
     pub padding: u8,
 }

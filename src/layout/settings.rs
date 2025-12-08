@@ -1,5 +1,6 @@
 use serde::Deserialize;
 
+/// Global settings for the layout.
 #[derive(Debug, Deserialize)]
 pub struct Settings {
     pub endianness: Endianness,
@@ -9,7 +10,8 @@ pub struct Settings {
     pub byte_swap: bool,
     #[serde(default)]
     pub pad_to_end: bool,
-    pub crc: CrcData,
+    /// CRC settings. If omitted, CRC calculation is skipped entirely.
+    pub crc: Option<CrcData>,
 }
 
 #[derive(Debug, Deserialize, Clone, Copy)]

@@ -16,10 +16,10 @@ name = "mint"
 path = "src/main.rs"
 
 [dependencies]
-bin_file = "0.1.4"
+bin_file = "=0.1.2"
 calamine = "0.29.0"
 clap = { version = "4.5.42", features = ["derive"] }
-comfy-table = "7.1"
+comfy-table = "=7.0.1"
 indexmap = { version = "2.10.0", features = ["serde"] }
 percent-encoding = "2.3.2"
 postgres = "0.19.12"

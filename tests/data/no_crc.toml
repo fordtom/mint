@@ -1,0 +1,15 @@
+# Test layout file without CRC settings
+# When settings.crc is omitted, no CRC is calculated or written
+
+[settings]
+endianness = "little"
+
+# Block with no crc_location - output has no CRC appended
+[nocrc_block.header]
+start_address = 0x1000
+length = 0x100
+
+[nocrc_block.data]
+device.id = { value = 0x1234, type = "u32" }
+device.name = { value = "NoCRC", type = "u8", size = 8 }
+magic = { value = 0xDEADBEEF, type = "u32" }

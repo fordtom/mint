@@ -65,7 +65,10 @@ pub fn print_detailed(stats: &BuildStats) {
                 format_bytes(block.allocated_size as usize)
             )),
             Cell::new(format_efficiency(block.used_size, block.allocated_size)),
-            Cell::new(format!("0x{:08X}", block.crc_value)),
+            Cell::new(match block.crc_value {
+                Some(v) => format!("0x{:08X}", v),
+                None => "-".to_string(),
+            }),
         ]);
     }
 

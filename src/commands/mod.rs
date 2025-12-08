@@ -103,7 +103,10 @@ fn build_single_bytestream(
             padding_bytes,
         )?;
 
-        let crc_value = extract_crc_value(&data_range.crc_bytestream, &layout.settings.endianness);
+        let crc_value = data_range
+            .crc
+            .as_ref()
+            .map(|(_, crc_bytes)| extract_crc_value(crc_bytes, &layout.settings.endianness));
 
         let stat = BlockStat {
             name: resolved.name.clone(),

@@ -1,12 +1,14 @@
 use std::time::Duration;
 
+/// Statistics for a single block.
 #[derive(Debug, Clone)]
 pub struct BlockStat {
     pub name: String,
     pub start_address: u32,
     pub allocated_size: u32,
     pub used_size: u32,
-    pub crc_value: u32,
+    /// CRC value, if CRC is enabled for this block.
+    pub crc_value: Option<u32>,
 }
 
 #[derive(Debug)]

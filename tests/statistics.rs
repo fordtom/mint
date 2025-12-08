@@ -91,7 +91,7 @@ fn test_space_efficiency_calculation() {
         start_address: 0x1000,
         allocated_size: 100,
         used_size: 80,
-        crc_value: 0x12345678,
+        crc_value: Some(0x12345678),
     });
 
     stats.add_block(BlockStat {
@@ -99,7 +99,7 @@ fn test_space_efficiency_calculation() {
         start_address: 0x2000,
         allocated_size: 200,
         used_size: 120,
-        crc_value: 0x9ABCDEF0,
+        crc_value: Some(0x9ABCDEF0),
     });
 
     assert_eq!(stats.blocks_processed, 2);
@@ -162,7 +162,7 @@ fn test_space_efficiency_edge_cases() {
         start_address: 0x1000,
         allocated_size: 100,
         used_size: 100,
-        crc_value: 0x12345678,
+        crc_value: Some(0x12345678),
     });
 
     let efficiency = stats.space_efficiency();
