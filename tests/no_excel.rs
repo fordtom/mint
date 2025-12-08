@@ -96,34 +96,37 @@ fn test_error_when_name_without_excel() {
 }
 
 #[test]
-fn test_factory_returns_none_without_xlsx() {
-    // Test that create_data_source returns None when no xlsx is provided
-    let args_no_excel = mint_cli::version::args::VersionArgs::default();
+fn test_factory_returns_none_without_datasource() {
+    // Test that create_data_source returns None when no datasource is provided
+    let args_no_datasource = mint_cli::version::args::VersionArgs::default();
 
-    let result = create_data_source(&args_no_excel).expect("should return Ok(None)");
+    let result = create_data_source(&args_no_datasource).expect("should return Ok(None)");
     assert!(
         result.is_none(),
-        "create_data_source should return None when no xlsx provided"
+        "create_data_source should return None when no datasource provided"
     );
 
-    // Test with deprecated variant flag (would produce warning)
-    let args_variant_no_excel = mint_cli::version::args::VersionArgs {
+    // Test with deprecated variant flag but no datasource (should produce warning)
+    let args_variant_no_datasource = mint_cli::version::args::VersionArgs {
         variant: Some("VarA".to_string()),
         ..Default::default()
     };
 
-    let result = create_data_source(&args_variant_no_excel).expect("should return Ok(None)");
+    let result = create_data_source(&args_variant_no_datasource).expect("should return Ok(None)");
     assert!(
         result.is_none(),
-        "create_data_source should return None when no xlsx provided, even with deprecated variant flag"
+        "create_data_source should return None when no datasource provided, even with deprecated variant flag"
     );
 
-    // Test with version flag
-    let args_version_no_excel = mint_cli::version::args::VersionArgs::default();
+    // Test with version flag but no datasource
+    let args_version_no_datasource = mint_cli::version::args::VersionArgs {
+        version: Some("Default".to_string()),
+        ..Default::default()
+    };
 
-    let result = create_data_source(&args_version_no_excel).expect("should return Ok(None)");
+    let result = create_data_source(&args_version_no_datasource).expect("should return Ok(None)");
     assert!(
         result.is_none(),
-        "create_data_source should return None when no xlsx provided, even with version flag"
+        "create_data_source should return None when no datasource provided, even with version flag"
     );
 }
