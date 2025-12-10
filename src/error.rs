@@ -2,7 +2,7 @@ use thiserror::Error;
 
 use crate::layout::errors::LayoutError;
 use crate::output::errors::OutputError;
-use crate::variant::errors::VariantError;
+use crate::data::errors::DataError;
 
 #[derive(Debug, Error)]
 pub enum NvmError {
@@ -10,7 +10,7 @@ pub enum NvmError {
     Layout(#[from] LayoutError),
 
     #[error(transparent)]
-    Variant(#[from] VariantError),
+    Data(#[from] DataError),
 
     #[error(transparent)]
     Output(#[from] OutputError),

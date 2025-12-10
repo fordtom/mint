@@ -11,7 +11,7 @@ use crate::layout::settings::Endianness;
 use crate::output;
 use crate::output::errors::OutputError;
 use crate::output::DataRange;
-use crate::variant::DataSource;
+use crate::data::DataSource;
 use rayon::prelude::*;
 use stats::{BlockStat, BuildStats};
 use std::collections::{HashMap, HashSet};

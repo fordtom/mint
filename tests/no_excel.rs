@@ -1,5 +1,5 @@
 use mint_cli::commands;
-use mint_cli::variant::create_data_source;
+use mint_cli::data::create_data_source;
 
 #[path = "common/mod.rs"]
 mod common;
@@ -19,7 +19,7 @@ fn test_build_without_excel() {
             }],
             strict: false,
         },
-        variant: Default::default(),
+        version: Default::default(),
         output: mint_cli::output::args::OutputArgs {
             out: "out".to_string(),
             prefix: "TEST".to_string(),
@@ -65,7 +65,7 @@ fn test_error_when_name_without_excel() {
             blocks: vec![input.clone()],
             strict: false,
         },
-        variant: Default::default(),
+        version: Default::default(),
         output: mint_cli::output::args::OutputArgs {
             out: "out".to_string(),
             prefix: "TEST".to_string(),
@@ -96,34 +96,37 @@ fn test_error_when_name_without_excel() {
 }
 
 #[test]
-fn test_factory_returns_none_without_xlsx() {
-    // Test that create_data_source returns None when no xlsx is provided
-    let args_no_excel = mint_cli::variant::args::VariantArgs::default();
+fn test_factory_returns_none_without_datasource() {
+    // Test that create_data_source returns None when no datasource is provided
+    let args_no_datasource = mint_cli::data::args::DataArgs::default();
 
-    let result = create_data_source(&args_no_excel).expect("should return Ok(None)");
+    let result = create_data_source(&args_no_datasource).expect("should return Ok(None)");
     assert!(
         result.is_none(),
-        "create_data_source should return None when no xlsx provided"
+        "create_data_source should return None when no datasource provided"
     );
 
-    // Test with variant flag (would produce warning in main.rs)
-    let args_variant_no_excel = mint_cli::variant::args::VariantArgs {
+    // Test with deprecated variant flag but no datasource (should produce warning)
+    let args_variant_no_datasource = mint_cli::data::args::DataArgs {
         variant: Some("VarA".to_string()),
         ..Default::default()
     };
 
-    let result = create_data_source(&args_variant_no_excel).expect("should return Ok(None)");
+    let result = create_data_source(&args_variant_no_datasource).expect("should return Ok(None)");
     assert!(
         result.is_none(),
-        "create_data_source should return None when no xlsx provided, even with variant flag"
+        "create_data_source should return None when no datasource provided, even with deprecated variant flag"
     );
 
-    // Test with debug flag (would produce warning in main.rs)
-    let args_debug_no_excel = mint_cli::variant::args::VariantArgs::default();
+    // Test with version flag but no datasource
+    let args_version_no_datasource = mint_cli::data::args::DataArgs {
+        version: Some("Default".to_string()),
+        ..Default::default()
+    };
 
-    let result = create_data_source(&args_debug_no_excel).expect("should return Ok(None)");
+    let result = create_data_source(&args_version_no_datasource).expect("should return Ok(None)");
     assert!(
         result.is_none(),
-        "create_data_source should return None when no xlsx provided, even with debug flag"
+        "create_data_source should return None when no datasource provided, even with version flag"
     );
 }

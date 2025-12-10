@@ -4,8 +4,8 @@
 //! Or run specifically: cargo test --test postgres -- --include-ignored
 
 use mint_cli::layout::value::{DataValue, ValueSource};
-use mint_cli::variant::args::VariantArgs;
-use mint_cli::variant::create_data_source;
+use mint_cli::data::args::DataArgs;
+use mint_cli::data::create_data_source;
 
 const TEST_DB_URL: &str = "postgres://localhost/mint_test";
 
@@ -23,13 +23,13 @@ fn setup_test_data() {
             r#"
             DROP TABLE IF EXISTS config CASCADE;
             CREATE TABLE config (
-                variant TEXT NOT NULL,
+                version TEXT NOT NULL,
                 name TEXT NOT NULL,
                 value JSONB NOT NULL,
-                PRIMARY KEY (variant, name)
+                PRIMARY KEY (version, name)
             );
 
-            INSERT INTO config (variant, name, value) VALUES
+            INSERT INTO config (version, name, value) VALUES
                 ('Default', 'TemperatureMax', '50'),
                 ('Default', 'Value 2', '2'),
                 ('Default', 'boolean', 'true'),
@@ -52,18 +52,18 @@ fn setup_test_data() {
         .expect("setup test data");
 }
 
-fn build_pg_args(variant: &str) -> VariantArgs {
+fn build_pg_args(version: &str) -> DataArgs {
     let config = format!(
         r#"{{
             "url": "{}",
-            "query_template": "SELECT json_object_agg(name, value)::text FROM config WHERE variant = $1"
+            "query_template": "SELECT json_object_agg(name, value)::text FROM config WHERE version = $1"
         }}"#,
         TEST_DB_URL
     );
 
-    VariantArgs {
+    DataArgs {
         postgres: Some(config),
-        variant: Some(variant.to_string()),
+        version: Some(version.to_string()),
         ..Default::default()
     }
 }

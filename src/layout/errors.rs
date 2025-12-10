@@ -39,5 +39,5 @@ pub enum LayoutError {
     },
 
     #[error(transparent)]
-    Variant(#[from] crate::variant::errors::VariantError),
+    Data(#[from] crate::data::errors::DataError),
 }

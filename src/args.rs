@@ -1,6 +1,6 @@
 use crate::layout::args::LayoutArgs;
 use crate::output::args::OutputArgs;
-use crate::variant::args::VariantArgs;
+use crate::data::args::DataArgs;
 use clap::Parser;
 
 // Top-level CLI parser. Sub-sections are flattened from sub-Args structs.
@@ -16,7 +16,7 @@ pub struct Args {
     pub layout: LayoutArgs,
 
     #[command(flatten)]
-    pub variant: VariantArgs,
+    pub data: DataArgs,
 
     #[command(flatten)]
     pub output: OutputArgs,
