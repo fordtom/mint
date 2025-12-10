@@ -19,7 +19,7 @@ fn test_build_without_excel() {
             }],
             strict: false,
         },
-        version: Default::default(),
+        data: Default::default(),
         output: mint_cli::output::args::OutputArgs {
             out: "out".to_string(),
             prefix: "TEST".to_string(),
@@ -65,7 +65,7 @@ fn test_error_when_name_without_excel() {
             blocks: vec![input.clone()],
             strict: false,
         },
-        version: Default::default(),
+        data: Default::default(),
         output: mint_cli::output::args::OutputArgs {
             out: "out".to_string(),
             prefix: "TEST".to_string(),
