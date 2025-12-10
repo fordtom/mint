@@ -1,8 +1,8 @@
 use thiserror::Error;
 
+use crate::data::errors::DataError;
 use crate::layout::errors::LayoutError;
 use crate::output::errors::OutputError;
-use crate::data::errors::DataError;
 
 #[derive(Debug, Error)]
 pub enum NvmError {

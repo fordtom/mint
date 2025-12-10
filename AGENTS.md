@@ -7,7 +7,7 @@ mint is an embedded development tool that works with layout files (toml/yaml/jso
 ### Core Concepts
 
 - **Layouts**: TOML/YAML/JSON files defining memory blocks (`src/layout`).
-- **DataSource**: Provides variant values by name (`src/variant`).
+- **DataSource**: Provides variant values by name (`src/data`).
   - **Excel** (`.xlsx`): Uses `Name` column for lookups; arrays referenced by sheet name (prefixed with `#`).
   - **Postgres**: JSON config with `url` and `query_template`; query returns JSON object per variant.
   - **REST**: JSON config with `url` (using `$1` placeholder) and optional `headers`; response must be JSON object per variant.
@@ -26,7 +26,7 @@ mint is an embedded development tool that works with layout files (toml/yaml/jso
 
 - `src/commands/`: Command implementations (e.g., `build`).
 - `src/layout/`: Layout parsing and block configuration.
-- `src/variant/`: Excel interaction and value retrieval.
+- `src/data/`: Data source interaction and value retrieval.
 - `src/output/`: Binary generation and data ranges.
 
 ## Development Environment

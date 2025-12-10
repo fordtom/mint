@@ -67,13 +67,13 @@ impl ExcelDataSource {
     }
 
     fn retrieve_cell(&self, name: &str) -> Result<&Data, DataError> {
-        let index =
-            self.names
-                .iter()
-                .position(|n| n == name)
-                .ok_or(DataError::RetrievalError(
-                    "index not found in data sheet".to_string(),
-                ))?;
+        let index = self
+            .names
+            .iter()
+            .position(|n| n == name)
+            .ok_or(DataError::RetrievalError(
+                "index not found in data sheet".to_string(),
+            ))?;
 
         for column in &self.version_columns {
             if let Some(value) = column.get(index) {

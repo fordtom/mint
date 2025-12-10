@@ -3,9 +3,9 @@
 //! Requires a running Postgres server. Skip with: cargo test --test postgres -- --ignored
 //! Or run specifically: cargo test --test postgres -- --include-ignored
 
-use mint_cli::layout::value::{DataValue, ValueSource};
 use mint_cli::data::args::DataArgs;
 use mint_cli::data::create_data_source;
+use mint_cli::layout::value::{DataValue, ValueSource};
 
 const TEST_DB_URL: &str = "postgres://localhost/mint_test";
 

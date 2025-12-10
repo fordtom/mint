@@ -52,9 +52,8 @@ impl JsonDataSource {
         let config: PostgresConfig = serde_json::from_str(&json_str)
             .map_err(|e| DataError::FileError(format!("failed to parse JSON: {}", e)))?;
 
-        let mut client = Client::connect(&config.url, NoTls).map_err(|e| {
-            DataError::MiscError(format!("failed to connect to Postgres: {}", e))
-        })?;
+        let mut client = Client::connect(&config.url, NoTls)
+            .map_err(|e| DataError::MiscError(format!("failed to connect to Postgres: {}", e)))?;
 
         let versions = args.get_version_list();
         let mut version_columns = Vec::with_capacity(versions.len());
@@ -218,9 +217,9 @@ impl JsonDataSource {
 impl DataSource for JsonDataSource {
     fn retrieve_single_value(&self, name: &str) -> Result<DataValue, DataError> {
         let result = (|| {
-            let value = self.lookup(name).ok_or_else(|| {
-                DataError::RetrievalError("key not found in any version".into())
-            })?;
+            let value = self
+                .lookup(name)
+                .ok_or_else(|| DataError::RetrievalError("key not found in any version".into()))?;
 
             let dv = Self::value_to_data_value(value)?;
             match dv {
@@ -239,9 +238,9 @@ impl DataSource for JsonDataSource {
 
     fn retrieve_1d_array_or_string(&self, name: &str) -> Result<ValueSource, DataError> {
         let result = (|| {
-            let value = self.lookup(name).ok_or_else(|| {
-                DataError::RetrievalError("key not found in any version".into())
-            })?;
+            let value = self
+                .lookup(name)
+                .ok_or_else(|| DataError::RetrievalError("key not found in any version".into()))?;
 
             match value {
                 Value::Array(arr) => {
@@ -267,9 +266,9 @@ impl DataSource for JsonDataSource {
 
     fn retrieve_2d_array(&self, name: &str) -> Result<Vec<Vec<DataValue>>, DataError> {
         let result = (|| {
-            let value = self.lookup(name).ok_or_else(|| {
-                DataError::RetrievalError("key not found in any version".into())
-            })?;
+            let value = self
+                .lookup(name)
+                .ok_or_else(|| DataError::RetrievalError("key not found in any version".into()))?;
 
             let Value::Array(outer) = value else {
                 return Err(DataError::RetrievalError(

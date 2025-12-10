@@ -77,7 +77,7 @@ pub fn bytestream_to_datarange(
 
     // Apply optional byte swap across the entire stream before CRC
     if byte_swap {
-        if bytestream.len() % 2 != 0 {
+        if !bytestream.len().is_multiple_of(2) {
             bytestream.push(header.padding);
         }
         byte_swap_inplace(bytestream.as_mut_slice());

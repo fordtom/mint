@@ -2,9 +2,9 @@ use clap::Parser;
 
 use mint_cli::args::Args;
 use mint_cli::commands;
+use mint_cli::data;
 use mint_cli::error::*;
 use mint_cli::layout;
-use mint_cli::data;
 use mint_cli::visuals;
 
 fn main() -> Result<(), NvmError> {
