@@ -9,7 +9,7 @@ pub struct Settings {
     pub byte_swap: bool,
     #[serde(default)]
     pub pad_to_end: bool,
-    pub crc: CrcData,
+    pub crc: Option<CrcData>,
 }
 
 #[derive(Debug, Deserialize, Clone, Copy)]
@@ -31,7 +31,7 @@ pub enum CrcArea {
     BlockOmitCrc,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct CrcData {
     pub polynomial: u32,
     pub start: u32,

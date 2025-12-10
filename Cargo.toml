@@ -9,7 +9,7 @@ repository = "https://github.com/fordtom/mint"
 categories = ["command-line-utilities"]
 keywords = ["flash", "hex", "layout", "excel", "data"]
 
-exclude = ["examples/**", "flake.*", ".envrc", ".cursor/**"]
+exclude = ["flake.*", ".envrc", ".cursor/**", ".github/**"]
 
 [[bin]]
 name = "mint"

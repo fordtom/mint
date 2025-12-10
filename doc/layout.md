@@ -5,7 +5,7 @@ Layout files define memory blocks and their data fields. Supported formats: TOML
 ## Structure
 
 ```toml
-[settings]          # Global settings (optional)
+[settings]          # Global settings (required)
 # ...
 
 [blockname.header]  # Block header (required per block)
@@ -19,7 +19,7 @@ Layout files define memory blocks and their data fields. Supported formats: TOML
 
 ## Settings
 
-Global settings apply to all blocks. All fields are optional.
+Global settings apply to all blocks. The `[settings.crc]` section is required if any block uses CRC (i.e., `crc_location` is not `"none"`).
 
 ```toml
 [settings]
@@ -28,20 +28,21 @@ virtual_offset = 0x0       # Offset added to all addresses
 byte_swap = false          # Swap byte pairs across the block (used to emulate word-addressable memory)
 pad_to_end = false         # Pad outputted block to full length
 
-[settings.crc]
+[settings.crc]             # Optional: only required if any block uses CRC
 polynomial = 0x04C11DB7    # CRC polynomial
 start = 0xFFFFFFFF         # Initial CRC value
 xor_out = 0xFFFFFFFF       # XOR applied to final CRC
 ref_in = true              # Reflect input bytes
 ref_out = true             # Reflect output CRC
 area = "data"              # CRC coverage: "data", "block_zero_crc", "block_pad_crc", or "block_omit_crc"
+```
 
 **CRC Area Options:**
+
 - `data` - CRC covers only the data (padded to 4-byte alignment)
 - `block_zero_crc` - Pad to full block, zero CRC bytes before calculation
 - `block_pad_crc` - Pad to full block, include CRC bytes as padding value
 - `block_omit_crc` - Pad to full block, exclude CRC bytes from calculation
-```
 
 ---
 
@@ -53,9 +54,15 @@ Each block requires a header section defining memory layout.
 [blockname.header]
 start_address = 0x8B000    # Start address in memory (required)
 length = 0x1000            # Block size in bytes (required)
-crc_location = "end"       # CRC placement: "end" to append to data struct as a u32 value, or absolute address (e.g. 0x8BFF0)
+crc_location = "end"       # CRC placement: "end", "none", or absolute address (e.g. 0x8BFF0)
 padding = 0xFF             # Padding byte value (default: 0xFF)
 ```
+
+**CRC Location Options:**
+
+- `"end"` - Append CRC as u32 after data (4-byte aligned - designed such that it lands in a u32 placed at the end of the struct that you're building in flash. Note that the CRC for this setting if set to 'data' will include any padding up to the alignment of the CRC itself.)
+- `"none"` - No CRC for this block
+- `0x8BFF0` - Absolute address for CRC placement - must be within the block
 
 ## Block Data
 
