@@ -96,7 +96,6 @@ pub fn bytestream_to_datarange(
     // Fill whole block if the CRC area is block
     if settings.crc.area == CrcArea::Block {
         bytestream.resize(header.length as usize, header.padding);
-        bytestream[crc_location as usize..(crc_location + 4) as usize].fill(0);
     }
 
     // Compute CRC based on selected area
