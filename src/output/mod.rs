@@ -482,9 +482,11 @@ mod tests {
         let result = bytestream_to_datarange(bytestream, &header, &settings, false, false, 0);
 
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("no [settings.crc] defined"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("no [settings.crc] defined")
+        );
     }
 }

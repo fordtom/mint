@@ -1,10 +1,10 @@
-use calamine::{open_workbook, Data, Range, Reader, Xlsx};
+use calamine::{Data, Range, Reader, Xlsx, open_workbook};
 use std::collections::{HashMap, HashSet};
 
+use super::DataSource;
 use super::args::DataArgs;
 use super::errors::DataError;
 use super::helpers;
-use super::DataSource;
 use crate::layout::value::{DataValue, ValueSource};
 
 /// Excel-backed data source for versions.
@@ -76,10 +76,8 @@ impl ExcelDataSource {
             ))?;
 
         for column in &self.version_columns {
-            if let Some(value) = column.get(index) {
-                if !Self::cell_is_empty(value) {
-                    return Ok(value);
-                }
+            if let Some(value) = column.get(index).filter(|v| !Self::cell_is_empty(v)) {
+                return Ok(value);
             }
         }
 

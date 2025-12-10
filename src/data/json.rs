@@ -3,9 +3,9 @@ use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
 
+use super::DataSource;
 use super::args::DataArgs;
 use super::errors::DataError;
-use super::DataSource;
 use crate::layout::value::{DataValue, ValueSource};
 
 fn load_json_string_or_file(input: &str) -> Result<String, DataError> {
