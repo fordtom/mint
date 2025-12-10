@@ -99,7 +99,17 @@ pub fn bytestream_to_datarange(
     }
 
     // Compute CRC based on selected area
-    let crc_val = checksum::calculate_crc(&bytestream, &settings.crc);
+    // For block-level CRC, exclude the CRC location bytes from calculation
+    let crc_val = if settings.crc.area == CrcArea::Block {
+        let crc_start = crc_location as usize;
+        let crc_end = crc_start + 4;
+        let mut crc_data = Vec::with_capacity(bytestream.len() - 4);
+        crc_data.extend_from_slice(&bytestream[..crc_start]);
+        crc_data.extend_from_slice(&bytestream[crc_end..]);
+        checksum::calculate_crc(&crc_data, &settings.crc)
+    } else {
+        checksum::calculate_crc(&bytestream, &settings.crc)
+    };
 
     let mut crc_bytes: [u8; 4] = match settings.endianness {
         Endianness::Big => crc_val.to_be_bytes(),
