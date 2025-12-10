@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use mint_cli::commands;
 use mint_cli::layout::args::BlockNames;
 
@@ -24,7 +26,7 @@ fn test_file_expands_all_blocks() {
         },
         data: Default::default(),
         output: mint_cli::output::args::OutputArgs {
-            out: "out".to_string(),
+            out: PathBuf::from("out"),
             prefix: "EXPAND".to_string(),
             suffix: "TEST".to_string(),
             record_width: 32,
@@ -81,7 +83,7 @@ fn test_deduplication_file_and_specific() {
         },
         data: Default::default(),
         output: mint_cli::output::args::OutputArgs {
-            out: "out".to_string(),
+            out: PathBuf::from("out"),
             prefix: "DEDUP".to_string(),
             suffix: "TEST".to_string(),
             record_width: 32,
@@ -122,7 +124,7 @@ fn test_file_expansion_with_combined() {
         },
         data: Default::default(),
         output: mint_cli::output::args::OutputArgs {
-            out: "out".to_string(),
+            out: PathBuf::from("out"),
             prefix: "COMBINED".to_string(),
             suffix: "EXPAND".to_string(),
             record_width: 32,

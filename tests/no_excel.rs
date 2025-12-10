@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use mint_cli::commands;
 use mint_cli::data::create_data_source;
 
@@ -21,7 +23,7 @@ fn test_build_without_excel() {
         },
         data: Default::default(),
         output: mint_cli::output::args::OutputArgs {
-            out: "out".to_string(),
+            out: PathBuf::from("out"),
             prefix: "TEST".to_string(),
             suffix: "NOEXCEL".to_string(),
             record_width: 32,
@@ -67,7 +69,7 @@ fn test_error_when_name_without_excel() {
         },
         data: Default::default(),
         output: mint_cli::output::args::OutputArgs {
-            out: "out".to_string(),
+            out: PathBuf::from("out"),
             prefix: "TEST".to_string(),
             suffix: "ERROR".to_string(),
             record_width: 32,
