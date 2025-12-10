@@ -1,6 +1,6 @@
-use mint_cli::layout::value::DataValue;
 use mint_cli::data::args::DataArgs;
 use mint_cli::data::create_data_source;
+use mint_cli::layout::value::DataValue;
 
 fn build_args(version: &str) -> DataArgs {
     DataArgs {

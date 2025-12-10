@@ -5,9 +5,9 @@
 //!
 //! Expected server: serves tests/data.json at http://localhost:3000/item?version=<name>
 
-use mint_cli::layout::value::{DataValue, ValueSource};
 use mint_cli::data::args::DataArgs;
 use mint_cli::data::create_data_source;
+use mint_cli::layout::value::{DataValue, ValueSource};
 
 const TEST_SERVER_URL: &str = "http://localhost:3000/item?version=$1";
 

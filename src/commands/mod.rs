@@ -2,6 +2,7 @@ pub mod stats;
 mod writer;
 
 use crate::args::Args;
+use crate::data::DataSource;
 use crate::error::NvmError;
 use crate::layout;
 use crate::layout::args::BlockNames;
@@ -11,7 +12,6 @@ use crate::layout::settings::Endianness;
 use crate::output;
 use crate::output::errors::OutputError;
 use crate::output::DataRange;
-use crate::data::DataSource;
 use rayon::prelude::*;
 use stats::{BlockStat, BuildStats};
 use std::collections::{HashMap, HashSet};

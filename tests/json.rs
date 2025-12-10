@@ -1,8 +1,8 @@
 //! Integration tests for JsonDataSource.
 
-use mint_cli::layout::value::{DataValue, ValueSource};
 use mint_cli::data::args::DataArgs;
 use mint_cli::data::create_data_source;
+use mint_cli::layout::value::{DataValue, ValueSource};
 
 fn build_json_args(version: &str, json_data: &str) -> DataArgs {
     DataArgs {

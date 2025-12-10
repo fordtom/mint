@@ -24,9 +24,7 @@ pub trait DataSource: Sync {
 /// Creates a data source from CLI arguments.
 ///
 /// Returns `None` if no data source is configured (e.g., no `--xlsx` provided).
-pub fn create_data_source(
-    args: &args::DataArgs,
-) -> Result<Option<Box<dyn DataSource>>, DataError> {
+pub fn create_data_source(args: &args::DataArgs) -> Result<Option<Box<dyn DataSource>>, DataError> {
     // Handle fallback from deprecated --variant flag
     if args.variant.is_some() && args.version.is_none() {
         eprintln!("Warning: --variant is deprecated, use --version instead");
