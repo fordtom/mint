@@ -9,7 +9,7 @@ pub struct Settings {
     pub byte_swap: bool,
     #[serde(default)]
     pub pad_to_end: bool,
-    pub crc: CrcData,
+    pub crc: Option<CrcData>,
 }
 
 #[derive(Debug, Deserialize, Clone, Copy)]
@@ -23,11 +23,15 @@ pub enum Endianness {
 pub enum CrcArea {
     #[serde(rename = "data")]
     Data,
-    #[serde(rename = "block")]
-    Block,
+    #[serde(rename = "block_zero_crc")]
+    BlockZeroCrc,
+    #[serde(rename = "block_pad_crc")]
+    BlockPadCrc,
+    #[serde(rename = "block_omit_crc")]
+    BlockOmitCrc,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct CrcData {
     pub polynomial: u32,
     pub start: u32,
