@@ -93,14 +93,28 @@ pub fn bytestream_to_datarange(
         bytestream.resize(crc_location as usize, header.padding);
     }
 
-    // Fill whole block if the CRC area is block
-    if settings.crc.area == CrcArea::Block {
-        bytestream.resize(header.length as usize, header.padding);
+    // Handle block-level CRC modes
+    match settings.crc.area {
+        CrcArea::BlockZeroCrc | CrcArea::BlockPadCrc | CrcArea::BlockOmitCrc => {
+            bytestream.resize(header.length as usize, header.padding);
+        }
+        CrcArea::Data => {}
+    }
+
+    // Zero CRC location for BlockZeroCrc mode
+    if settings.crc.area == CrcArea::BlockZeroCrc {
         bytestream[crc_location as usize..(crc_location + 4) as usize].fill(0);
     }
 
-    // Compute CRC based on selected area
-    let crc_val = checksum::calculate_crc(&bytestream, &settings.crc);
+    // Compute CRC - omit CRC bytes for BlockOmitCrc mode
+    let crc_val = if settings.crc.area == CrcArea::BlockOmitCrc {
+        let before = &bytestream[..crc_location as usize];
+        let after = &bytestream[(crc_location + 4) as usize..];
+        let combined: Vec<u8> = [before, after].concat();
+        checksum::calculate_crc(&combined, &settings.crc)
+    } else {
+        checksum::calculate_crc(&bytestream, &settings.crc)
+    };
 
     let mut crc_bytes: [u8; 4] = match settings.endianness {
         Endianness::Big => crc_val.to_be_bytes(),
@@ -270,5 +284,89 @@ mod tests {
             .expect("data range generation failed");
 
         assert_eq!(dr.bytestream.len(), header.length as usize);
+    }
+
+    #[test]
+    fn block_zero_crc_zeros_crc_location() {
+        let mut settings = sample_settings();
+        settings.crc.area = CrcArea::BlockZeroCrc;
+        let header = sample_header(32);
+
+        let bytestream = vec![1u8, 2, 3, 4];
+        let dr = bytestream_to_datarange(bytestream, &header, &settings, false, false, 0)
+            .expect("data range generation failed");
+
+        assert_eq!(dr.bytestream.len(), header.length as usize);
+        let crc_location = validate_crc_location(4usize, &header).expect("crc loc");
+        assert_eq!(
+            dr.bytestream[crc_location as usize..(crc_location + 4) as usize],
+            [0, 0, 0, 0],
+            "CRC location should be zeroed"
+        );
+    }
+
+    #[test]
+    fn block_pad_crc_includes_padding_at_crc_location() {
+        let mut settings = sample_settings();
+        settings.crc.area = CrcArea::BlockPadCrc;
+        let header = sample_header(32);
+
+        let bytestream = vec![1u8, 2, 3, 4];
+        let dr = bytestream_to_datarange(bytestream, &header, &settings, false, false, 0)
+            .expect("data range generation failed");
+
+        assert_eq!(dr.bytestream.len(), header.length as usize);
+        let crc_location = validate_crc_location(4usize, &header).expect("crc loc");
+        assert_eq!(
+            dr.bytestream[crc_location as usize..(crc_location + 4) as usize],
+            [0xFF, 0xFF, 0xFF, 0xFF],
+            "CRC location should contain padding value"
+        );
+    }
+
+    #[test]
+    fn block_omit_crc_excludes_crc_bytes_from_calculation() {
+        let mut settings = sample_settings();
+        settings.crc.area = CrcArea::BlockOmitCrc;
+        let header = sample_header(32);
+
+        let bytestream = vec![1u8, 2, 3, 4];
+        let dr = bytestream_to_datarange(bytestream.clone(), &header, &settings, false, false, 0)
+            .expect("data range generation failed");
+
+        assert_eq!(dr.bytestream.len(), header.length as usize);
+        let crc_location = validate_crc_location(4usize, &header).expect("crc loc");
+
+        // Calculate expected CRC by omitting CRC bytes (same logic as in bytestream_to_datarange)
+        let before = &dr.bytestream[..crc_location as usize];
+        let after = &dr.bytestream[(crc_location + 4) as usize..];
+        let combined: Vec<u8> = [before, after].concat();
+        let expected_crc = checksum::calculate_crc(&combined, &settings.crc);
+
+        // Extract actual CRC from the result (accounting for endianness)
+        let actual_crc = match settings.endianness {
+            Endianness::Little => u32::from_le_bytes(
+                dr.crc_bytestream[..4]
+                    .try_into()
+                    .expect("CRC bytes should be 4 bytes"),
+            ),
+            Endianness::Big => u32::from_be_bytes(
+                dr.crc_bytestream[..4]
+                    .try_into()
+                    .expect("CRC bytes should be 4 bytes"),
+            ),
+        };
+
+        assert_eq!(
+            expected_crc, actual_crc,
+            "CRC should match calculation with CRC bytes omitted"
+        );
+
+        // Verify that including CRC bytes produces a different result
+        let crc_with_bytes = checksum::calculate_crc(&dr.bytestream, &settings.crc);
+        assert_ne!(
+            expected_crc, crc_with_bytes,
+            "CRC with bytes included should differ from CRC with bytes omitted"
+        );
     }
 }

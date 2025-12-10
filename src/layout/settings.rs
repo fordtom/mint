@@ -23,8 +23,12 @@ pub enum Endianness {
 pub enum CrcArea {
     #[serde(rename = "data")]
     Data,
-    #[serde(rename = "block")]
-    Block,
+    #[serde(rename = "block_zero_crc")]
+    BlockZeroCrc,
+    #[serde(rename = "block_pad_crc")]
+    BlockPadCrc,
+    #[serde(rename = "block_omit_crc")]
+    BlockOmitCrc,
 }
 
 #[derive(Debug, Deserialize)]

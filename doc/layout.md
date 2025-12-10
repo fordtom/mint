@@ -34,7 +34,13 @@ start = 0xFFFFFFFF         # Initial CRC value
 xor_out = 0xFFFFFFFF       # XOR applied to final CRC
 ref_in = true              # Reflect input bytes
 ref_out = true             # Reflect output CRC
-area = "data"              # CRC coverage: "data" (padded to 4 byte boundary) or "all" (padded to block boundary)
+area = "data"              # CRC coverage: "data", "block_zero_crc", "block_pad_crc", or "block_omit_crc"
+
+**CRC Area Options:**
+- `data` - CRC covers only the data (padded to 4-byte alignment)
+- `block_zero_crc` - Pad to full block, zero CRC bytes before calculation
+- `block_pad_crc` - Pad to full block, include CRC bytes as padding value
+- `block_omit_crc` - Pad to full block, exclude CRC bytes from calculation
 ```
 
 ---
