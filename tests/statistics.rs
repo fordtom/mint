@@ -168,3 +168,44 @@ fn test_space_efficiency_edge_cases() {
     let efficiency = stats.space_efficiency();
     assert!((efficiency - 100.0).abs() < 0.01);
 }
+
+#[test]
+fn test_crc_location_none_returns_none_crc_value() {
+    common::ensure_out_dir();
+
+    let layout_content = r#"
+[settings]
+endianness = "little"
+virtual_offset = 0x0
+byte_swap = false
+pad_to_end = false
+
+[block_no_crc.header]
+start_address = 0x1000
+length = 0x100
+crc_location = "none"
+padding = 0xFF
+
+[block_no_crc.data]
+device.id = { value = 0x1234, type = "u32" }
+device.name = { value = "TestDevice", type = "u8", size = 16 }
+"#;
+
+    let layout_path = common::write_layout_file("test_no_crc", layout_content);
+
+    let args = common::build_args(
+        &layout_path,
+        "block_no_crc",
+        mint_cli::output::args::OutputFormat::Hex,
+    );
+
+    let stats = commands::build(&args, None).expect("build should succeed");
+
+    assert_eq!(stats.blocks_processed, 1);
+    let block_stat = &stats.block_stats[0];
+    assert_eq!(block_stat.name, "block_no_crc");
+    assert!(
+        block_stat.crc_value.is_none(),
+        "CRC value should be None when crc_location is 'none'"
+    );
+}
