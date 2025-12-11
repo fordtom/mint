@@ -47,6 +47,17 @@ fn resolve_crc(
         OutputError::HexOutputError("CRC enabled but no location specified.".to_string())
     })?;
 
+    // Absolute addresses must come from header, not settings
+    if let CrcLocation::Address(_) = location {
+        let header_has_location = header.crc.as_ref().is_some_and(|hc| hc.location.is_some());
+        if !header_has_location {
+            return Err(OutputError::HexOutputError(
+                "Absolute CRC address not allowed in [settings.crc]; use [header.crc] instead."
+                    .to_string(),
+            ));
+        }
+    }
+
     let crc_offset = match location {
         CrcLocation::Address(address) => {
             let crc_offset = address.checked_sub(header.start_address).ok_or_else(|| {
@@ -584,7 +595,7 @@ mod tests {
 
     #[test]
     fn settings_location_end_with_header_inheriting() {
-        // Settings specifies location = "end" as default
+        // Settings specifies location = "end_data" as default
         let settings = Settings {
             crc: Some(sample_crc_config()),
             ..sample_settings()
@@ -598,6 +609,55 @@ mod tests {
             .expect("data range generation failed");
 
         // Should use CRC from settings
+        assert!(!dr.crc_bytestream.is_empty());
+    }
+
+    #[test]
+    fn settings_absolute_address_rejected() {
+        // Settings with absolute address - should be rejected
+        let settings = Settings {
+            crc: Some(CrcConfig {
+                location: Some(CrcLocation::Address(0x1000)),
+                ..sample_crc_config()
+            }),
+            ..sample_settings()
+        };
+
+        // Header has no crc section - inherits from settings
+        let header = header_no_crc(32);
+
+        let bytestream = vec![1u8, 2, 3, 4];
+        let result = bytestream_to_datarange(bytestream, &header, &settings, false, false, 0);
+
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Absolute CRC address not allowed in [settings.crc]")
+        );
+    }
+
+    #[test]
+    fn header_absolute_address_allowed() {
+        let settings = sample_settings();
+
+        // Header specifies absolute address - should work
+        let header = Header {
+            start_address: 0,
+            length: 32,
+            crc: Some(CrcConfig {
+                location: Some(CrcLocation::Address(28)),
+                ..Default::default()
+            }),
+            padding: 0xFF,
+        };
+
+        let bytestream = vec![1u8, 2, 3, 4];
+        let dr = bytestream_to_datarange(bytestream, &header, &settings, false, false, 0)
+            .expect("data range generation failed");
+
+        assert_eq!(dr.crc_address, 28);
         assert!(!dr.crc_bytestream.is_empty());
     }
 }
