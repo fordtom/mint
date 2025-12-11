@@ -57,7 +57,7 @@ length = 0x1000            # Block size in bytes (required)
 padding = 0xFF             # Padding byte value (default: 0xFF)
 
 [blockname.header.crc]     # Optional: enables CRC for this block
-location = "end"           # CRC placement: "end", "none", or absolute address
+location = "end_data"      # CRC placement: "end_data", "end_block", or absolute address
 polynomial = 0x04C11DB7    # Override global polynomial (optional)
 start = 0xFFFFFFFF         # Override global start value (optional)
 xor_out = 0xFFFFFFFF       # Override global xor_out (optional)
@@ -68,9 +68,11 @@ area = "data"              # Override global area (optional)
 
 **CRC Location Options:**
 
-- `"end"` - Append CRC as u32 after data (4-byte aligned)
-- `"none"` - No CRC for this block (equivalent to omitting the `[header.crc]` section)
+- `"end_data"` - CRC placed after data (4-byte aligned)
+- `"end_block"` - CRC in final 4 bytes of block
 - `0x8BFF0` - Absolute address for CRC placement - must be within the block
+
+To disable CRC for a block, simply omit the `[header.crc]` section.
 
 **Per-Header CRC Overrides:**
 
@@ -178,7 +180,7 @@ start_address = 0x8000
 length = 0x1000
 
 [config.header.crc]
-location = "end"
+location = "end_data"
 
 [config.data]
 version = { value = 1, type = "u16" }
@@ -188,7 +190,7 @@ start_address = 0x9000
 length = 0x1000
 
 [calibration.header.crc]
-location = "end"
+location = "end_data"
 polynomial = 0x1EDC6F41    # Different CRC polynomial for this block
 
 [calibration.data]

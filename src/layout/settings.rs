@@ -32,7 +32,10 @@ pub enum CrcArea {
     BlockOmitCrc,
 }
 
-/// CRC location: either a keyword ("end", "none") or an absolute address.
+/// CRC location: keyword or absolute address.
+/// - `"end_data"`: CRC placed after data (4-byte aligned)
+/// - `"end_block"`: CRC in final 4 bytes of block
+/// - `0x8FF0`: Absolute address within block
 #[derive(Debug, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum CrcLocation {
@@ -71,13 +74,9 @@ impl CrcConfig {
         }
     }
 
-    /// Check if CRC is disabled (location is "none" or not set).
+    /// Check if CRC is disabled (location not set).
     pub fn is_disabled(&self) -> bool {
-        match &self.location {
-            None => true,
-            Some(CrcLocation::Keyword(kw)) if kw == "none" => true,
-            _ => false,
-        }
+        self.location.is_none()
     }
 
     /// Returns true if all required CRC parameters are present.

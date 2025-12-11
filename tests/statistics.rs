@@ -170,7 +170,7 @@ fn test_space_efficiency_edge_cases() {
 }
 
 #[test]
-fn test_crc_location_none_returns_none_crc_value() {
+fn test_no_crc_section_returns_none_crc_value() {
     common::ensure_out_dir();
 
     let layout_content = r#"
@@ -183,7 +183,6 @@ pad_to_end = false
 [block_no_crc.header]
 start_address = 0x1000
 length = 0x100
-crc_location = "none"
 padding = 0xFF
 
 [block_no_crc.data]
@@ -206,6 +205,6 @@ device.name = { value = "TestDevice", type = "u8", size = 16 }
     assert_eq!(block_stat.name, "block_no_crc");
     assert!(
         block_stat.crc_value.is_none(),
-        "CRC value should be None when crc_location is 'none'"
+        "CRC value should be None when no crc section is present"
     );
 }

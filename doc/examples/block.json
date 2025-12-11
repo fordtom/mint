@@ -15,7 +15,7 @@
       "start_address": 32768,
       "length": 256,
       "crc": {
-        "location": "end"
+        "location": "end_data"
       }
     },
     "data": {

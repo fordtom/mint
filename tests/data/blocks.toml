@@ -28,7 +28,7 @@ length = 0x1000
 padding = 0xC0
 
 [block.header.crc]
-location = "end"
+location = "end_data"
 
 [block.data]
 # Literal numeric value
@@ -109,7 +109,7 @@ start_address = 0x8E000
 length = 0x100
 
 [block_bitmap.header.crc]
-location = "end"
+location = "end_data"
 
 [block_bitmap.data]
 # Normal scalar before bitmaps
@@ -148,7 +148,7 @@ length = 0x100
 padding = 0xFF
 
 [simple_block.header.crc]
-location = "end"
+location = "end_data"
 
 [simple_block.data]
 device.id = { value = 0x1234, type = "u32" }
@@ -170,7 +170,7 @@ length = 0x100
 padding = 0xFF
 
 [pg_block.header.crc]
-location = "end"
+location = "end_data"
 
 [pg_block.data]
 # Values available in both Postgres and Excel

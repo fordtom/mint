@@ -16,7 +16,7 @@ config:
     start_address: 0x8000
     length: 0x100
     crc:
-      location: end
+      location: end_data
   data:
     device.id: { value: 0x1234, type: u32 }
     device.name: { name: DeviceName, type: u8, size: 16 }

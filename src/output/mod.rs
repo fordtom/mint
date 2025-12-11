@@ -62,11 +62,11 @@ fn resolve_crc(
             crc_offset
         }
         CrcLocation::Keyword(option) => match option.as_str() {
-            "none" => return Ok(None),
-            "end" => (length as u32 + 3) & !3,
+            "end_data" => (length as u32 + 3) & !3,
+            "end_block" => header.length.saturating_sub(4),
             _ => {
                 return Err(OutputError::HexOutputError(format!(
-                    "Invalid CRC location: {}",
+                    "Invalid CRC location: '{}'. Use 'end_data', 'end_block', or an address.",
                     option
                 )));
             }
@@ -273,7 +273,7 @@ mod tests {
 
     fn sample_crc_config() -> CrcConfig {
         CrcConfig {
-            location: Some(CrcLocation::Keyword("end".to_string())),
+            location: Some(CrcLocation::Keyword("end_data".to_string())),
             polynomial: Some(0x04C11DB7),
             start: Some(0xFFFF_FFFF),
             xor_out: Some(0xFFFF_FFFF),
@@ -298,7 +298,7 @@ mod tests {
             start_address: 0,
             length: len,
             crc: Some(CrcConfig {
-                location: Some(CrcLocation::Keyword("end".to_string())),
+                location: Some(CrcLocation::Keyword("end_data".to_string())),
                 ..Default::default()
             }),
             padding: 0xFF,
@@ -471,11 +471,11 @@ mod tests {
     }
 
     #[test]
-    fn crc_location_none_skips_crc() {
+    fn end_block_places_crc_at_block_end() {
         let settings = sample_settings();
         let header = Header {
             crc: Some(CrcConfig {
-                location: Some(CrcLocation::Keyword("none".to_string())),
+                location: Some(CrcLocation::Keyword("end_block".to_string())),
                 ..Default::default()
             }),
             ..sample_header(32)
@@ -485,9 +485,9 @@ mod tests {
         let dr = bytestream_to_datarange(bytestream.clone(), &header, &settings, false, false, 0)
             .expect("data range generation failed");
 
-        assert!(dr.crc_bytestream.is_empty(), "CRC should be empty");
-        assert_eq!(dr.crc_address, 0, "CRC address should be 0");
-        assert_eq!(dr.bytestream.len(), 4, "bytestream should not be padded");
+        // CRC should be at offset 28 (block length 32 - 4)
+        assert_eq!(dr.crc_address, 28);
+        assert!(!dr.crc_bytestream.is_empty());
     }
 
     #[test]
@@ -538,7 +538,7 @@ mod tests {
         // Header overrides polynomial
         let header = Header {
             crc: Some(CrcConfig {
-                location: Some(CrcLocation::Keyword("end".to_string())),
+                location: Some(CrcLocation::Keyword("end_data".to_string())),
                 polynomial: Some(0x1EDC6F41), // Different polynomial
                 ..Default::default()
             }),
