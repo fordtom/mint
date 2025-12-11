@@ -130,21 +130,15 @@ fn build_single_bytestream(
     })
 }
 
-fn extract_crc_value(crc_bytestream: &[u8], endianness: &Endianness) -> u32 {
-    match endianness {
-        Endianness::Big => u32::from_be_bytes([
-            crc_bytestream[0],
-            crc_bytestream[1],
-            crc_bytestream[2],
-            crc_bytestream[3],
-        ]),
-        Endianness::Little => u32::from_le_bytes([
-            crc_bytestream[0],
-            crc_bytestream[1],
-            crc_bytestream[2],
-            crc_bytestream[3],
-        ]),
+fn extract_crc_value(crc_bytestream: &[u8], endianness: &Endianness) -> Option<u32> {
+    if crc_bytestream.len() < 4 {
+        return None;
     }
+    let bytes: [u8; 4] = crc_bytestream[..4].try_into().ok()?;
+    Some(match endianness {
+        Endianness::Big => u32::from_be_bytes(bytes),
+        Endianness::Little => u32::from_le_bytes(bytes),
+    })
 }
 
 fn output_separate_blocks(
