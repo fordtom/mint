@@ -14,7 +14,9 @@
     "header": {
       "start_address": 32768,
       "length": 256,
-      "crc_location": "end"
+      "crc": {
+        "location": "end"
+      }
     },
     "data": {
       "device.id": { "value": 4660, "type": "u32" },
@@ -37,7 +39,9 @@
     "header": {
       "start_address": 33024,
       "length": 256,
-      "crc_location": 33264
+      "crc": {
+        "location": 33264
+      }
     },
     "data": {
       "counter": { "name": "Counter", "type": "u64" },

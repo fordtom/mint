@@ -19,8 +19,9 @@ pub enum Endianness {
     Big,
 }
 
-#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CrcArea {
+    #[default]
     #[serde(rename = "data")]
     Data,
     #[serde(rename = "block_zero_crc")]

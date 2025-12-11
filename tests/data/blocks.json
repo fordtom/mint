@@ -17,8 +17,10 @@
         "header": {
             "start_address": 569344,
             "length": 4096,
-            "crc_location": 573424,
-            "padding": 192
+            "padding": 192,
+            "crc": {
+                "location": 573424
+            }
         },
         "data": {
             "some.struct.value": {
@@ -109,7 +111,9 @@
         "header": {
             "start_address": 573440,
             "length": 4096,
-            "crc_location": 577520
+            "crc": {
+                "location": 577520
+            }
         },
         "data": {
             "another.struct.value": {
@@ -133,7 +137,9 @@
         "header": {
             "start_address": 577536,
             "length": 4096,
-            "crc_location": 581616
+            "crc": {
+                "location": 581616
+            }
         },
         "data": {
             "counters.boot_count": {

@@ -63,8 +63,10 @@ impl Block {
 
         Self::build_bytestream_inner(&self.data, data_source, &mut state, &config)?;
 
-        if matches!(self.header.crc_location, CrcLocation::Keyword(_)) {
-            // Padding out to the 4 byte boundary for appended/prepended CRC32
+        // Padding out to the 4 byte boundary for appended CRC32 (keyword location)
+        if let Some(hc) = &self.header.crc
+            && matches!(hc.location(), CrcLocation::Keyword(_))
+        {
             while !state.offset.is_multiple_of(4) {
                 state.buffer.push(config.padding);
                 state.offset += 1;

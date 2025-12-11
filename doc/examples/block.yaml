@@ -15,7 +15,8 @@ config:
   header:
     start_address: 0x8000
     length: 0x100
-    crc_location: end
+    crc:
+      location: end
   data:
     device.id: { value: 0x1234, type: u32 }
     device.name: { name: DeviceName, type: u8, size: 16 }
@@ -34,7 +35,8 @@ data:
   header:
     start_address: 0x8100
     length: 0x100
-    crc_location: 0x81F0
+    crc:
+      location: 0x81F0
   data:
     counter: { name: Counter, type: u64 }
     message: { value: Hello, type: u8, size: 16 }
