@@ -310,7 +310,6 @@ mod tests {
             virtual_offset: 0,
             crc: Some(sample_crc_config()),
             byte_swap: false,
-            pad_to_end: false,
         }
     }
 

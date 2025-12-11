@@ -3,7 +3,6 @@ settings:
   endianness: "little"
   virtual_offset: 0x0
   byte_swap: false
-  pad_to_end: false
   crc:
     polynomial: 0x04C11DB7
     start: 0xFFFFFFFF

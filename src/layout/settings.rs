@@ -8,7 +8,6 @@ pub struct Settings {
     #[serde(default)]
     pub byte_swap: bool,
     #[serde(default)]
-    pub pad_to_end: bool,
     pub crc: Option<CrcConfig>,
 }
 

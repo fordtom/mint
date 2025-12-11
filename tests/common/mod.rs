@@ -42,6 +42,7 @@ pub fn build_args(layout_path: &str, block_name: &str, format: OutputFormat) -> 
             combined: false,
             stats: false,
             quiet: false,
+            pad_to_end: false,
         },
     }
 }
@@ -105,6 +106,7 @@ pub fn build_args_for_layouts(layouts: Vec<BlockNames>, format: OutputFormat) ->
             combined: true,
             stats: false,
             quiet: false,
+            pad_to_end: false,
         },
     }
 }
