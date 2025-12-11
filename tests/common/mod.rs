@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use mint_cli::args::Args;
 use mint_cli::data::{self, DataSource};
@@ -34,7 +34,7 @@ pub fn build_args(layout_path: &str, block_name: &str, format: OutputFormat) -> 
             ..Default::default()
         },
         output: OutputArgs {
-            out: "out".to_string(),
+            out: PathBuf::from("out"),
             prefix: "PRE".to_string(),
             suffix: "SUF".to_string(),
             record_width: 32,
@@ -97,7 +97,7 @@ pub fn build_args_for_layouts(layouts: Vec<BlockNames>, format: OutputFormat) ->
             ..Default::default()
         },
         output: OutputArgs {
-            out: "out".to_string(),
+            out: PathBuf::from("out"),
             prefix: "PRE".to_string(),
             suffix: "SUF".to_string(),
             record_width: 32,

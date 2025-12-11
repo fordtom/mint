@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use clap::{Args, ValueEnum};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
@@ -15,7 +17,7 @@ pub struct OutputArgs {
         default_value = "out",
         help = "Output directory"
     )]
-    pub out: String,
+    pub out: PathBuf,
 
     #[arg(
         long,

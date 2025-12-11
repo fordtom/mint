@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use mint_cli::commands;
 use mint_cli::layout::args::BlockNames;
 use mint_cli::output::args::{OutputArgs, OutputFormat};
@@ -95,7 +97,7 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
         },
         data: data_args.clone(),
         output: OutputArgs {
-            out: "out".to_string(),
+            out: PathBuf::from("out"),
             prefix: "MIX".to_string(),
             suffix: "A".to_string(),
             record_width: 64,
@@ -119,7 +121,7 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
         },
         data: data_args.clone(),
         output: OutputArgs {
-            out: "out".to_string(),
+            out: PathBuf::from("out"),
             prefix: "MIX".to_string(),
             suffix: "B".to_string(),
             record_width: 16,
@@ -143,7 +145,7 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
         },
         data: data_args.clone(),
         output: OutputArgs {
-            out: "out".to_string(),
+            out: PathBuf::from("out"),
             prefix: "MIX".to_string(),
             suffix: "C".to_string(),
             record_width: 16,
@@ -167,7 +169,7 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
         },
         data: data_args,
         output: OutputArgs {
-            out: "out".to_string(),
+            out: PathBuf::from("out"),
             prefix: "MIX".to_string(),
             suffix: "D".to_string(),
             record_width: 64,

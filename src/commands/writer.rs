@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use crate::output::args::{OutputArgs, OutputFormat};
 use crate::output::errors::OutputError;
 
@@ -21,7 +19,7 @@ pub fn write_output(
         OutputFormat::Mot => "mot",
     };
     let out_filename = format!("{}.{}", name_parts.join("_"), ext);
-    let out_path = Path::new(&args.out).join(out_filename);
+    let out_path = args.out.join(out_filename);
     std::fs::write(out_path, contents).map_err(|e| {
         OutputError::FileError(format!("failed to write block {}: {}", block_name, e))
     })?;
