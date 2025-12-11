@@ -1,7 +1,7 @@
 use super::entry::LeafEntry;
 use super::errors::LayoutError;
-use super::header::{CrcLocation, Header};
-use super::settings::{Endianness, Settings};
+use super::header::Header;
+use super::settings::{CrcConfig, CrcLocation, Endianness, Settings};
 use crate::data::DataSource;
 
 use indexmap::IndexMap;
@@ -63,10 +63,15 @@ impl Block {
 
         Self::build_bytestream_inner(&self.data, data_source, &mut state, &config)?;
 
-        // Padding out to the 4 byte boundary for appended CRC32 (keyword location)
-        if let Some(hc) = &self.header.crc
-            && matches!(hc.location(), CrcLocation::Keyword(_))
-        {
+        // Resolve CRC config and check if keyword location (needs 4-byte alignment)
+        let resolved: CrcConfig = self
+            .header
+            .crc
+            .as_ref()
+            .map(|hc| hc.resolve(settings.crc.as_ref()))
+            .unwrap_or_else(|| settings.crc.clone().unwrap_or_default());
+
+        if let Some(CrcLocation::Keyword(_)) = &resolved.location {
             while !state.offset.is_multiple_of(4) {
                 state.buffer.push(config.padding);
                 state.offset += 1;

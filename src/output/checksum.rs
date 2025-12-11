@@ -1,33 +1,36 @@
-use crate::layout::settings::CrcData;
+use crate::layout::settings::CrcConfig;
 
 /// Hand-rolled CRC32 calculation matching the crc crate's NoTable implementation.
 /// This removes the need for static state and allows each block to use its own CRC settings.
-pub fn calculate_crc(data: &[u8], crc_settings: &CrcData) -> u32 {
+/// Assumes `crc_settings.is_complete()` has been verified.
+pub fn calculate_crc(data: &[u8], crc_settings: &CrcConfig) -> u32 {
+    let polynomial = crc_settings.polynomial.unwrap();
+    let start = crc_settings.start.unwrap();
+    let xor_out = crc_settings.xor_out.unwrap();
+    let ref_in = crc_settings.ref_in.unwrap();
+    let ref_out = crc_settings.ref_out.unwrap();
+
     // Initialize CRC based on ref_in
-    let mut crc = if crc_settings.ref_in {
-        crc_settings.start.reverse_bits()
-    } else {
-        crc_settings.start
-    };
+    let mut crc = if ref_in { start.reverse_bits() } else { start };
 
     // Prepare polynomial
-    let poly = if crc_settings.ref_in {
-        crc_settings.polynomial.reverse_bits()
+    let poly = if ref_in {
+        polynomial.reverse_bits()
     } else {
-        crc_settings.polynomial
+        polynomial
     };
 
     // Process each byte
     for &byte in data {
-        let idx = if crc_settings.ref_in {
+        let idx = if ref_in {
             (crc ^ (byte as u32)) & 0xFF
         } else {
             ((crc >> 24) ^ (byte as u32)) & 0xFF
         };
 
         // Perform 8 rounds of bitwise CRC calculation
-        let mut step = if crc_settings.ref_in { idx } else { idx << 24 };
-        if crc_settings.ref_in {
+        let mut step = if ref_in { idx } else { idx << 24 };
+        if ref_in {
             for _ in 0..8 {
                 step = (step >> 1) ^ ((step & 1) * poly);
             }
@@ -37,7 +40,7 @@ pub fn calculate_crc(data: &[u8], crc_settings: &CrcData) -> u32 {
             }
         }
 
-        crc = if crc_settings.ref_in {
+        crc = if ref_in {
             step ^ (crc >> 8)
         } else {
             step ^ (crc << 8)
@@ -45,11 +48,11 @@ pub fn calculate_crc(data: &[u8], crc_settings: &CrcData) -> u32 {
     }
 
     // Finalize
-    if crc_settings.ref_in ^ crc_settings.ref_out {
+    if ref_in ^ ref_out {
         crc = crc.reverse_bits();
     }
 
-    crc ^ crc_settings.xor_out
+    crc ^ xor_out
 }
 
 #[cfg(test)]
@@ -57,21 +60,24 @@ mod tests {
     use super::*;
     use crate::layout::settings::CrcArea;
 
+    fn standard_crc_config() -> CrcConfig {
+        CrcConfig {
+            location: None,
+            polynomial: Some(0x04C11DB7),
+            start: Some(0xFFFF_FFFF),
+            xor_out: Some(0xFFFF_FFFF),
+            ref_in: Some(true),
+            ref_out: Some(true),
+            area: Some(CrcArea::Data),
+        }
+    }
+
     // Verify our CRC32 implementation against the well-known test vector
-    // This tests the standard CRC32 settings used in all project examples
     #[test]
     fn test_crc32_standard_test_vector() {
-        let crc_settings = CrcData {
-            polynomial: 0x04C11DB7,
-            start: 0xFFFF_FFFF,
-            xor_out: 0xFFFF_FFFF,
-            ref_in: true,
-            ref_out: true,
-            area: CrcArea::Data,
-        };
+        let crc_settings = standard_crc_config();
 
         // The standard CRC32 test vector - "123456789" should produce 0xCBF43926
-        // This is the well-known test vector for CRC-32 (used in ZIP, PNG, etc.)
         let test_str = b"123456789";
         let result = calculate_crc(test_str, &crc_settings);
         assert_eq!(
@@ -87,13 +93,14 @@ mod tests {
 
     #[test]
     fn test_crc32_mpeg2_non_reflected_vector() {
-        let crc_settings = CrcData {
-            polynomial: 0x04C11DB7,
-            start: 0xFFFF_FFFF,
-            xor_out: 0x0000_0000,
-            ref_in: false,
-            ref_out: false,
-            area: CrcArea::Data,
+        let crc_settings = CrcConfig {
+            location: None,
+            polynomial: Some(0x04C11DB7),
+            start: Some(0xFFFF_FFFF),
+            xor_out: Some(0x0000_0000),
+            ref_in: Some(false),
+            ref_out: Some(false),
+            area: Some(CrcArea::Data),
         };
 
         // CRC-32/MPEG-2 parameters (non-reflected) over "123456789" should produce 0x0376E6E7
