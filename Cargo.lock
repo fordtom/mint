@@ -667,7 +667,7 @@ dependencies = [
 
 [[package]]
 name = "mint-cli"
-version = "1.2.0"
+version = "1.2.1"
 dependencies = [
  "bin_file",
  "calamine",
