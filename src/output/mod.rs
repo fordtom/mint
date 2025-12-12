@@ -690,9 +690,11 @@ mod tests {
         let result = bytestream_to_datarange(bytestream, &header, &settings, false, false, 0);
 
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("overlaps with payload"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("overlaps with payload")
+        );
     }
 }
