@@ -29,6 +29,7 @@ byte_swap = false          # Swap byte pairs across the block (used to emulate w
 pad_to_end = false         # Pad outputted block to full length
 
 [settings.crc]             # Optional: only required if any block uses CRC
+location = "end_data"      # CRC placement: "end_data", "end_block" - absolute address is not allowed here as this is a global setting
 polynomial = 0x04C11DB7    # CRC polynomial
 start = 0xFFFFFFFF         # Initial CRC value
 xor_out = 0xFFFFFFFF       # XOR applied to final CRC
@@ -57,7 +58,7 @@ length = 0x1000            # Block size in bytes (required)
 padding = 0xFF             # Padding byte value (default: 0xFF)
 
 [blockname.header.crc]     # Optional: enables CRC for this block
-location = "end_data"      # CRC placement: "end_data", "end_block", or absolute address
+location = "end_data"      # CRC placement: "end_data", "end_block", or absolute address (optional)
 polynomial = 0x04C11DB7    # Override global polynomial (optional)
 start = 0xFFFFFFFF         # Override global start value (optional)
 xor_out = 0xFFFFFFFF       # Override global xor_out (optional)
@@ -68,7 +69,7 @@ area = "data"              # Override global area (optional)
 
 **CRC Location Options:**
 
-- `"end_data"` - CRC placed after data (4-byte aligned)
+- `"end_data"` - Append CRC as u32 after data (4-byte aligned - designed such that it lands in a u32 placed at the end of the struct that you're building in flash. Note that the CRC for this setting if the area is set to 'data' will include any padding up to the alignment of the CRC itself.)
 - `"end_block"` - CRC in final 4 bytes of block
 - `0x8BFF0` - Absolute address for CRC placement - must be within the block
 
