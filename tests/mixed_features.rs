@@ -107,7 +107,6 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
             combined: false,
             stats: false,
             quiet: false,
-            pad_to_end: true,
         },
     };
     commands::build(&args_be_hex, ds.as_deref()).expect("be-hex");
@@ -132,7 +131,6 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
             combined: false,
             stats: false,
             quiet: false,
-            pad_to_end: true,
         },
     };
     commands::build(&args_be_mot, ds.as_deref()).expect("be-mot");
@@ -157,7 +155,6 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
             combined: false,
             stats: false,
             quiet: false,
-            pad_to_end: false,
         },
     };
     commands::build(&args_le_hex, ds.as_deref()).expect("le-hex");
@@ -182,7 +179,6 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
             combined: false,
             stats: false,
             quiet: false,
-            pad_to_end: false,
         },
     };
     commands::build(&args_le_mot, ds.as_deref()).expect("le-mot");

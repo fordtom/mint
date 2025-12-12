@@ -74,11 +74,10 @@ fn build_bytestreams(
     layouts: &HashMap<String, Config>,
     data_source: Option<&dyn DataSource>,
     strict: bool,
-    pad_to_end: bool,
 ) -> Result<Vec<BlockBuildResult>, NvmError> {
     blocks
         .par_iter()
-        .map(|resolved| build_single_bytestream(resolved, layouts, data_source, strict, pad_to_end))
+        .map(|resolved| build_single_bytestream(resolved, layouts, data_source, strict))
         .collect()
 }
 
@@ -87,7 +86,6 @@ fn build_single_bytestream(
     layouts: &HashMap<String, Config>,
     data_source: Option<&dyn DataSource>,
     strict: bool,
-    pad_to_end: bool,
 ) -> Result<BlockBuildResult, NvmError> {
     let result = (|| {
         let layout = &layouts[&resolved.file];
@@ -100,8 +98,6 @@ fn build_single_bytestream(
             bytestream,
             &block.header,
             &layout.settings,
-            layout.settings.byte_swap,
-            pad_to_end,
             padding_bytes,
         )?;
 
@@ -251,13 +247,7 @@ pub fn build(args: &Args, data_source: Option<&dyn DataSource>) -> Result<BuildS
     let start_time = Instant::now();
 
     let (resolved_blocks, layouts) = resolve_blocks(&args.layout.blocks)?;
-    let results = build_bytestreams(
-        &resolved_blocks,
-        &layouts,
-        data_source,
-        args.layout.strict,
-        args.output.pad_to_end,
-    )?;
+    let results = build_bytestreams(&resolved_blocks, &layouts, data_source, args.layout.strict)?;
 
     let mut stats = if args.output.combined {
         output_combined_file(results, &layouts, args)?

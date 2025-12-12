@@ -34,7 +34,6 @@ fn test_file_expands_all_blocks() {
             combined: false,
             stats: false,
             quiet: true,
-            pad_to_end: false,
         },
     };
 
@@ -92,7 +91,6 @@ fn test_deduplication_file_and_specific() {
             combined: false,
             stats: false,
             quiet: true,
-            pad_to_end: false,
         },
     };
 
@@ -134,7 +132,6 @@ fn test_file_expansion_with_combined() {
             combined: true,
             stats: false,
             quiet: true,
-            pad_to_end: false,
         },
     };
 
