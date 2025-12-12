@@ -74,7 +74,15 @@ fn resolve_crc(
         }
         CrcLocation::Keyword(option) => match option.as_str() {
             "end_data" => (length as u32 + 3) & !3,
-            "end_block" => header.length.saturating_sub(4),
+            "end_block" => {
+                let offset = header.length.saturating_sub(4);
+                if offset < length as u32 {
+                    return Err(OutputError::HexOutputError(
+                        "CRC at end_block overlaps with payload data.".to_string(),
+                    ));
+                }
+                offset
+            }
             _ => {
                 return Err(OutputError::HexOutputError(format!(
                     "Invalid CRC location: '{}'. Use 'end_data', 'end_block', or an address.",
@@ -661,5 +669,31 @@ mod tests {
 
         assert_eq!(dr.crc_address, 28);
         assert!(!dr.crc_bytestream.is_empty());
+    }
+
+    #[test]
+    fn end_block_overlap_with_data_errors() {
+        let settings = sample_settings();
+
+        // Block length is 16, CRC at end_block means offset 12
+        // But data is 16 bytes, which would overlap
+        let header = Header {
+            start_address: 0,
+            length: 16,
+            crc: Some(CrcConfig {
+                location: Some(CrcLocation::Keyword("end_block".to_string())),
+                ..Default::default()
+            }),
+            padding: 0xFF,
+        };
+
+        let bytestream = vec![1u8; 16]; // Data fills entire block
+        let result = bytestream_to_datarange(bytestream, &header, &settings, false, false, 0);
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("overlaps with payload"));
     }
 }
