@@ -147,8 +147,10 @@ pub fn bytestream_to_datarange(
 
     used_size = used_size.saturating_add(4);
 
-    // Padding for CRC alignment (when using keyword location like "end")
-    if let Some(CrcLocation::Keyword(_)) = &crc_settings.location {
+    // For end_block: pad from data end to CRC position (last 4 bytes of block)
+    if let Some(CrcLocation::Keyword(kw)) = &crc_settings.location
+        && kw == "end_block"
+    {
         bytestream.resize(crc_offset as usize, header.padding);
     }
 
