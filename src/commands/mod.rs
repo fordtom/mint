@@ -10,13 +10,13 @@ use crate::layout::block::Config;
 use crate::layout::errors::LayoutError;
 use crate::layout::settings::Endianness;
 use crate::output;
-use crate::output::DataRange;
 use crate::output::errors::OutputError;
+use crate::output::{prepare_combined, prepare_separate, DataRange};
 use rayon::prelude::*;
 use stats::{BlockStat, BuildStats};
 use std::collections::{HashMap, HashSet};
 use std::time::Instant;
-use writer::write_output;
+use writer::write_outputs;
 
 #[derive(Debug, Clone)]
 struct ResolvedBlock {
@@ -139,85 +139,48 @@ fn extract_crc_value(crc_bytestream: &[u8], endianness: &Endianness) -> Option<u
     })
 }
 
-fn output_separate_blocks(
+fn output_results(
     results: Vec<BlockBuildResult>,
     args: &Args,
 ) -> Result<BuildStats, NvmError> {
-    let block_stats: Result<Vec<BlockStat>, NvmError> = results
-        .par_iter()
-        .map(|result| {
-            let hex_string = output::emit_hex(
-                std::slice::from_ref(&result.data_range),
-                args.output.record_width as usize,
-                args.output.format,
-            )?;
-
-            write_output(&args.output, &result.block_names.name, &hex_string)?;
-            Ok(result.stat.clone())
+    let mut stats = BuildStats::new();
+    let named_ranges: Vec<(String, DataRange)> = results
+        .into_iter()
+        .map(|r| {
+            stats.add_block(r.stat);
+            (r.block_names.name, r.data_range)
         })
         .collect();
 
-    let block_stats = block_stats?;
+    let files = if args.output.combined {
+        check_overlaps(&named_ranges)?;
+        let ranges = named_ranges.into_iter().map(|(_, r)| r).collect();
+        vec![prepare_combined(
+            ranges,
+            args.output.format,
+            args.output.record_width as usize,
+        )]
+    } else {
+        prepare_separate(
+            named_ranges,
+            args.output.format,
+            args.output.record_width as usize,
+        )
+    };
 
-    let mut stats = BuildStats::new();
-    for stat in block_stats {
-        stats.add_block(stat);
-    }
-
+    write_outputs(&files, &args.output)?;
     Ok(stats)
 }
 
-fn output_combined_file(
-    results: Vec<BlockBuildResult>,
-    layouts: &HashMap<String, Config>,
-    args: &Args,
-) -> Result<BuildStats, NvmError> {
-    let mut stats = BuildStats::new();
-    let mut ranges = Vec::new();
-    let mut block_ranges = Vec::new();
-
-    for result in results {
-        let layout = &layouts[&result.block_names.file];
-        let block = &layout.blocks[&result.block_names.name];
-
-        let start = block
-            .header
-            .start_address
-            .checked_add(layout.settings.virtual_offset)
-            .ok_or(LayoutError::InvalidBlockArgument(
-                "start_address + virtual_offset overflow".into(),
-            ))?;
-
-        let end =
-            start
-                .checked_add(block.header.length)
-                .ok_or(LayoutError::InvalidBlockArgument(
-                    "start + length overflow".into(),
-                ))?;
-
-        stats.add_block(result.stat);
-        ranges.push(result.data_range);
-        block_ranges.push((result.block_names.name.clone(), start, end));
-    }
-
-    check_overlaps(&block_ranges)?;
-
-    let hex_string = output::emit_hex(
-        &ranges,
-        args.output.record_width as usize,
-        args.output.format,
-    )?;
-
-    write_output(&args.output, "combined", &hex_string)?;
-
-    Ok(stats)
-}
-
-fn check_overlaps(block_ranges: &[(String, u32, u32)]) -> Result<(), NvmError> {
-    for i in 0..block_ranges.len() {
-        for j in (i + 1)..block_ranges.len() {
-            let (ref name_a, a_start, a_end) = block_ranges[i];
-            let (ref name_b, b_start, b_end) = block_ranges[j];
+fn check_overlaps(named_ranges: &[(String, DataRange)]) -> Result<(), NvmError> {
+    for i in 0..named_ranges.len() {
+        for j in (i + 1)..named_ranges.len() {
+            let (ref name_a, ref range_a) = named_ranges[i];
+            let (ref name_b, ref range_b) = named_ranges[j];
+            let a_start = range_a.start_address;
+            let a_end = a_start + range_a.allocated_size;
+            let b_start = range_b.start_address;
+            let b_end = b_start + range_b.allocated_size;
 
             let overlap_start = a_start.max(b_start);
             let overlap_end = a_end.min(b_end);
@@ -249,11 +212,7 @@ pub fn build(args: &Args, data_source: Option<&dyn DataSource>) -> Result<BuildS
     let (resolved_blocks, layouts) = resolve_blocks(&args.layout.blocks)?;
     let results = build_bytestreams(&resolved_blocks, &layouts, data_source, args.layout.strict)?;
 
-    let mut stats = if args.output.combined {
-        output_combined_file(results, &layouts, args)?
-    } else {
-        output_separate_blocks(results, args)?
-    };
+    let mut stats = output_results(results, args)?;
 
     stats.total_duration = start_time.elapsed();
     Ok(stats)
