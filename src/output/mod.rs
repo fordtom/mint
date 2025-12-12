@@ -2,8 +2,8 @@ pub mod args;
 pub mod checksum;
 pub mod errors;
 
-use crate::layout::header::{CrcLocation, Header};
-use crate::layout::settings::{CrcArea, Endianness, Settings};
+use crate::layout::header::Header;
+use crate::layout::settings::{CrcArea, CrcConfig, CrcLocation, Endianness, Settings};
 use crate::output::args::OutputFormat;
 use errors::OutputError;
 
@@ -25,8 +25,40 @@ fn byte_swap_inplace(bytes: &mut [u8]) {
     }
 }
 
-fn validate_crc_location(length: usize, header: &Header) -> Result<Option<u32>, OutputError> {
-    let crc_offset = match &header.crc_location {
+/// Resolves CRC config from header + settings, validates location, returns offset + config.
+fn resolve_crc(
+    length: usize,
+    header: &Header,
+    settings: &Settings,
+) -> Result<Option<(u32, CrcConfig)>, OutputError> {
+    // Merge header CRC with settings CRC
+    let resolved = header
+        .crc
+        .as_ref()
+        .map(|hc| hc.resolve(settings.crc.as_ref()))
+        .unwrap_or_else(|| settings.crc.clone().unwrap_or_default());
+
+    // Check if CRC is disabled
+    if resolved.is_disabled() {
+        return Ok(None);
+    }
+
+    let location = resolved.location.as_ref().ok_or_else(|| {
+        OutputError::HexOutputError("CRC enabled but no location specified.".to_string())
+    })?;
+
+    // Absolute addresses must come from header, not settings
+    if let CrcLocation::Address(_) = location {
+        let header_has_location = header.crc.as_ref().is_some_and(|hc| hc.location.is_some());
+        if !header_has_location {
+            return Err(OutputError::HexOutputError(
+                "Absolute CRC address not allowed in [settings.crc]; use [header.crc] instead."
+                    .to_string(),
+            ));
+        }
+    }
+
+    let crc_offset = match location {
         CrcLocation::Address(address) => {
             let crc_offset = address.checked_sub(header.start_address).ok_or_else(|| {
                 OutputError::HexOutputError("CRC address before block start.".to_string())
@@ -41,11 +73,19 @@ fn validate_crc_location(length: usize, header: &Header) -> Result<Option<u32>, 
             crc_offset
         }
         CrcLocation::Keyword(option) => match option.as_str() {
-            "none" => return Ok(None),
-            "end" => (length as u32 + 3) & !3,
+            "end_data" => (length as u32 + 3) & !3,
+            "end_block" => {
+                let offset = header.length.saturating_sub(4);
+                if offset < length as u32 {
+                    return Err(OutputError::HexOutputError(
+                        "CRC at end_block overlaps with payload data.".to_string(),
+                    ));
+                }
+                offset
+            }
             _ => {
                 return Err(OutputError::HexOutputError(format!(
-                    "Invalid CRC location: {}",
+                    "Invalid CRC location: '{}'. Use 'end_data', 'end_block', or an address.",
                     option
                 )));
             }
@@ -58,7 +98,15 @@ fn validate_crc_location(length: usize, header: &Header) -> Result<Option<u32>, 
         ));
     }
 
-    Ok(Some(crc_offset))
+    // Verify all CRC parameters are present
+    if !resolved.is_complete() {
+        return Err(OutputError::HexOutputError(
+            "CRC location specified but missing CRC parameters (polynomial, start, etc)."
+                .to_string(),
+        ));
+    }
+
+    Ok(Some((crc_offset, resolved)))
 }
 
 pub fn bytestream_to_datarange(
@@ -83,14 +131,14 @@ pub fn bytestream_to_datarange(
         byte_swap_inplace(bytestream.as_mut_slice());
     }
 
-    // Determine CRC location relative to current payload end
-    let crc_location = validate_crc_location(bytestream.len(), header)?;
+    // Resolve CRC configuration (location + settings) from header + global defaults
+    let crc_config = resolve_crc(bytestream.len(), header, settings)?;
 
     let mut used_size = (bytestream.len() as u32).saturating_sub(padding_bytes);
     let allocated_size = header.length;
 
     // If CRC is disabled for this block, return early with no CRC
-    let Some(crc_offset) = crc_location else {
+    let Some((crc_offset, crc_settings)) = crc_config else {
         if pad_to_end {
             bytestream.resize(header.length as usize, header.padding);
         }
@@ -105,22 +153,19 @@ pub fn bytestream_to_datarange(
         });
     };
 
-    // CRC is enabled - require settings.crc
-    let crc_settings = settings.crc.as_ref().ok_or_else(|| {
-        OutputError::HexOutputError(
-            "CRC location specified but no [settings.crc] defined.".to_string(),
-        )
-    })?;
-
     used_size = used_size.saturating_add(4);
 
-    // Padding for CRC alignment
-    if let CrcLocation::Keyword(_) = &header.crc_location {
+    // For end_block: pad from data end to CRC position (last 4 bytes of block)
+    if let Some(CrcLocation::Keyword(kw)) = &crc_settings.location
+        && kw == "end_block"
+    {
         bytestream.resize(crc_offset as usize, header.padding);
     }
 
+    let area = crc_settings.area.unwrap(); // Safe: is_complete() verified
+
     // Handle block-level CRC modes
-    match crc_settings.area {
+    match area {
         CrcArea::BlockZeroCrc | CrcArea::BlockPadCrc | CrcArea::BlockOmitCrc => {
             bytestream.resize(header.length as usize, header.padding);
         }
@@ -128,18 +173,18 @@ pub fn bytestream_to_datarange(
     }
 
     // Zero CRC location for BlockZeroCrc mode
-    if crc_settings.area == CrcArea::BlockZeroCrc {
+    if area == CrcArea::BlockZeroCrc {
         bytestream[crc_offset as usize..(crc_offset + 4) as usize].fill(0);
     }
 
     // Compute CRC - omit CRC bytes for BlockOmitCrc mode
-    let crc_val = if crc_settings.area == CrcArea::BlockOmitCrc {
+    let crc_val = if area == CrcArea::BlockOmitCrc {
         let before = &bytestream[..crc_offset as usize];
         let after = &bytestream[(crc_offset + 4) as usize..];
         let combined: Vec<u8> = [before, after].concat();
-        checksum::calculate_crc(&combined, crc_settings)
+        checksum::calculate_crc(&combined, &crc_settings)
     } else {
-        checksum::calculate_crc(&bytestream, crc_settings)
+        checksum::calculate_crc(&bytestream, &crc_settings)
     };
 
     let mut crc_bytes: [u8; 4] = match settings.endianness {
@@ -242,20 +287,20 @@ pub fn emit_hex(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::layout::header::CrcLocation;
     use crate::layout::header::Header;
     use crate::layout::settings::Endianness;
     use crate::layout::settings::Settings;
-    use crate::layout::settings::{CrcArea, CrcData};
+    use crate::layout::settings::{CrcArea, CrcConfig, CrcLocation};
 
-    fn sample_crc_data() -> CrcData {
-        CrcData {
-            polynomial: 0x04C11DB7,
-            start: 0xFFFF_FFFF,
-            xor_out: 0xFFFF_FFFF,
-            ref_in: true,
-            ref_out: true,
-            area: CrcArea::Data,
+    fn sample_crc_config() -> CrcConfig {
+        CrcConfig {
+            location: Some(CrcLocation::Keyword("end_data".to_string())),
+            polynomial: Some(0x04C11DB7),
+            start: Some(0xFFFF_FFFF),
+            xor_out: Some(0xFFFF_FFFF),
+            ref_in: Some(true),
+            ref_out: Some(true),
+            area: Some(CrcArea::Data),
         }
     }
 
@@ -263,7 +308,7 @@ mod tests {
         Settings {
             endianness: Endianness::Little,
             virtual_offset: 0,
-            crc: Some(sample_crc_data()),
+            crc: Some(sample_crc_config()),
             byte_swap: false,
             pad_to_end: false,
         }
@@ -273,7 +318,19 @@ mod tests {
         Header {
             start_address: 0,
             length: len,
-            crc_location: CrcLocation::Keyword("end".to_string()),
+            crc: Some(CrcConfig {
+                location: Some(CrcLocation::Keyword("end_data".to_string())),
+                ..Default::default()
+            }),
+            padding: 0xFF,
+        }
+    }
+
+    fn header_no_crc(len: u32) -> Header {
+        Header {
+            start_address: 0,
+            length: len,
+            crc: None,
             padding: 0xFF,
         }
     }
@@ -281,7 +338,7 @@ mod tests {
     #[test]
     fn pad_to_end_false_resizes_to_crc_end_only() {
         let settings = sample_settings();
-        let crc_data = sample_crc_data();
+        let crc_config = sample_crc_config();
         let header = sample_header(16);
 
         let bytestream = vec![1u8, 2, 3, 4];
@@ -293,17 +350,12 @@ mod tests {
         // No in-memory resize when pad_to_end=false; CRC is emitted separately
         assert_eq!(bytestream.len(), 4);
 
-        // And the emitted hex should contain the CRC bytes (endianness applied)
-        let crc_offset = super::validate_crc_location(4usize, &header)
-            .expect("crc loc")
-            .expect("crc should be enabled");
-        assert_eq!(crc_offset as usize, 4, "crc should follow payload end");
-        let crc_val = checksum::calculate_crc(&bytestream[..crc_offset as usize], &crc_data);
+        // CRC offset should be 4 (aligned to 4-byte boundary after payload)
+        let crc_val = checksum::calculate_crc(&bytestream[..4], &crc_config);
         let crc_bytes = match settings.endianness {
             Endianness::Big => crc_val.to_be_bytes(),
             Endianness::Little => crc_val.to_le_bytes(),
         };
-        // No byte swap in this test
         let expected_crc_ascii = crc_bytes
             .iter()
             .map(|b| format!("{:02X}", b))
@@ -313,6 +365,7 @@ mod tests {
             "hex should contain CRC bytes"
         );
     }
+
     #[test]
     fn pad_to_end_true_resizes_to_full_block() {
         let settings = sample_settings();
@@ -327,10 +380,10 @@ mod tests {
 
     #[test]
     fn block_zero_crc_zeros_crc_location() {
-        let mut crc_data = sample_crc_data();
-        crc_data.area = CrcArea::BlockZeroCrc;
+        let mut crc_config = sample_crc_config();
+        crc_config.area = Some(CrcArea::BlockZeroCrc);
         let settings = Settings {
-            crc: Some(crc_data),
+            crc: Some(crc_config),
             ..sample_settings()
         };
         let header = sample_header(32);
@@ -340,9 +393,7 @@ mod tests {
             .expect("data range generation failed");
 
         assert_eq!(dr.bytestream.len(), header.length as usize);
-        let crc_offset = validate_crc_location(4usize, &header)
-            .expect("crc loc")
-            .expect("crc enabled");
+        let crc_offset = 4u32;
         assert_eq!(
             dr.bytestream[crc_offset as usize..(crc_offset + 4) as usize],
             [0, 0, 0, 0],
@@ -352,10 +403,10 @@ mod tests {
 
     #[test]
     fn block_pad_crc_includes_padding_at_crc_location() {
-        let mut crc_data = sample_crc_data();
-        crc_data.area = CrcArea::BlockPadCrc;
+        let mut crc_config = sample_crc_config();
+        crc_config.area = Some(CrcArea::BlockPadCrc);
         let settings = Settings {
-            crc: Some(crc_data),
+            crc: Some(crc_config),
             ..sample_settings()
         };
         let header = sample_header(32);
@@ -365,9 +416,7 @@ mod tests {
             .expect("data range generation failed");
 
         assert_eq!(dr.bytestream.len(), header.length as usize);
-        let crc_offset = validate_crc_location(4usize, &header)
-            .expect("crc loc")
-            .expect("crc enabled");
+        let crc_offset = 4u32;
         assert_eq!(
             dr.bytestream[crc_offset as usize..(crc_offset + 4) as usize],
             [0xFF, 0xFF, 0xFF, 0xFF],
@@ -377,10 +426,10 @@ mod tests {
 
     #[test]
     fn block_omit_crc_excludes_crc_bytes_from_calculation() {
-        let mut crc_data = sample_crc_data();
-        crc_data.area = CrcArea::BlockOmitCrc;
+        let mut crc_config = sample_crc_config();
+        crc_config.area = Some(CrcArea::BlockOmitCrc);
         let settings = Settings {
-            crc: Some(crc_data.clone()),
+            crc: Some(crc_config.clone()),
             ..sample_settings()
         };
         let header = sample_header(32);
@@ -390,17 +439,15 @@ mod tests {
             .expect("data range generation failed");
 
         assert_eq!(dr.bytestream.len(), header.length as usize);
-        let crc_offset = validate_crc_location(4usize, &header)
-            .expect("crc loc")
-            .expect("crc enabled");
+        let crc_offset = 4u32;
 
-        // Calculate expected CRC by omitting CRC bytes (same logic as in bytestream_to_datarange)
+        // Calculate expected CRC by omitting CRC bytes
         let before = &dr.bytestream[..crc_offset as usize];
         let after = &dr.bytestream[(crc_offset + 4) as usize..];
         let combined: Vec<u8> = [before, after].concat();
-        let expected_crc = checksum::calculate_crc(&combined, &crc_data);
+        let expected_crc = checksum::calculate_crc(&combined, &crc_config);
 
-        // Extract actual CRC from the result (accounting for endianness)
+        // Extract actual CRC from the result
         let actual_crc = match settings.endianness {
             Endianness::Little => u32::from_le_bytes(
                 dr.crc_bytestream[..4]
@@ -420,7 +467,7 @@ mod tests {
         );
 
         // Verify that including CRC bytes produces a different result
-        let crc_with_bytes = checksum::calculate_crc(&dr.bytestream, &crc_data);
+        let crc_with_bytes = checksum::calculate_crc(&dr.bytestream, &crc_config);
         assert_ne!(
             expected_crc, crc_with_bytes,
             "CRC with bytes included should differ from CRC with bytes omitted"
@@ -428,15 +475,12 @@ mod tests {
     }
 
     #[test]
-    fn crc_location_none_skips_crc() {
+    fn no_crc_config_skips_crc() {
         let settings = Settings {
             crc: None,
             ..sample_settings()
         };
-        let header = Header {
-            crc_location: CrcLocation::Keyword("none".to_string()),
-            ..sample_header(32)
-        };
+        let header = header_no_crc(32);
 
         let bytestream = vec![1u8, 2, 3, 4];
         let dr = bytestream_to_datarange(bytestream.clone(), &header, &settings, false, false, 0)
@@ -448,15 +492,32 @@ mod tests {
     }
 
     #[test]
-    fn crc_location_none_with_pad_to_end() {
+    fn end_block_places_crc_at_block_end() {
+        let settings = sample_settings();
+        let header = Header {
+            crc: Some(CrcConfig {
+                location: Some(CrcLocation::Keyword("end_block".to_string())),
+                ..Default::default()
+            }),
+            ..sample_header(32)
+        };
+
+        let bytestream = vec![1u8, 2, 3, 4];
+        let dr = bytestream_to_datarange(bytestream.clone(), &header, &settings, false, false, 0)
+            .expect("data range generation failed");
+
+        // CRC should be at offset 28 (block length 32 - 4)
+        assert_eq!(dr.crc_address, 28);
+        assert!(!dr.crc_bytestream.is_empty());
+    }
+
+    #[test]
+    fn no_crc_with_pad_to_end() {
         let settings = Settings {
             crc: None,
             ..sample_settings()
         };
-        let header = Header {
-            crc_location: CrcLocation::Keyword("none".to_string()),
-            ..sample_header(32)
-        };
+        let header = header_no_crc(32);
 
         let bytestream = vec![1u8, 2, 3, 4];
         let dr = bytestream_to_datarange(bytestream.clone(), &header, &settings, false, true, 0)
@@ -471,12 +532,13 @@ mod tests {
     }
 
     #[test]
-    fn crc_required_but_settings_missing_errors() {
+    fn crc_location_set_but_settings_missing_errors() {
         let settings = Settings {
             crc: None,
             ..sample_settings()
         };
-        let header = sample_header(32); // uses crc_location = "end"
+        // Header has CRC location but no param overrides, and no global settings
+        let header = sample_header(32);
 
         let bytestream = vec![1u8, 2, 3, 4];
         let result = bytestream_to_datarange(bytestream, &header, &settings, false, false, 0);
@@ -486,7 +548,152 @@ mod tests {
             result
                 .unwrap_err()
                 .to_string()
-                .contains("no [settings.crc] defined")
+                .contains("missing CRC parameters")
         );
+    }
+
+    #[test]
+    fn header_crc_overrides_global_settings() {
+        let settings = sample_settings();
+
+        // Header overrides polynomial
+        let header = Header {
+            crc: Some(CrcConfig {
+                location: Some(CrcLocation::Keyword("end_data".to_string())),
+                polynomial: Some(0x1EDC6F41), // Different polynomial
+                ..Default::default()
+            }),
+            ..sample_header(32)
+        };
+
+        let bytestream = vec![1u8, 2, 3, 4];
+        let dr = bytestream_to_datarange(bytestream.clone(), &header, &settings, false, false, 0)
+            .expect("data range generation failed");
+
+        // CRC should be computed with the overridden polynomial
+        let mut expected_config = sample_crc_config();
+        expected_config.polynomial = Some(0x1EDC6F41);
+        let expected_crc = checksum::calculate_crc(&bytestream, &expected_config);
+        let actual_crc = u32::from_le_bytes(dr.crc_bytestream[..4].try_into().unwrap());
+        assert_eq!(expected_crc, actual_crc);
+    }
+
+    #[test]
+    fn header_crc_fully_specified_no_global() {
+        // No global CRC settings
+        let settings = Settings {
+            crc: None,
+            ..sample_settings()
+        };
+
+        // Header fully specifies all CRC settings
+        let header = Header {
+            crc: Some(sample_crc_config()),
+            ..sample_header(32)
+        };
+
+        let bytestream = vec![1u8, 2, 3, 4];
+        let dr = bytestream_to_datarange(bytestream.clone(), &header, &settings, false, false, 0)
+            .expect("data range generation failed");
+
+        // Should succeed and produce a valid CRC
+        assert!(!dr.crc_bytestream.is_empty());
+        let expected_crc = checksum::calculate_crc(&bytestream, &sample_crc_config());
+        let actual_crc = u32::from_le_bytes(dr.crc_bytestream[..4].try_into().unwrap());
+        assert_eq!(expected_crc, actual_crc);
+    }
+
+    #[test]
+    fn settings_location_end_with_header_inheriting() {
+        // Settings specifies location = "end_data" as default
+        let settings = Settings {
+            crc: Some(sample_crc_config()),
+            ..sample_settings()
+        };
+
+        // Header has no crc section - should inherit from settings
+        let header = header_no_crc(32);
+
+        let bytestream = vec![1u8, 2, 3, 4];
+        let dr = bytestream_to_datarange(bytestream.clone(), &header, &settings, false, false, 0)
+            .expect("data range generation failed");
+
+        // Should use CRC from settings
+        assert!(!dr.crc_bytestream.is_empty());
+    }
+
+    #[test]
+    fn settings_absolute_address_rejected() {
+        // Settings with absolute address - should be rejected
+        let settings = Settings {
+            crc: Some(CrcConfig {
+                location: Some(CrcLocation::Address(0x1000)),
+                ..sample_crc_config()
+            }),
+            ..sample_settings()
+        };
+
+        // Header has no crc section - inherits from settings
+        let header = header_no_crc(32);
+
+        let bytestream = vec![1u8, 2, 3, 4];
+        let result = bytestream_to_datarange(bytestream, &header, &settings, false, false, 0);
+
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Absolute CRC address not allowed in [settings.crc]")
+        );
+    }
+
+    #[test]
+    fn header_absolute_address_allowed() {
+        let settings = sample_settings();
+
+        // Header specifies absolute address - should work
+        let header = Header {
+            start_address: 0,
+            length: 32,
+            crc: Some(CrcConfig {
+                location: Some(CrcLocation::Address(28)),
+                ..Default::default()
+            }),
+            padding: 0xFF,
+        };
+
+        let bytestream = vec![1u8, 2, 3, 4];
+        let dr = bytestream_to_datarange(bytestream, &header, &settings, false, false, 0)
+            .expect("data range generation failed");
+
+        assert_eq!(dr.crc_address, 28);
+        assert!(!dr.crc_bytestream.is_empty());
+    }
+
+    #[test]
+    fn end_block_overlap_with_data_errors() {
+        let settings = sample_settings();
+
+        // Block length is 16, CRC at end_block means offset 12
+        // But data is 16 bytes, which would overlap
+        let header = Header {
+            start_address: 0,
+            length: 16,
+            crc: Some(CrcConfig {
+                location: Some(CrcLocation::Keyword("end_block".to_string())),
+                ..Default::default()
+            }),
+            padding: 0xFF,
+        };
+
+        let bytestream = vec![1u8; 16]; // Data fills entire block
+        let result = bytestream_to_datarange(bytestream, &header, &settings, false, false, 0);
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("overlaps with payload"));
     }
 }
