@@ -209,6 +209,15 @@ mint config@layout.toml calibration@layout.toml --xlsx data.xlsx -v Default
 mint config@layout.toml calibration@layout.toml --xlsx data.xlsx -v Default --combined
 ```
 
+### `--pad-to-end`
+
+Pad output to full block length. When enabled, the output file will contain padding bytes up to the block's defined length. Bear in mind that other features (such as CRC checking across the whole block) can/will already have padded the block to the full length, rendering this option useless.
+
+```bash
+# Output padded to full block length
+mint layout.toml --xlsx data.xlsx -v Default --pad-to-end
+```
+
 ---
 
 ## Build Options

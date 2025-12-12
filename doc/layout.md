@@ -26,7 +26,6 @@ Global settings apply to all blocks. The `[settings.crc]` section defines defaul
 endianness = "little"      # "little" (default) or "big"
 virtual_offset = 0x0       # Offset added to all addresses
 byte_swap = false          # Swap byte pairs across the block (used to emulate word-addressable memory)
-pad_to_end = false         # Pad outputted block to full length
 
 [settings.crc]             # Optional: only required if any block uses CRC
 location = "end_data"      # CRC placement: "end_data", "end_block" - absolute address is not allowed here as this is a global setting

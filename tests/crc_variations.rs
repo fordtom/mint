@@ -78,7 +78,10 @@ value1 = { value = 0x11223344, type = "u32" }
         mint_cli::output::args::OutputFormat::Hex,
     );
     let stats = commands::build(&args, None).expect("block_end_data build");
-    assert!(stats.block_stats[0].crc_value.is_some(), "end_data should have CRC");
+    assert!(
+        stats.block_stats[0].crc_value.is_some(),
+        "end_data should have CRC"
+    );
 
     let args = common::build_args(
         &layout_path,
@@ -86,7 +89,10 @@ value1 = { value = 0x11223344, type = "u32" }
         mint_cli::output::args::OutputFormat::Hex,
     );
     let stats = commands::build(&args, None).expect("block_end_block build");
-    assert!(stats.block_stats[0].crc_value.is_some(), "end_block should have CRC");
+    assert!(
+        stats.block_stats[0].crc_value.is_some(),
+        "end_block should have CRC"
+    );
 
     let args = common::build_args(
         &layout_path,
@@ -94,7 +100,10 @@ value1 = { value = 0x11223344, type = "u32" }
         mint_cli::output::args::OutputFormat::Hex,
     );
     let stats = commands::build(&args, None).expect("block_absolute build");
-    assert!(stats.block_stats[0].crc_value.is_some(), "absolute should have CRC");
+    assert!(
+        stats.block_stats[0].crc_value.is_some(),
+        "absolute should have CRC"
+    );
 
     let args = common::build_args(
         &layout_path,
@@ -102,7 +111,10 @@ value1 = { value = 0x11223344, type = "u32" }
         mint_cli::output::args::OutputFormat::Hex,
     );
     let stats = commands::build(&args, None).expect("block_no_crc build");
-    assert!(stats.block_stats[0].crc_value.is_none(), "no_crc should not have CRC");
+    assert!(
+        stats.block_stats[0].crc_value.is_none(),
+        "no_crc should not have CRC"
+    );
 }
 
 /// Tests per-header CRC parameter overrides.
@@ -185,7 +197,12 @@ value = { value = 0x12345678, type = "u32" }
     let layout_path = common::write_layout_file("crc_overrides", layout);
 
     // Build all blocks and verify they produce different CRC values for same data
-    let blocks = ["block_default", "block_crc32c", "block_mpeg2", "block_full_override"];
+    let blocks = [
+        "block_default",
+        "block_crc32c",
+        "block_mpeg2",
+        "block_full_override",
+    ];
     let mut crc_values = Vec::new();
 
     for block_name in blocks {
@@ -194,8 +211,10 @@ value = { value = 0x12345678, type = "u32" }
             block_name,
             mint_cli::output::args::OutputFormat::Hex,
         );
-        let stats = commands::build(&args, None).expect(&format!("{} build", block_name));
-        let crc = stats.block_stats[0].crc_value.expect(&format!("{} should have CRC", block_name));
+        let stats = commands::build(&args, None).unwrap_or_else(|_| panic!("{} build", block_name));
+        let crc = stats.block_stats[0]
+            .crc_value
+            .unwrap_or_else(|| panic!("{} should have CRC", block_name));
         crc_values.push((block_name, crc));
     }
 
@@ -286,7 +305,12 @@ value = { value = 0xAABBCCDD, type = "u32" }
 
     let layout_path = common::write_layout_file("crc_areas", layout);
 
-    let blocks = ["block_data", "block_zero_crc", "block_pad_crc", "block_omit_crc"];
+    let blocks = [
+        "block_data",
+        "block_zero_crc",
+        "block_pad_crc",
+        "block_omit_crc",
+    ];
     let mut crc_values = Vec::new();
 
     for block_name in blocks {
@@ -295,8 +319,10 @@ value = { value = 0xAABBCCDD, type = "u32" }
             block_name,
             mint_cli::output::args::OutputFormat::Hex,
         );
-        let stats = commands::build(&args, None).expect(&format!("{} build", block_name));
-        let crc = stats.block_stats[0].crc_value.expect(&format!("{} should have CRC", block_name));
+        let stats = commands::build(&args, None).unwrap_or_else(|_| panic!("{} build", block_name));
+        let crc = stats.block_stats[0]
+            .crc_value
+            .unwrap_or_else(|| panic!("{} should have CRC", block_name));
         crc_values.push((block_name, crc));
     }
 
@@ -422,16 +448,41 @@ value = { value = 0x33333333, type = "u32" }
         },
     ];
 
-    let mut args = common::build_args_for_layouts(blocks, mint_cli::output::args::OutputFormat::Hex);
+    let mut args =
+        common::build_args_for_layouts(blocks, mint_cli::output::args::OutputFormat::Hex);
     args.output.combined = true;
 
     let stats = commands::build(&args, None).expect("combined build");
     assert_eq!(stats.blocks_processed, 3);
 
     // block_a and block_b have CRC, block_c does not
-    assert!(stats.block_stats.iter().find(|b| b.name == "block_a").unwrap().crc_value.is_some());
-    assert!(stats.block_stats.iter().find(|b| b.name == "block_b").unwrap().crc_value.is_some());
-    assert!(stats.block_stats.iter().find(|b| b.name == "block_c").unwrap().crc_value.is_none());
+    assert!(
+        stats
+            .block_stats
+            .iter()
+            .find(|b| b.name == "block_a")
+            .unwrap()
+            .crc_value
+            .is_some()
+    );
+    assert!(
+        stats
+            .block_stats
+            .iter()
+            .find(|b| b.name == "block_b")
+            .unwrap()
+            .crc_value
+            .is_some()
+    );
+    assert!(
+        stats
+            .block_stats
+            .iter()
+            .find(|b| b.name == "block_c")
+            .unwrap()
+            .crc_value
+            .is_none()
+    );
 
     common::assert_out_file_exists("combined", mint_cli::output::args::OutputFormat::Hex);
 }

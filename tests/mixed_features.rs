@@ -10,7 +10,7 @@ mod common;
 // This integration test exercises:
 // - Big endian vs little endian
 // - byte_swap true and false
-// - pad_to_end true and false
+// - --pad-to-end CLI flag (true and false)
 // - CRC at end and at explicit address
 // - record width variations (16 and 64)
 // - Output formats HEX and MOT (SREC address length auto-selection)
@@ -26,7 +26,6 @@ fn mixed_feature_matrix() {
 endianness = "big"
 virtual_offset = 0
 byte_swap = true
-pad_to_end = true
 
 [settings.crc]
 polynomial = 0x04C11DB7
@@ -55,7 +54,6 @@ single.i32 = { value = 42, type = "i32" }
 endianness = "little"
 virtual_offset = 0x20000
 byte_swap = false
-pad_to_end = false
 
 [settings.crc]
 polynomial = 0x04C11DB7
@@ -109,6 +107,7 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
             combined: false,
             stats: false,
             quiet: false,
+            pad_to_end: true,
         },
     };
     commands::build(&args_be_hex, ds.as_deref()).expect("be-hex");
@@ -133,6 +132,7 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
             combined: false,
             stats: false,
             quiet: false,
+            pad_to_end: true,
         },
     };
     commands::build(&args_be_mot, ds.as_deref()).expect("be-mot");
@@ -157,6 +157,7 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
             combined: false,
             stats: false,
             quiet: false,
+            pad_to_end: false,
         },
     };
     commands::build(&args_le_hex, ds.as_deref()).expect("le-hex");
@@ -181,6 +182,7 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
             combined: false,
             stats: false,
             quiet: false,
+            pad_to_end: false,
         },
     };
     commands::build(&args_le_mot, ds.as_deref()).expect("le-mot");

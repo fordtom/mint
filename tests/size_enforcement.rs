@@ -12,7 +12,6 @@ fn lowercase_size_allows_padding() {
 endianness = "little"
 virtual_offset = 0
 byte_swap = false
-pad_to_end = false
 
 [settings.crc]
 polynomial = 0x04C11DB7
@@ -55,7 +54,6 @@ fn uppercase_size_rejects_underfilled_1d() {
 endianness = "little"
 virtual_offset = 0
 byte_swap = false
-pad_to_end = false
 
 [settings.crc]
 polynomial = 0x04C11DB7
@@ -97,7 +95,6 @@ fn uppercase_size_rejects_underfilled_2d() {
 endianness = "little"
 virtual_offset = 0
 byte_swap = false
-pad_to_end = false
 
 [settings.crc]
 polynomial = 0x04C11DB7
@@ -146,7 +143,6 @@ fn both_size_and_uppercase_size_errors() {
 endianness = "little"
 virtual_offset = 0
 byte_swap = false
-pad_to_end = false
 
 [settings.crc]
 polynomial = 0x04C11DB7
@@ -188,7 +184,6 @@ fn uppercase_size_accepts_exact_match() {
 endianness = "little"
 virtual_offset = 0
 byte_swap = false
-pad_to_end = false
 
 [settings.crc]
 polynomial = 0x04C11DB7

@@ -178,7 +178,6 @@ fn test_no_crc_section_returns_none_crc_value() {
 endianness = "little"
 virtual_offset = 0x0
 byte_swap = false
-pad_to_end = false
 
 [block_no_crc.header]
 start_address = 0x1000
