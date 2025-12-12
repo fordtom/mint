@@ -39,8 +39,10 @@ area = "data"
 [block.header]
 start_address = 0x10000
 length = 0x80
-crc_location = 0x10060
 padding = 0xAA
+
+[block.header.crc]
+location = 0x10060
 
 [block.data]
 nums.u16_be = { value = [1, 2, 3, 4], type = "u16", size = 4 }
@@ -66,8 +68,10 @@ area = "data"
 [block.header]
 start_address = 0x90000
 length = 0x40
-crc_location = "end"
 padding = 0x00
+
+[block.header.crc]
+location = "end_data"
 
 [block.data]
 arr.f32 = { value = [1.0, 2.5], type = "f32", size = 2 }
