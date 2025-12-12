@@ -265,6 +265,53 @@ pub fn emit_hex(
     }
 }
 
+/// Represents a single output file to be written.
+#[derive(Debug, Clone)]
+pub struct OutputFile {
+    pub name: String,
+    pub ranges: Vec<DataRange>,
+    pub format: OutputFormat,
+    pub record_width: usize,
+}
+
+impl OutputFile {
+    /// Render this file's contents as a hex/mot string.
+    pub fn render(&self) -> Result<String, OutputError> {
+        emit_hex(&self.ranges, self.record_width, self.format)
+    }
+}
+
+/// Prepare separate output files (one per block).
+pub fn prepare_separate(
+    ranges: Vec<(String, DataRange)>,
+    format: OutputFormat,
+    record_width: usize,
+) -> Vec<OutputFile> {
+    ranges
+        .into_iter()
+        .map(|(name, range)| OutputFile {
+            name,
+            ranges: vec![range],
+            format,
+            record_width,
+        })
+        .collect()
+}
+
+/// Prepare a single combined output file from multiple ranges.
+pub fn prepare_combined(
+    ranges: Vec<DataRange>,
+    format: OutputFormat,
+    record_width: usize,
+) -> OutputFile {
+    OutputFile {
+        name: "combined".to_string(),
+        ranges,
+        format,
+        record_width,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

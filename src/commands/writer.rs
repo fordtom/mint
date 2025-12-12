@@ -1,5 +1,15 @@
 use crate::output::args::{OutputArgs, OutputFormat};
 use crate::output::errors::OutputError;
+use crate::output::OutputFile;
+use rayon::prelude::*;
+
+/// Write multiple output files in parallel.
+pub fn write_outputs(files: &[OutputFile], args: &OutputArgs) -> Result<(), OutputError> {
+    files.par_iter().try_for_each(|file| {
+        let contents = file.render()?;
+        write_output(args, &file.name, &contents)
+    })
+}
 
 pub fn write_output(
     args: &OutputArgs,
