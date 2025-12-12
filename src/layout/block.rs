@@ -63,7 +63,7 @@ impl Block {
 
         Self::build_bytestream_inner(&self.data, data_source, &mut state, &config)?;
 
-        // Resolve CRC config and check if keyword location (needs 4-byte alignment)
+        // Resolve CRC config and pad to 4-byte alignment for end_data location
         let resolved: CrcConfig = self
             .header
             .crc
@@ -71,7 +71,9 @@ impl Block {
             .map(|hc| hc.resolve(settings.crc.as_ref()))
             .unwrap_or_else(|| settings.crc.clone().unwrap_or_default());
 
-        if let Some(CrcLocation::Keyword(_)) = &resolved.location {
+        if let Some(CrcLocation::Keyword(kw)) = &resolved.location
+            && kw == "end_data"
+        {
             while !state.offset.is_multiple_of(4) {
                 state.buffer.push(config.padding);
                 state.offset += 1;
