@@ -34,8 +34,14 @@ struct RestConfig {
 struct GraphQLConfig {
     url: String,
     query: String,
+    #[serde(default = "default_variable_name")]
+    variable_name: String,
     #[serde(default)]
     headers: HashMap<String, String>,
+}
+
+fn default_variable_name() -> String {
+    "version".to_string()
 }
 
 /// Shared JSON-based data source that reads version data from JSON objects.
@@ -162,11 +168,12 @@ impl JsonDataSource {
         let mut version_columns = Vec::with_capacity(versions.len());
 
         for version in &versions {
+            let mut variables = serde_json::Map::new();
+            variables.insert(config.variable_name.clone(), serde_json::Value::String(version.clone()));
+            
             let request_body = serde_json::json!({
                 "query": config.query,
-                "variables": {
-                    "version": version
-                }
+                "variables": variables
             });
 
             let mut request = ureq::post(&config.url)
