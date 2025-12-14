@@ -30,6 +30,14 @@ struct RestConfig {
     headers: HashMap<String, String>,
 }
 
+#[derive(Debug, Deserialize)]
+struct GraphQLConfig {
+    url: String,
+    query: String,
+    #[serde(default)]
+    headers: HashMap<String, String>,
+}
+
 /// Shared JSON-based data source that reads version data from JSON objects.
 /// Result: `Vec<HashMap<String, Value>>` in version priority order.
 pub struct JsonDataSource {
@@ -132,6 +140,86 @@ impl JsonDataSource {
                     version, e
                 ))
             })?;
+
+            version_columns.push(map);
+        }
+
+        Ok(Self::new(version_columns))
+    }
+
+    /// Creates a JSON data source from GraphQL API calls.
+    pub(crate) fn from_graphql(args: &DataArgs) -> Result<Self, DataError> {
+        let graphql_config_str = args
+            .graphql
+            .as_ref()
+            .ok_or_else(|| DataError::MiscError("missing graphql config".to_string()))?;
+
+        let json_str = load_json_string_or_file(graphql_config_str)?;
+        let config: GraphQLConfig = serde_json::from_str(&json_str)
+            .map_err(|e| DataError::FileError(format!("failed to parse JSON: {}", e)))?;
+
+        let versions = args.get_version_list();
+        let mut version_columns = Vec::with_capacity(versions.len());
+
+        for version in &versions {
+            let request_body = serde_json::json!({
+                "query": config.query,
+                "variables": {
+                    "version": version
+                }
+            });
+
+            let mut request = ureq::post(&config.url)
+                .set("Content-Type", "application/json");
+            for (key, value) in &config.headers {
+                request = request.header(key, value);
+            }
+
+            let response = request
+                .send_json(request_body.clone())
+                .map_err(|e| {
+                    DataError::RetrievalError(format!(
+                        "GraphQL request failed for version '{}': {}",
+                        version, e
+                    ))
+                })?;
+
+            let json_str = response.into_body().read_to_string().map_err(|e| {
+                DataError::RetrievalError(format!(
+                    "failed to read response body for version '{}': {}",
+                    version, e
+                ))
+            })?;
+
+            let response_value: Value = serde_json::from_str(&json_str).map_err(|e| {
+                DataError::RetrievalError(format!(
+                    "failed to parse JSON response for version '{}': {}",
+                    version, e
+                ))
+            })?;
+
+            // Check for GraphQL errors
+            if let Some(errors) = response_value.get("errors") {
+                return Err(DataError::RetrievalError(format!(
+                    "GraphQL errors for version '{}': {}",
+                    version,
+                    serde_json::to_string(errors).unwrap_or_else(|_| "unknown error".to_string())
+                )));
+            }
+
+            // GraphQL responses wrap data in { "data": { ... } }
+            let map: HashMap<String, Value> = response_value
+                .get("data")
+                .and_then(|d| d.as_object())
+                .ok_or_else(|| {
+                    DataError::RetrievalError(format!(
+                        "GraphQL response missing 'data' field for version '{}'",
+                        version
+                    ))
+                })?
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect();
 
             version_columns.push(map);
         }

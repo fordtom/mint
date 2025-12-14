@@ -30,11 +30,12 @@ pub fn create_data_source(args: &args::DataArgs) -> Result<Option<Box<dyn DataSo
         eprintln!("Warning: --variant is deprecated, use --version instead");
     }
 
-    match (&args.xlsx, &args.postgres, &args.rest, &args.json) {
-        (Some(_), _, _, _) => Ok(Some(Box::new(ExcelDataSource::new(args)?))),
-        (_, Some(_), _, _) => Ok(Some(Box::new(JsonDataSource::from_postgres(args)?))),
-        (_, _, Some(_), _) => Ok(Some(Box::new(JsonDataSource::from_rest(args)?))),
-        (_, _, _, Some(_)) => Ok(Some(Box::new(JsonDataSource::from_json(args)?))),
+    match (&args.xlsx, &args.postgres, &args.rest, &args.graphql, &args.json) {
+        (Some(_), _, _, _, _) => Ok(Some(Box::new(ExcelDataSource::new(args)?))),
+        (_, Some(_), _, _, _) => Ok(Some(Box::new(JsonDataSource::from_postgres(args)?))),
+        (_, _, Some(_), _, _) => Ok(Some(Box::new(JsonDataSource::from_rest(args)?))),
+        (_, _, _, Some(_), _) => Ok(Some(Box::new(JsonDataSource::from_graphql(args)?))),
+        (_, _, _, _, Some(_)) => Ok(Some(Box::new(JsonDataSource::from_json(args)?))),
         _ => Ok(None),
     }
 }

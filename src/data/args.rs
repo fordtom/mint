@@ -37,6 +37,15 @@ pub struct DataArgs {
         value_name = "PATH or json string",
         group = "datasource",
         requires = "versions",
+        help = "Path to the JSON file or a JSON string containing the GraphQL API configuration (url, query, optional headers)"
+    )]
+    pub graphql: Option<String>,
+
+    #[arg(
+        long,
+        value_name = "PATH or json string",
+        group = "datasource",
+        requires = "versions",
         help = "Path to JSON file or JSON string. Format: object with version names as keys, each containing an object with name:value pairs (e.g., {\"VersionName\": {\"key1\": value1, \"key2\": value2}})"
     )]
     pub json: Option<String>,
