@@ -36,6 +36,8 @@ struct GraphQLConfig {
     query: String,
     variable_name: String,
     #[serde(default)]
+    variables: HashMap<String, Value>,
+    #[serde(default)]
     headers: HashMap<String, String>,
 }
 
@@ -164,6 +166,11 @@ impl JsonDataSource {
 
         for version in &versions {
             let mut variables = serde_json::Map::new();
+            // Add any static variables from config first
+            for (key, value) in &config.variables {
+                variables.insert(key.clone(), value.clone());
+            }
+            // Override/add the dynamic version variable
             variables.insert(config.variable_name.clone(), serde_json::Value::String(version.clone()));
             
             let request_body = serde_json::json!({
