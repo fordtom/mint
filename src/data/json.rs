@@ -34,14 +34,9 @@ struct RestConfig {
 struct GraphQLConfig {
     url: String,
     query: String,
-    #[serde(default = "default_variable_name")]
     variable_name: String,
     #[serde(default)]
     headers: HashMap<String, String>,
-}
-
-fn default_variable_name() -> String {
-    "version".to_string()
 }
 
 /// Shared JSON-based data source that reads version data from JSON objects.
