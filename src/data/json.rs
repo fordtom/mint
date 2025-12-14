@@ -34,7 +34,7 @@ struct RestConfig {
 struct GraphQLConfig {
     url: String,
     query: String,
-    variable_name: String,
+    version_variable: String,
     #[serde(default)]
     variables: HashMap<String, Value>,
     #[serde(default)]
@@ -171,7 +171,7 @@ impl JsonDataSource {
                 variables.insert(key.clone(), value.clone());
             }
             // Override/add the dynamic version variable
-            variables.insert(config.variable_name.clone(), serde_json::Value::String(version.clone()));
+            variables.insert(config.version_variable.clone(), serde_json::Value::String(version.clone()));
             
             let request_body = serde_json::json!({
                 "query": config.query,
