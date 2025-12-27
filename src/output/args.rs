@@ -60,7 +60,4 @@ pub struct OutputArgs {
 
     #[arg(long, help = "Suppress all output except errors")]
     pub quiet: bool,
-
-    #[arg(long, help = "Pad output to full block length")]
-    pub pad_to_end: bool,
 }

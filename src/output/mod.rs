@@ -19,12 +19,6 @@ pub struct DataRange {
     pub allocated_size: u32,
 }
 
-fn byte_swap_inplace(bytes: &mut [u8]) {
-    for chunk in bytes.chunks_exact_mut(2) {
-        chunk.swap(0, 1);
-    }
-}
-
 /// Resolves CRC config from header + settings, validates location, returns offset + config.
 fn resolve_crc(
     length: usize,
@@ -113,22 +107,12 @@ pub fn bytestream_to_datarange(
     mut bytestream: Vec<u8>,
     header: &Header,
     settings: &Settings,
-    byte_swap: bool,
-    pad_to_end: bool,
     padding_bytes: u32,
 ) -> Result<DataRange, OutputError> {
     if bytestream.len() > header.length as usize {
         return Err(OutputError::HexOutputError(
             "Bytestream length exceeds block length.".to_string(),
         ));
-    }
-
-    // Apply optional byte swap across the entire stream before CRC
-    if byte_swap {
-        if !bytestream.len().is_multiple_of(2) {
-            bytestream.push(header.padding);
-        }
-        byte_swap_inplace(bytestream.as_mut_slice());
     }
 
     // Resolve CRC configuration (location + settings) from header + global defaults
@@ -139,10 +123,6 @@ pub fn bytestream_to_datarange(
 
     // If CRC is disabled for this block, return early with no CRC
     let Some((crc_offset, crc_settings)) = crc_config else {
-        if pad_to_end {
-            bytestream.resize(header.length as usize, header.padding);
-        }
-
         return Ok(DataRange {
             start_address: header.start_address + settings.virtual_offset,
             bytestream,
@@ -155,50 +135,51 @@ pub fn bytestream_to_datarange(
 
     used_size = used_size.saturating_add(4);
 
-    // For end_block: pad from data end to CRC position (last 4 bytes of block)
-    if let Some(CrcLocation::Keyword(kw)) = &crc_settings.location
-        && kw == "end_block"
-    {
-        bytestream.resize(crc_offset as usize, header.padding);
-    }
-
     let area = crc_settings.area.unwrap(); // Safe: is_complete() verified
+    let is_end_block = matches!(
+        &crc_settings.location,
+        Some(CrcLocation::Keyword(kw)) if kw == "end_block"
+    );
 
-    // Handle block-level CRC modes
-    match area {
-        CrcArea::BlockZeroCrc | CrcArea::BlockPadCrc | CrcArea::BlockOmitCrc => {
-            bytestream.resize(header.length as usize, header.padding);
+    // Prepare bytestream and compute CRC based on area
+    let crc_val = match area {
+        CrcArea::Data => {
+            // For end_data: pad to crc_offset before CRC calculation (aligning the CRC to be appended to the struct)
+            // For end_block: CRC over raw data, pad afterwards
+            if !is_end_block {
+                bytestream.resize(crc_offset as usize, header.padding);
+            }
+            let crc = checksum::calculate_crc(&bytestream, &crc_settings);
+            if is_end_block {
+                bytestream.resize(crc_offset as usize, header.padding);
+            }
+            crc
         }
-        CrcArea::Data => {}
-    }
-
-    // Zero CRC location for BlockZeroCrc mode
-    if area == CrcArea::BlockZeroCrc {
-        bytestream[crc_offset as usize..(crc_offset + 4) as usize].fill(0);
-    }
-
-    // Compute CRC - omit CRC bytes for BlockOmitCrc mode
-    let crc_val = if area == CrcArea::BlockOmitCrc {
-        let before = &bytestream[..crc_offset as usize];
-        let after = &bytestream[(crc_offset + 4) as usize..];
-        let combined: Vec<u8> = [before, after].concat();
-        checksum::calculate_crc(&combined, &crc_settings)
-    } else {
-        checksum::calculate_crc(&bytestream, &crc_settings)
+        CrcArea::BlockZeroCrc => {
+            // Pad to full block, zero CRC location, then calculate
+            bytestream.resize(header.length as usize, header.padding);
+            bytestream[crc_offset as usize..(crc_offset + 4) as usize].fill(0);
+            checksum::calculate_crc(&bytestream, &crc_settings)
+        }
+        CrcArea::BlockPadCrc => {
+            // Pad to full block (CRC location contains padding), then calculate
+            bytestream.resize(header.length as usize, header.padding);
+            checksum::calculate_crc(&bytestream, &crc_settings)
+        }
+        CrcArea::BlockOmitCrc => {
+            // Pad to full block, calculate CRC excluding CRC bytes
+            bytestream.resize(header.length as usize, header.padding);
+            let before = &bytestream[..crc_offset as usize];
+            let after = &bytestream[(crc_offset + 4) as usize..];
+            let combined: Vec<u8> = [before, after].concat();
+            checksum::calculate_crc(&combined, &crc_settings)
+        }
     };
 
-    let mut crc_bytes: [u8; 4] = match settings.endianness {
+    let crc_bytes: [u8; 4] = match settings.endianness {
         Endianness::Big => crc_val.to_be_bytes(),
         Endianness::Little => crc_val.to_le_bytes(),
     };
-    if byte_swap {
-        byte_swap_inplace(&mut crc_bytes);
-    }
-
-    // Resize to full block if pad_to_end is true
-    if pad_to_end {
-        bytestream.resize(header.length as usize, header.padding);
-    }
 
     Ok(DataRange {
         start_address: header.start_address + settings.virtual_offset,
@@ -284,6 +265,53 @@ pub fn emit_hex(
     }
 }
 
+/// Represents a single output file to be written.
+#[derive(Debug, Clone)]
+pub struct OutputFile {
+    pub name: String,
+    pub ranges: Vec<DataRange>,
+    pub format: OutputFormat,
+    pub record_width: usize,
+}
+
+impl OutputFile {
+    /// Render this file's contents as a hex/mot string.
+    pub fn render(&self) -> Result<String, OutputError> {
+        emit_hex(&self.ranges, self.record_width, self.format)
+    }
+}
+
+/// Prepare separate output files (one per block).
+pub fn prepare_separate(
+    ranges: Vec<(String, DataRange)>,
+    format: OutputFormat,
+    record_width: usize,
+) -> Vec<OutputFile> {
+    ranges
+        .into_iter()
+        .map(|(name, range)| OutputFile {
+            name,
+            ranges: vec![range],
+            format,
+            record_width,
+        })
+        .collect()
+}
+
+/// Prepare a single combined output file from multiple ranges.
+pub fn prepare_combined(
+    ranges: Vec<DataRange>,
+    format: OutputFormat,
+    record_width: usize,
+) -> OutputFile {
+    OutputFile {
+        name: "combined".to_string(),
+        ranges,
+        format,
+        record_width,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -309,7 +337,6 @@ mod tests {
             endianness: Endianness::Little,
             virtual_offset: 0,
             crc: Some(sample_crc_config()),
-            byte_swap: false,
         }
     }
 
@@ -341,7 +368,7 @@ mod tests {
         let header = sample_header(16);
 
         let bytestream = vec![1u8, 2, 3, 4];
-        let dr = bytestream_to_datarange(bytestream.clone(), &header, &settings, false, false, 0)
+        let dr = bytestream_to_datarange(bytestream.clone(), &header, &settings, 0)
             .expect("data range generation failed");
         let hex = emit_hex(&[dr], 16, crate::output::args::OutputFormat::Hex)
             .expect("hex generation failed");
@@ -366,18 +393,6 @@ mod tests {
     }
 
     #[test]
-    fn pad_to_end_true_resizes_to_full_block() {
-        let settings = sample_settings();
-        let header = sample_header(32);
-
-        let bytestream = vec![1u8, 2, 3, 4];
-        let dr = bytestream_to_datarange(bytestream, &header, &settings, false, true, 0)
-            .expect("data range generation failed");
-
-        assert_eq!(dr.bytestream.len(), header.length as usize);
-    }
-
-    #[test]
     fn block_zero_crc_zeros_crc_location() {
         let mut crc_config = sample_crc_config();
         crc_config.area = Some(CrcArea::BlockZeroCrc);
@@ -388,7 +403,7 @@ mod tests {
         let header = sample_header(32);
 
         let bytestream = vec![1u8, 2, 3, 4];
-        let dr = bytestream_to_datarange(bytestream, &header, &settings, false, false, 0)
+        let dr = bytestream_to_datarange(bytestream, &header, &settings, 0)
             .expect("data range generation failed");
 
         assert_eq!(dr.bytestream.len(), header.length as usize);
@@ -411,7 +426,7 @@ mod tests {
         let header = sample_header(32);
 
         let bytestream = vec![1u8, 2, 3, 4];
-        let dr = bytestream_to_datarange(bytestream, &header, &settings, false, false, 0)
+        let dr = bytestream_to_datarange(bytestream, &header, &settings, 0)
             .expect("data range generation failed");
 
         assert_eq!(dr.bytestream.len(), header.length as usize);
@@ -434,7 +449,7 @@ mod tests {
         let header = sample_header(32);
 
         let bytestream = vec![1u8, 2, 3, 4];
-        let dr = bytestream_to_datarange(bytestream.clone(), &header, &settings, false, false, 0)
+        let dr = bytestream_to_datarange(bytestream.clone(), &header, &settings, 0)
             .expect("data range generation failed");
 
         assert_eq!(dr.bytestream.len(), header.length as usize);
@@ -482,7 +497,7 @@ mod tests {
         let header = header_no_crc(32);
 
         let bytestream = vec![1u8, 2, 3, 4];
-        let dr = bytestream_to_datarange(bytestream.clone(), &header, &settings, false, false, 0)
+        let dr = bytestream_to_datarange(bytestream.clone(), &header, &settings, 0)
             .expect("data range generation failed");
 
         assert!(dr.crc_bytestream.is_empty(), "CRC should be empty");
@@ -502,32 +517,12 @@ mod tests {
         };
 
         let bytestream = vec![1u8, 2, 3, 4];
-        let dr = bytestream_to_datarange(bytestream.clone(), &header, &settings, false, false, 0)
+        let dr = bytestream_to_datarange(bytestream.clone(), &header, &settings, 0)
             .expect("data range generation failed");
 
         // CRC should be at offset 28 (block length 32 - 4)
         assert_eq!(dr.crc_address, 28);
         assert!(!dr.crc_bytestream.is_empty());
-    }
-
-    #[test]
-    fn no_crc_with_pad_to_end() {
-        let settings = Settings {
-            crc: None,
-            ..sample_settings()
-        };
-        let header = header_no_crc(32);
-
-        let bytestream = vec![1u8, 2, 3, 4];
-        let dr = bytestream_to_datarange(bytestream.clone(), &header, &settings, false, true, 0)
-            .expect("data range generation failed");
-
-        assert!(dr.crc_bytestream.is_empty(), "CRC should be empty");
-        assert_eq!(
-            dr.bytestream.len(),
-            32,
-            "bytestream should be padded to full block"
-        );
     }
 
     #[test]
@@ -540,7 +535,7 @@ mod tests {
         let header = sample_header(32);
 
         let bytestream = vec![1u8, 2, 3, 4];
-        let result = bytestream_to_datarange(bytestream, &header, &settings, false, false, 0);
+        let result = bytestream_to_datarange(bytestream, &header, &settings, 0);
 
         assert!(result.is_err());
         assert!(
@@ -566,7 +561,7 @@ mod tests {
         };
 
         let bytestream = vec![1u8, 2, 3, 4];
-        let dr = bytestream_to_datarange(bytestream.clone(), &header, &settings, false, false, 0)
+        let dr = bytestream_to_datarange(bytestream.clone(), &header, &settings, 0)
             .expect("data range generation failed");
 
         // CRC should be computed with the overridden polynomial
@@ -592,7 +587,7 @@ mod tests {
         };
 
         let bytestream = vec![1u8, 2, 3, 4];
-        let dr = bytestream_to_datarange(bytestream.clone(), &header, &settings, false, false, 0)
+        let dr = bytestream_to_datarange(bytestream.clone(), &header, &settings, 0)
             .expect("data range generation failed");
 
         // Should succeed and produce a valid CRC
@@ -614,7 +609,7 @@ mod tests {
         let header = header_no_crc(32);
 
         let bytestream = vec![1u8, 2, 3, 4];
-        let dr = bytestream_to_datarange(bytestream.clone(), &header, &settings, false, false, 0)
+        let dr = bytestream_to_datarange(bytestream.clone(), &header, &settings, 0)
             .expect("data range generation failed");
 
         // Should use CRC from settings
@@ -636,7 +631,7 @@ mod tests {
         let header = header_no_crc(32);
 
         let bytestream = vec![1u8, 2, 3, 4];
-        let result = bytestream_to_datarange(bytestream, &header, &settings, false, false, 0);
+        let result = bytestream_to_datarange(bytestream, &header, &settings, 0);
 
         assert!(result.is_err());
         assert!(
@@ -663,7 +658,7 @@ mod tests {
         };
 
         let bytestream = vec![1u8, 2, 3, 4];
-        let dr = bytestream_to_datarange(bytestream, &header, &settings, false, false, 0)
+        let dr = bytestream_to_datarange(bytestream, &header, &settings, 0)
             .expect("data range generation failed");
 
         assert_eq!(dr.crc_address, 28);
@@ -687,7 +682,7 @@ mod tests {
         };
 
         let bytestream = vec![1u8; 16]; // Data fills entire block
-        let result = bytestream_to_datarange(bytestream, &header, &settings, false, false, 0);
+        let result = bytestream_to_datarange(bytestream, &header, &settings, 0);
 
         assert!(result.is_err());
         assert!(

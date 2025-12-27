@@ -6,8 +6,6 @@ pub struct Settings {
     #[serde(default = "default_offset")]
     pub virtual_offset: u32,
     #[serde(default)]
-    pub byte_swap: bool,
-    #[serde(default)]
     pub crc: Option<CrcConfig>,
 }
 
