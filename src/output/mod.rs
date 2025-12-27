@@ -135,7 +135,7 @@ pub fn bytestream_to_datarange(
 
     let mut used_size = (bytestream.len() as u32).saturating_sub(padding_bytes);
 
-    // Address multiplier for word-addressing mode (2x for TI DSP 16-bit words)
+    // Address multiplier for word-addressing mode (2x for 16-bit words)
     let addr_mult: u32 = if settings.word_addressing { 2 } else { 1 };
 
     // If CRC is disabled for this block, return early with no CRC
