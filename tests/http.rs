@@ -1,7 +1,7 @@
-//! Integration tests for RestDataSource.
+//! Integration tests for HTTP DataSource.
 //!
-//! Requires a running REST server. Skip with: cargo test --test rest -- --ignored
-//! Or run specifically: cargo test --test rest -- --include-ignored
+//! Requires a running HTTP server. Skip with: cargo test --test http -- --ignored
+//! Or run specifically: cargo test --test http -- --include-ignored
 //!
 //! Expected server: serves tests/data.json at http://localhost:3000/item?version=<name>
 
@@ -9,9 +9,9 @@ use mint_cli::data::args::DataArgs;
 use mint_cli::data::create_data_source;
 use mint_cli::layout::value::{DataValue, ValueSource};
 
-const TEST_SERVER_URL: &str = "http://localhost:3000/item?version=$1";
+const TEST_SERVER_URL: &str = "http://localhost:3000/item?version=$VERSION";
 
-fn build_rest_args(version: &str) -> DataArgs {
+fn build_http_args(version: &str) -> DataArgs {
     let config = format!(
         r#"{{
             "url": "{}"
@@ -20,16 +20,16 @@ fn build_rest_args(version: &str) -> DataArgs {
     );
 
     DataArgs {
-        rest: Some(config),
+        http: Some(config),
         version: Some(version.to_string()),
         ..Default::default()
     }
 }
 
 #[test]
-#[ignore = "requires running REST server"]
-fn rest_retrieve_single_value_priority_order() {
-    let args = build_rest_args("VarA/Debug/Default");
+#[ignore = "requires running HTTP server"]
+fn http_retrieve_single_value_priority_order() {
+    let args = build_http_args("VarA/Debug/Default");
     let ds = create_data_source(&args)
         .expect("datasource load")
         .expect("datasource exists");
@@ -56,9 +56,9 @@ fn rest_retrieve_single_value_priority_order() {
 }
 
 #[test]
-#[ignore = "requires running REST server"]
-fn rest_retrieve_single_value_fallback() {
-    let args = build_rest_args("Debug/Default");
+#[ignore = "requires running HTTP server"]
+fn http_retrieve_single_value_fallback() {
+    let args = build_http_args("Debug/Default");
     let ds = create_data_source(&args)
         .expect("datasource load")
         .expect("datasource exists");
@@ -75,9 +75,9 @@ fn rest_retrieve_single_value_fallback() {
 }
 
 #[test]
-#[ignore = "requires running REST server"]
-fn rest_retrieve_missing_key_errors() {
-    let args = build_rest_args("Default");
+#[ignore = "requires running HTTP server"]
+fn http_retrieve_missing_key_errors() {
+    let args = build_http_args("Default");
     let ds = create_data_source(&args)
         .expect("datasource load")
         .expect("datasource exists");
@@ -88,9 +88,9 @@ fn rest_retrieve_missing_key_errors() {
 }
 
 #[test]
-#[ignore = "requires running REST server"]
-fn rest_retrieve_1d_array_space_delimited() {
-    let args = build_rest_args("Default");
+#[ignore = "requires running HTTP server"]
+fn http_retrieve_1d_array_space_delimited() {
+    let args = build_http_args("Default");
     let ds = create_data_source(&args).unwrap().unwrap();
 
     let value = ds.retrieve_1d_array_or_string("arraySpaces").unwrap();
@@ -104,9 +104,9 @@ fn rest_retrieve_1d_array_space_delimited() {
 }
 
 #[test]
-#[ignore = "requires running REST server"]
-fn rest_retrieve_1d_array_comma_delimited() {
-    let args = build_rest_args("Default");
+#[ignore = "requires running HTTP server"]
+fn http_retrieve_1d_array_comma_delimited() {
+    let args = build_http_args("Default");
     let ds = create_data_source(&args).unwrap().unwrap();
 
     let value = ds.retrieve_1d_array_or_string("arrayCommas").unwrap();
@@ -118,9 +118,9 @@ fn rest_retrieve_1d_array_comma_delimited() {
 }
 
 #[test]
-#[ignore = "requires running REST server"]
-fn rest_retrieve_1d_array_mixed_delimiters() {
-    let args = build_rest_args("Default");
+#[ignore = "requires running HTTP server"]
+fn http_retrieve_1d_array_mixed_delimiters() {
+    let args = build_http_args("Default");
     let ds = create_data_source(&args).unwrap().unwrap();
 
     let value = ds.retrieve_1d_array_or_string("arrayMixed").unwrap();
@@ -132,9 +132,9 @@ fn rest_retrieve_1d_array_mixed_delimiters() {
 }
 
 #[test]
-#[ignore = "requires running REST server"]
-fn rest_retrieve_1d_array_single_value() {
-    let args = build_rest_args("Default");
+#[ignore = "requires running HTTP server"]
+fn http_retrieve_1d_array_single_value() {
+    let args = build_http_args("Default");
     let ds = create_data_source(&args).unwrap().unwrap();
 
     let value = ds.retrieve_1d_array_or_string("arraySingle").unwrap();
@@ -147,9 +147,9 @@ fn rest_retrieve_1d_array_single_value() {
 }
 
 #[test]
-#[ignore = "requires running REST server"]
-fn rest_retrieve_1d_array_floats() {
-    let args = build_rest_args("Default");
+#[ignore = "requires running HTTP server"]
+fn http_retrieve_1d_array_floats() {
+    let args = build_http_args("Default");
     let ds = create_data_source(&args).unwrap().unwrap();
 
     let value = ds.retrieve_1d_array_or_string("arrayFloats").unwrap();
@@ -162,9 +162,9 @@ fn rest_retrieve_1d_array_floats() {
 }
 
 #[test]
-#[ignore = "requires running REST server"]
-fn rest_retrieve_1d_array_negative() {
-    let args = build_rest_args("Default");
+#[ignore = "requires running HTTP server"]
+fn http_retrieve_1d_array_negative() {
+    let args = build_http_args("Default");
     let ds = create_data_source(&args).unwrap().unwrap();
 
     let value = ds.retrieve_1d_array_or_string("arrayNegative").unwrap();
@@ -177,9 +177,9 @@ fn rest_retrieve_1d_array_negative() {
 }
 
 #[test]
-#[ignore = "requires running REST server"]
-fn rest_retrieve_1d_literal_string() {
-    let args = build_rest_args("Default");
+#[ignore = "requires running HTTP server"]
+fn http_retrieve_1d_literal_string() {
+    let args = build_http_args("Default");
     let ds = create_data_source(&args).unwrap().unwrap();
 
     let value = ds.retrieve_1d_array_or_string("literalString").unwrap();
@@ -191,9 +191,9 @@ fn rest_retrieve_1d_literal_string() {
 }
 
 #[test]
-#[ignore = "requires running REST server"]
-fn rest_retrieve_1d_native_json_array() {
-    let args = build_rest_args("Default");
+#[ignore = "requires running HTTP server"]
+fn http_retrieve_1d_native_json_array() {
+    let args = build_http_args("Default");
     let ds = create_data_source(&args).unwrap().unwrap();
 
     let value = ds.retrieve_1d_array_or_string("nativeArray1d").unwrap();
@@ -208,9 +208,9 @@ fn rest_retrieve_1d_native_json_array() {
 }
 
 #[test]
-#[ignore = "requires running REST server"]
-fn rest_retrieve_2d_native_json_array() {
-    let args = build_rest_args("Default");
+#[ignore = "requires running HTTP server"]
+fn http_retrieve_2d_native_json_array() {
+    let args = build_http_args("Default");
     let ds = create_data_source(&args).unwrap().unwrap();
 
     let value = ds.retrieve_2d_array("nativeArray2d").unwrap();

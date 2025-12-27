@@ -38,9 +38,16 @@ struct PostgresConfig {
     data_path: Vec<String>,
 }
 
+/// Unified HTTP data source configuration for REST and GraphQL-style APIs.
 #[derive(Debug, Deserialize)]
-struct RestConfig {
+struct HttpConfig {
     url: String,
+    /// HTTP method (GET or POST). Defaults to GET.
+    #[serde(default = "default_method")]
+    method: String,
+    /// Request body template. Use $VERSION as placeholder for version substitution.
+    #[serde(default)]
+    body: Option<String>,
     #[serde(default)]
     headers: HashMap<String, String>,
     /// Path of keys to navigate into nested response objects.
@@ -48,18 +55,8 @@ struct RestConfig {
     data_path: Vec<String>,
 }
 
-#[derive(Debug, Deserialize)]
-struct GraphQLConfig {
-    url: String,
-    query: String,
-    version_variable: String,
-    #[serde(default)]
-    variables: HashMap<String, Value>,
-    #[serde(default)]
-    headers: HashMap<String, String>,
-    /// Path of keys to navigate into nested data objects (applied after extracting `data` field).
-    #[serde(default)]
-    data_path: Vec<String>,
+fn default_method() -> String {
+    "GET".to_string()
 }
 
 /// Shared JSON-based data source that reads version data from JSON objects.
@@ -141,15 +138,16 @@ impl JsonDataSource {
         Ok(Self::new(version_columns))
     }
 
-    /// Creates a JSON data source from REST API calls.
-    pub(crate) fn from_rest(args: &DataArgs) -> Result<Self, DataError> {
-        let rest_config_str = args
-            .rest
+    /// Creates a JSON data source from HTTP API calls (unified REST/GraphQL).
+    /// Supports GET and POST methods with $VERSION placeholder substitution in URL and body.
+    pub(crate) fn from_http(args: &DataArgs) -> Result<Self, DataError> {
+        let http_config_str = args
+            .http
             .as_ref()
-            .ok_or_else(|| DataError::MiscError("missing rest config".to_string()))?;
+            .ok_or_else(|| DataError::MiscError("missing http config".to_string()))?;
 
-        let json_str = load_json_string_or_file(rest_config_str)?;
-        let config: RestConfig = serde_json::from_str(&json_str)
+        let json_str = load_json_string_or_file(http_config_str)?;
+        let config: HttpConfig = serde_json::from_str(&json_str)
             .map_err(|e| DataError::FileError(format!("failed to parse JSON: {}", e)))?;
 
         let versions = args.get_version_list();
@@ -158,19 +156,43 @@ impl JsonDataSource {
         for version in &versions {
             let encoded_version =
                 percent_encoding::utf8_percent_encode(version, percent_encoding::NON_ALPHANUMERIC);
-            let url = config.url.replace("$1", &encoded_version.to_string());
+            let url = config.url.replace("$VERSION", &encoded_version.to_string());
 
-            let mut request = ureq::get(&url);
-            for (key, value) in &config.headers {
-                request = request.header(key, value);
-            }
+            let response = match config.method.to_uppercase().as_str() {
+                "POST" => {
+                    let body = config
+                        .body
+                        .as_ref()
+                        .map(|b| b.replace("$VERSION", version))
+                        .unwrap_or_default();
 
-            let response = request.call().map_err(|e| {
-                DataError::RetrievalError(format!(
-                    "REST request failed for version '{}': {}",
-                    version, e
-                ))
-            })?;
+                    let mut request = ureq::post(&url).header("Content-Type", "application/json");
+                    for (key, value) in &config.headers {
+                        request = request.header(key, value);
+                    }
+
+                    request.send(body.as_bytes()).map_err(|e| {
+                        DataError::RetrievalError(format!(
+                            "HTTP POST request failed for version '{}': {}",
+                            version, e
+                        ))
+                    })?
+                }
+                _ => {
+                    // Default to GET
+                    let mut request = ureq::get(&url);
+                    for (key, value) in &config.headers {
+                        request = request.header(key, value);
+                    }
+
+                    request.call().map_err(|e| {
+                        DataError::RetrievalError(format!(
+                            "HTTP GET request failed for version '{}': {}",
+                            version, e
+                        ))
+                    })?
+                }
+            };
 
             let json_str = response.into_body().read_to_string().map_err(|e| {
                 DataError::RetrievalError(format!(
@@ -189,111 +211,6 @@ impl JsonDataSource {
             // Navigate into nested objects if data_path is specified
             let target_value =
                 extract_nested_value(&response_value, &config.data_path).map_err(|e| {
-                    DataError::RetrievalError(format!(
-                        "failed to extract nested data for version '{}': {}",
-                        version, e
-                    ))
-                })?;
-
-            let map: HashMap<String, Value> = target_value
-                .as_object()
-                .ok_or_else(|| {
-                    DataError::RetrievalError(format!(
-                        "expected object at data_path for version '{}'",
-                        version
-                    ))
-                })?
-                .iter()
-                .map(|(k, v)| (k.clone(), v.clone()))
-                .collect();
-
-            version_columns.push(map);
-        }
-
-        Ok(Self::new(version_columns))
-    }
-
-    /// Creates a JSON data source from GraphQL API calls.
-    pub(crate) fn from_graphql(args: &DataArgs) -> Result<Self, DataError> {
-        let graphql_config_str = args
-            .graphql
-            .as_ref()
-            .ok_or_else(|| DataError::MiscError("missing graphql config".to_string()))?;
-
-        let json_str = load_json_string_or_file(graphql_config_str)?;
-        let config: GraphQLConfig = serde_json::from_str(&json_str)
-            .map_err(|e| DataError::FileError(format!("failed to parse JSON: {}", e)))?;
-
-        let versions = args.get_version_list();
-        let mut version_columns = Vec::with_capacity(versions.len());
-
-        for version in &versions {
-            let mut variables = serde_json::Map::new();
-            // Add any static variables from config first
-            for (key, value) in &config.variables {
-                variables.insert(key.clone(), value.clone());
-            }
-            // Override/add the dynamic version variable
-            variables.insert(
-                config.version_variable.clone(),
-                serde_json::Value::String(version.clone()),
-            );
-
-            let request_body = serde_json::json!({
-                "query": config.query,
-                "variables": variables
-            });
-
-            let mut request = ureq::post(&config.url).header("Content-Type", "application/json");
-            for (key, value) in &config.headers {
-                request = request.header(key, value);
-            }
-
-            let body = serde_json::to_string(&request_body).map_err(|e| {
-                DataError::RetrievalError(format!("failed to serialize GraphQL request: {}", e))
-            })?;
-
-            let response = request.send(body.as_bytes()).map_err(|e| {
-                DataError::RetrievalError(format!(
-                    "GraphQL request failed for version '{}': {}",
-                    version, e
-                ))
-            })?;
-
-            let json_str = response.into_body().read_to_string().map_err(|e| {
-                DataError::RetrievalError(format!(
-                    "failed to read response body for version '{}': {}",
-                    version, e
-                ))
-            })?;
-
-            let response_value: Value = serde_json::from_str(&json_str).map_err(|e| {
-                DataError::RetrievalError(format!(
-                    "failed to parse JSON response for version '{}': {}",
-                    version, e
-                ))
-            })?;
-
-            // Check for GraphQL errors
-            if let Some(errors) = response_value.get("errors") {
-                return Err(DataError::RetrievalError(format!(
-                    "GraphQL errors for version '{}': {}",
-                    version,
-                    serde_json::to_string(errors).unwrap_or_else(|_| "unknown error".to_string())
-                )));
-            }
-
-            // GraphQL responses wrap data in { "data": { ... } }
-            let data_value = response_value.get("data").ok_or_else(|| {
-                DataError::RetrievalError(format!(
-                    "GraphQL response missing 'data' field for version '{}'",
-                    version
-                ))
-            })?;
-
-            // Navigate into nested objects if data_path is specified
-            let target_value =
-                extract_nested_value(data_value, &config.data_path).map_err(|e| {
                     DataError::RetrievalError(format!(
                         "failed to extract nested data for version '{}': {}",
                         version, e

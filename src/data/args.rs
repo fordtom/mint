@@ -28,18 +28,9 @@ pub struct DataArgs {
         value_name = "PATH or json string",
         group = "datasource",
         requires = "versions",
-        help = "Path to the JSON file or a JSON string containing the REST API configuration (url, optional headers, optional data_path for nested extraction)"
+        help = "HTTP API configuration (url with $VERSION placeholder, optional method [GET/POST], optional body with $VERSION, optional headers, optional data_path)"
     )]
-    pub rest: Option<String>,
-
-    #[arg(
-        long,
-        value_name = "PATH or json string",
-        group = "datasource",
-        requires = "versions",
-        help = "Path to the JSON file or a JSON string containing the GraphQL API configuration (url, query, version_variable, optional variables, optional headers, optional data_path for nested extraction)"
-    )]
-    pub graphql: Option<String>,
+    pub http: Option<String>,
 
     #[arg(
         long,
