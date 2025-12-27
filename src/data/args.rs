@@ -19,7 +19,7 @@ pub struct DataArgs {
         value_name = "PATH or json string",
         group = "datasource",
         requires = "versions",
-        help = "Path to the JSON file or a JSON string containing the postgres configuration options and template"
+        help = "Path to the JSON file or a JSON string containing the postgres configuration (url, query_template, optional data_path for nested extraction)"
     )]
     pub postgres: Option<String>,
 
@@ -28,7 +28,7 @@ pub struct DataArgs {
         value_name = "PATH or json string",
         group = "datasource",
         requires = "versions",
-        help = "Path to the JSON file or a JSON string containing the REST API configuration options and template"
+        help = "Path to the JSON file or a JSON string containing the REST API configuration (url, optional headers, optional data_path for nested extraction)"
     )]
     pub rest: Option<String>,
 
@@ -37,7 +37,7 @@ pub struct DataArgs {
         value_name = "PATH or json string",
         group = "datasource",
         requires = "versions",
-        help = "Path to the JSON file or a JSON string containing the GraphQL API configuration (url, query, optional headers)"
+        help = "Path to the JSON file or a JSON string containing the GraphQL API configuration (url, query, version_variable, optional variables, optional headers, optional data_path for nested extraction)"
     )]
     pub graphql: Option<String>,
 

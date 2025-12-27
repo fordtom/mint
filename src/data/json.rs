@@ -17,10 +17,25 @@ fn load_json_string_or_file(input: &str) -> Result<String, DataError> {
     }
 }
 
+/// Navigates into nested JSON objects using a path of keys.
+/// Returns the value at the specified path, or the original value if path is empty.
+fn extract_nested_value<'a>(value: &'a Value, path: &[String]) -> Result<&'a Value, DataError> {
+    let mut current = value;
+    for key in path {
+        current = current.get(key).ok_or_else(|| {
+            DataError::RetrievalError(format!("nested key '{}' not found in response", key))
+        })?;
+    }
+    Ok(current)
+}
+
 #[derive(Debug, Deserialize)]
 struct PostgresConfig {
     url: String,
     query_template: String,
+    /// Path of keys to navigate into nested response objects.
+    #[serde(default)]
+    data_path: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -28,6 +43,9 @@ struct RestConfig {
     url: String,
     #[serde(default)]
     headers: HashMap<String, String>,
+    /// Path of keys to navigate into nested response objects.
+    #[serde(default)]
+    data_path: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -39,6 +57,9 @@ struct GraphQLConfig {
     variables: HashMap<String, Value>,
     #[serde(default)]
     headers: HashMap<String, String>,
+    /// Path of keys to navigate into nested data objects (applied after extracting `data` field).
+    #[serde(default)]
+    data_path: Vec<String>,
 }
 
 /// Shared JSON-based data source that reads version data from JSON objects.
@@ -86,12 +107,33 @@ impl JsonDataSource {
                 ))
             })?;
 
-            let map: HashMap<String, Value> = serde_json::from_str(&json_str).map_err(|e| {
+            let response_value: Value = serde_json::from_str(&json_str).map_err(|e| {
                 DataError::RetrievalError(format!(
                     "failed to parse JSON for version '{}': {}",
                     version, e
                 ))
             })?;
+
+            // Navigate into nested objects if data_path is specified
+            let target_value =
+                extract_nested_value(&response_value, &config.data_path).map_err(|e| {
+                    DataError::RetrievalError(format!(
+                        "failed to extract nested data for version '{}': {}",
+                        version, e
+                    ))
+                })?;
+
+            let map: HashMap<String, Value> = target_value
+                .as_object()
+                .ok_or_else(|| {
+                    DataError::RetrievalError(format!(
+                        "expected object at data_path for version '{}'",
+                        version
+                    ))
+                })?
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect();
 
             version_columns.push(map);
         }
@@ -137,12 +179,33 @@ impl JsonDataSource {
                 ))
             })?;
 
-            let map: HashMap<String, Value> = serde_json::from_str(&json_str).map_err(|e| {
+            let response_value: Value = serde_json::from_str(&json_str).map_err(|e| {
                 DataError::RetrievalError(format!(
                     "failed to parse JSON for version '{}': {}",
                     version, e
                 ))
             })?;
+
+            // Navigate into nested objects if data_path is specified
+            let target_value =
+                extract_nested_value(&response_value, &config.data_path).map_err(|e| {
+                    DataError::RetrievalError(format!(
+                        "failed to extract nested data for version '{}': {}",
+                        version, e
+                    ))
+                })?;
+
+            let map: HashMap<String, Value> = target_value
+                .as_object()
+                .ok_or_else(|| {
+                    DataError::RetrievalError(format!(
+                        "expected object at data_path for version '{}'",
+                        version
+                    ))
+                })?
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect();
 
             version_columns.push(map);
         }
@@ -171,27 +234,31 @@ impl JsonDataSource {
                 variables.insert(key.clone(), value.clone());
             }
             // Override/add the dynamic version variable
-            variables.insert(config.version_variable.clone(), serde_json::Value::String(version.clone()));
-            
+            variables.insert(
+                config.version_variable.clone(),
+                serde_json::Value::String(version.clone()),
+            );
+
             let request_body = serde_json::json!({
                 "query": config.query,
                 "variables": variables
             });
 
-            let mut request = ureq::post(&config.url)
-                .set("Content-Type", "application/json");
+            let mut request = ureq::post(&config.url).header("Content-Type", "application/json");
             for (key, value) in &config.headers {
                 request = request.header(key, value);
             }
 
-            let response = request
-                .send_json(request_body.clone())
-                .map_err(|e| {
-                    DataError::RetrievalError(format!(
-                        "GraphQL request failed for version '{}': {}",
-                        version, e
-                    ))
-                })?;
+            let body = serde_json::to_string(&request_body).map_err(|e| {
+                DataError::RetrievalError(format!("failed to serialize GraphQL request: {}", e))
+            })?;
+
+            let response = request.send(body.as_bytes()).map_err(|e| {
+                DataError::RetrievalError(format!(
+                    "GraphQL request failed for version '{}': {}",
+                    version, e
+                ))
+            })?;
 
             let json_str = response.into_body().read_to_string().map_err(|e| {
                 DataError::RetrievalError(format!(
@@ -217,12 +284,27 @@ impl JsonDataSource {
             }
 
             // GraphQL responses wrap data in { "data": { ... } }
-            let map: HashMap<String, Value> = response_value
-                .get("data")
-                .and_then(|d| d.as_object())
+            let data_value = response_value.get("data").ok_or_else(|| {
+                DataError::RetrievalError(format!(
+                    "GraphQL response missing 'data' field for version '{}'",
+                    version
+                ))
+            })?;
+
+            // Navigate into nested objects if data_path is specified
+            let target_value =
+                extract_nested_value(data_value, &config.data_path).map_err(|e| {
+                    DataError::RetrievalError(format!(
+                        "failed to extract nested data for version '{}': {}",
+                        version, e
+                    ))
+                })?;
+
+            let map: HashMap<String, Value> = target_value
+                .as_object()
                 .ok_or_else(|| {
                     DataError::RetrievalError(format!(
-                        "GraphQL response missing 'data' field for version '{}'",
+                        "expected object at data_path for version '{}'",
                         version
                     ))
                 })?
