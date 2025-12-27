@@ -9,6 +9,13 @@ use errors::OutputError;
 
 use bin_file::{BinFile, IHexFormat};
 
+/// Swaps bytes pairwise for word-addressing mode.
+fn byte_swap_inplace(bytes: &mut [u8]) {
+    for chunk in bytes.chunks_exact_mut(2) {
+        chunk.swap(0, 1);
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct DataRange {
     pub start_address: u32,
@@ -119,17 +126,27 @@ pub fn bytestream_to_datarange(
     let crc_config = resolve_crc(bytestream.len(), header, settings)?;
 
     let mut used_size = (bytestream.len() as u32).saturating_sub(padding_bytes);
-    let allocated_size = header.length;
+
+    // Address multiplier for word-addressing mode (2x for TI DSP 16-bit words)
+    let addr_mult: u32 = if settings.word_addressing { 2 } else { 1 };
 
     // If CRC is disabled for this block, return early with no CRC
     let Some((crc_offset, crc_settings)) = crc_config else {
+        // Apply byte swap for word-addressing mode
+        if settings.word_addressing {
+            if !bytestream.len().is_multiple_of(2) {
+                bytestream.push(header.padding);
+            }
+            byte_swap_inplace(&mut bytestream);
+        }
+
         return Ok(DataRange {
-            start_address: header.start_address + settings.virtual_offset,
+            start_address: header.start_address * addr_mult + settings.virtual_offset,
             bytestream,
             crc_address: 0,
             crc_bytestream: Vec::new(),
             used_size,
-            allocated_size,
+            allocated_size: header.length * addr_mult,
         });
     };
 
@@ -176,18 +193,27 @@ pub fn bytestream_to_datarange(
         }
     };
 
-    let crc_bytes: [u8; 4] = match settings.endianness {
+    let mut crc_bytes: [u8; 4] = match settings.endianness {
         Endianness::Big => crc_val.to_be_bytes(),
         Endianness::Little => crc_val.to_le_bytes(),
     };
 
+    // Apply byte swap for word-addressing mode
+    if settings.word_addressing {
+        if !bytestream.len().is_multiple_of(2) {
+            bytestream.push(header.padding);
+        }
+        byte_swap_inplace(&mut bytestream);
+        byte_swap_inplace(&mut crc_bytes);
+    }
+
     Ok(DataRange {
-        start_address: header.start_address + settings.virtual_offset,
+        start_address: header.start_address * addr_mult + settings.virtual_offset,
         bytestream,
-        crc_address: header.start_address + settings.virtual_offset + crc_offset,
+        crc_address: (header.start_address + crc_offset) * addr_mult + settings.virtual_offset,
         crc_bytestream: crc_bytes.to_vec(),
         used_size,
-        allocated_size,
+        allocated_size: header.length * addr_mult,
     })
 }
 
@@ -336,6 +362,7 @@ mod tests {
         Settings {
             endianness: Endianness::Little,
             virtual_offset: 0,
+            word_addressing: false,
             crc: Some(sample_crc_config()),
         }
     }

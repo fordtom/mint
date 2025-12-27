@@ -11,7 +11,7 @@ use crate::layout::errors::LayoutError;
 use crate::layout::settings::Endianness;
 use crate::output;
 use crate::output::errors::OutputError;
-use crate::output::{prepare_combined, prepare_separate, DataRange};
+use crate::output::{DataRange, prepare_combined, prepare_separate};
 use rayon::prelude::*;
 use stats::{BlockStat, BuildStats};
 use std::collections::{HashMap, HashSet};
@@ -139,10 +139,7 @@ fn extract_crc_value(crc_bytestream: &[u8], endianness: &Endianness) -> Option<u
     })
 }
 
-fn output_results(
-    results: Vec<BlockBuildResult>,
-    args: &Args,
-) -> Result<BuildStats, NvmError> {
+fn output_results(results: Vec<BlockBuildResult>, args: &Args) -> Result<BuildStats, NvmError> {
     let mut stats = BuildStats::new();
     let named_ranges: Vec<(String, DataRange)> = results
         .into_iter()

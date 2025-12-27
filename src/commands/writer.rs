@@ -1,6 +1,6 @@
+use crate::output::OutputFile;
 use crate::output::args::{OutputArgs, OutputFormat};
 use crate::output::errors::OutputError;
-use crate::output::OutputFile;
 use rayon::prelude::*;
 
 /// Write multiple output files in parallel.

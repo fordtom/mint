@@ -25,6 +25,7 @@ Global settings apply to all blocks. The `[settings.crc]` section defines defaul
 [settings]
 endianness = "little"      # "little" (default) or "big"
 virtual_offset = 0x0       # Offset added to all addresses
+word_addressing = false    # Enable for word-addressed memory (see below)
 
 [settings.crc]             # Optional: only required if any block uses CRC
 location = "end_data"      # CRC placement: "end_data", "end_block" - absolute address is not allowed here as this is a global setting
@@ -42,6 +43,15 @@ area = "data"              # CRC coverage: "data", "block_zero_crc", "block_pad_
 - `block_zero_crc` - Pad to full block, zero CRC bytes before calculation
 - `block_pad_crc` - Pad to full block, include CRC bytes as padding value
 - `block_omit_crc` - Pad to full block, exclude CRC bytes from calculation
+
+**Word Addressing Mode:**
+
+When `word_addressing = true`:
+
+- Addresses in output are doubled (16-bit word addresses instead of byte addresses)
+- Byte pairs are swapped in the output to recreate the word-addressed byte order
+- `u8` and `i8` types are not allowed (strings also blocked)
+- `virtual_offset` is applied after doubling, so it is not doubled
 
 ---
 
