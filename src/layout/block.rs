@@ -19,6 +19,7 @@ pub struct BuildConfig<'a> {
     pub endianness: &'a Endianness,
     pub padding: u8,
     pub strict: bool,
+    pub word_addressing: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -59,6 +60,7 @@ impl Block {
             endianness: &settings.endianness,
             padding: self.header.padding,
             strict,
+            word_addressing: settings.word_addressing,
         };
 
         Self::build_bytestream_inner(&self.data, data_source, &mut state, &config)?;

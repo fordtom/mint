@@ -132,6 +132,12 @@ impl LeafEntry {
         data_source: Option<&dyn DataSource>,
         config: &BuildConfig,
     ) -> Result<Vec<u8>, LayoutError> {
+        if config.word_addressing && matches!(self.scalar_type, ScalarType::U8 | ScalarType::I8) {
+            return Err(LayoutError::DataValueExportFailed(
+                "u8/i8 types are not supported with word_addressing enabled.".into(),
+            ));
+        }
+
         if let EntrySource::Bitmap(fields) = &self.source {
             self.validate_bitmap(fields)?;
             return self.emit_bitmap(fields, data_source, config);
