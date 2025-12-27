@@ -9,7 +9,6 @@ mod common;
 
 // This integration test exercises:
 // - Big endian vs little endian
-// - byte_swap true and false
 // - --pad-to-end CLI flag (true and false)
 // - CRC at end and at explicit address
 // - record width variations (16 and 64)
@@ -21,11 +20,10 @@ mod common;
 #[test]
 fn mixed_feature_matrix() {
     // Build two layouts to cover multiple settings
-    let layout_be_swap_pad_addr = r#"
+    let layout_be_pad_addr = r#"
 [settings]
 endianness = "big"
 virtual_offset = 0
-byte_swap = true
 
 [settings.crc]
 polynomial = 0x04C11DB7
@@ -49,11 +47,10 @@ txt.ascii = { value = "HELLO", type = "u8", size = 8 }
 single.i32 = { value = 42, type = "i32" }
 "#;
 
-    let layout_le_no_swap_end = r#"
+    let layout_le_end = r#"
 [settings]
 endianness = "little"
 virtual_offset = 0x20000
-byte_swap = false
 
 [settings.crc]
 polynomial = 0x04C11DB7
@@ -77,8 +74,8 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
 "#;
 
     // write layouts
-    let be_path = common::write_layout_file("mixed_be", layout_be_swap_pad_addr);
-    let le_path = common::write_layout_file("mixed_le", layout_le_no_swap_end);
+    let be_path = common::write_layout_file("mixed_be", layout_be_pad_addr);
+    let le_path = common::write_layout_file("mixed_le", layout_le_end);
 
     // Prepare a datasheet (may be no-op for these, but keep realistic flow)
     let data_args = mint_cli::data::args::DataArgs {
