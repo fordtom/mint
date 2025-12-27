@@ -122,6 +122,14 @@ pub fn bytestream_to_datarange(
         ));
     }
 
+    // Apply byte swap for word-addressing mode BEFORE CRC calculation
+    if settings.word_addressing {
+        if !bytestream.len().is_multiple_of(2) {
+            bytestream.push(header.padding);
+        }
+        byte_swap_inplace(&mut bytestream);
+    }
+
     // Resolve CRC configuration (location + settings) from header + global defaults
     let crc_config = resolve_crc(bytestream.len(), header, settings)?;
 
@@ -132,14 +140,6 @@ pub fn bytestream_to_datarange(
 
     // If CRC is disabled for this block, return early with no CRC
     let Some((crc_offset, crc_settings)) = crc_config else {
-        // Apply byte swap for word-addressing mode
-        if settings.word_addressing {
-            if !bytestream.len().is_multiple_of(2) {
-                bytestream.push(header.padding);
-            }
-            byte_swap_inplace(&mut bytestream);
-        }
-
         return Ok(DataRange {
             start_address: header.start_address * addr_mult + settings.virtual_offset,
             bytestream,
@@ -198,12 +198,8 @@ pub fn bytestream_to_datarange(
         Endianness::Little => crc_val.to_le_bytes(),
     };
 
-    // Apply byte swap for word-addressing mode
+    // Swap CRC bytes for word-addressing mode (bytestream already swapped above)
     if settings.word_addressing {
-        if !bytestream.len().is_multiple_of(2) {
-            bytestream.push(header.padding);
-        }
-        byte_swap_inplace(&mut bytestream);
         byte_swap_inplace(&mut crc_bytes);
     }
 
