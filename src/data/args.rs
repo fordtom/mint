@@ -19,7 +19,7 @@ pub struct DataArgs {
         value_name = "PATH or json string",
         group = "datasource",
         requires = "versions",
-        help = "Path to the JSON file or a JSON string containing the postgres configuration options and template"
+        help = "Path to the JSON file or a JSON string containing the postgres configuration (url, query_template, optional data_path for nested extraction)"
     )]
     pub postgres: Option<String>,
 
@@ -28,9 +28,9 @@ pub struct DataArgs {
         value_name = "PATH or json string",
         group = "datasource",
         requires = "versions",
-        help = "Path to the JSON file or a JSON string containing the REST API configuration options and template"
+        help = "HTTP API configuration (url with $VERSION placeholder, optional method [GET/POST], optional body with $VERSION, optional headers, optional data_path)"
     )]
-    pub rest: Option<String>,
+    pub http: Option<String>,
 
     #[arg(
         long,
