@@ -18,7 +18,8 @@ fn load_json_string_or_file(input: &str) -> Result<String, DataError> {
 }
 
 /// Navigates into nested JSON objects using a path of keys.
-/// Returns the value at the specified path, or the original value if path is empty.
+/// Returns an error if any key in the path is not found.
+/// If path is empty, returns the original value unchanged.
 fn extract_nested_value<'a>(value: &'a Value, path: &[String]) -> Result<&'a Value, DataError> {
     let mut current = value;
     for key in path {
