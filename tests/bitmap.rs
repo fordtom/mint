@@ -10,7 +10,6 @@ fn bitmap_layout(data_content: &str) -> String {
 [settings]
 endianness = "little"
 virtual_offset = 0
-byte_swap = false
 
 [settings.crc]
 polynomial = 0x04C11DB7

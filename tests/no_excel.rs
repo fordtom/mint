@@ -31,7 +31,6 @@ fn test_build_without_excel() {
             combined: false,
             stats: false,
             quiet: true,
-            pad_to_end: false,
         },
     };
 
@@ -78,7 +77,6 @@ fn test_error_when_name_without_excel() {
             combined: false,
             stats: false,
             quiet: true,
-            pad_to_end: false,
         },
     };
 
