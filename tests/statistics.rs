@@ -57,11 +57,11 @@ fn test_build_stats_aggregation() {
         return;
     }
 
-    let mut args = common::build_args_for_layouts(
+    let args = common::build_args_for_layouts(
         block_inputs.clone(),
         mint_cli::output::args::OutputFormat::Hex,
+        "out/stats_aggregation.hex",
     );
-    args.output.combined = true;
 
     let stats = commands::build(&args, Some(ds.as_ref())).expect("build should succeed");
 
@@ -112,7 +112,7 @@ fn test_space_efficiency_calculation() {
 }
 
 #[test]
-fn test_combined_mode_stats() {
+fn test_multi_block_stats() {
     common::ensure_out_dir();
 
     let layout_path = "tests/data/blocks.toml";
@@ -135,11 +135,11 @@ fn test_combined_mode_stats() {
         return;
     }
 
-    let mut args = common::build_args_for_layouts(
+    let args = common::build_args_for_layouts(
         block_inputs.clone(),
         mint_cli::output::args::OutputFormat::Hex,
+        "out/multi_block_stats.hex",
     );
-    args.output.combined = true;
 
     let stats = commands::build(&args, Some(ds.as_ref())).expect("build should succeed");
 

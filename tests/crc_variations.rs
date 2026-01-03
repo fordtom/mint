@@ -448,9 +448,11 @@ value = { value = 0x33333333, type = "u32" }
         },
     ];
 
-    let mut args =
-        common::build_args_for_layouts(blocks, mint_cli::output::args::OutputFormat::Hex);
-    args.output.combined = true;
+    let args = common::build_args_for_layouts(
+        blocks,
+        mint_cli::output::args::OutputFormat::Hex,
+        "out/crc_combined.hex",
+    );
 
     let stats = commands::build(&args, None).expect("combined build");
     assert_eq!(stats.blocks_processed, 3);
@@ -484,5 +486,5 @@ value = { value = 0x33333333, type = "u32" }
             .is_none()
     );
 
-    common::assert_out_file_exists("combined", mint_cli::output::args::OutputFormat::Hex);
+    common::assert_out_file_exists(std::path::Path::new("out/crc_combined.hex"));
 }

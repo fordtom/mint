@@ -8,33 +8,20 @@ pub enum OutputFormat {
     Mot,
 }
 
+/// Output configuration for the build command.
 #[derive(Args, Debug, Clone)]
 pub struct OutputArgs {
+    /// Output file path (e.g., "out/firmware.hex").
     #[arg(
         short = 'o',
         long,
-        value_name = "DIR",
-        default_value = "out",
-        help = "Output directory"
+        value_name = "FILE",
+        default_value = "out.hex",
+        help = "Output file path"
     )]
     pub out: PathBuf,
 
-    #[arg(
-        long,
-        value_name = "STR",
-        default_value = "",
-        help = "Optional prefix to prepend to each block name in output filename"
-    )]
-    pub prefix: String,
-
-    #[arg(
-        long,
-        value_name = "STR",
-        default_value = "",
-        help = "Optional suffix to append to each block name in output filename"
-    )]
-    pub suffix: String,
-
+    /// Number of bytes per HEX data record.
     #[arg(
         long,
         value_name = "N",
@@ -44,6 +31,7 @@ pub struct OutputArgs {
     )]
     pub record_width: u16,
 
+    /// Output format: hex or mot.
     #[arg(
         long,
         value_enum,
@@ -52,12 +40,11 @@ pub struct OutputArgs {
     )]
     pub format: OutputFormat,
 
-    #[arg(long, help = "Emit a single combined file instead of one per block")]
-    pub combined: bool,
-
+    /// Show detailed build statistics.
     #[arg(long, help = "Show detailed build statistics")]
     pub stats: bool,
 
+    /// Suppress all output except errors.
     #[arg(long, help = "Suppress all output except errors")]
     pub quiet: bool,
 }

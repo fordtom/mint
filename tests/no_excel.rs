@@ -23,12 +23,9 @@ fn test_build_without_excel() {
         },
         data: Default::default(),
         output: mint_cli::output::args::OutputArgs {
-            out: PathBuf::from("out"),
-            prefix: "TEST".to_string(),
-            suffix: "NOEXCEL".to_string(),
+            out: PathBuf::from("out/simple_block.hex"),
             record_width: 32,
             format: mint_cli::output::args::OutputFormat::Hex,
-            combined: false,
             stats: false,
             quiet: true,
         },
@@ -42,12 +39,7 @@ fn test_build_without_excel() {
         "Should build at least one block"
     );
 
-    common::assert_out_file_exists_custom(
-        "simple_block",
-        "TEST",
-        "NOEXCEL",
-        mint_cli::output::args::OutputFormat::Hex,
-    );
+    common::assert_out_file_exists(std::path::Path::new("out/simple_block.hex"));
 }
 
 #[test]
@@ -69,12 +61,9 @@ fn test_error_when_name_without_excel() {
         },
         data: Default::default(),
         output: mint_cli::output::args::OutputArgs {
-            out: PathBuf::from("out"),
-            prefix: "TEST".to_string(),
-            suffix: "ERROR".to_string(),
+            out: PathBuf::from("out/error_test.hex"),
             record_width: 32,
             format: mint_cli::output::args::OutputFormat::Hex,
-            combined: false,
             stats: false,
             quiet: true,
         },
