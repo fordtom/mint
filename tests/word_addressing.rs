@@ -37,12 +37,9 @@ val2 = { value = 0x5678, type = "u16" }
         },
         data: mint_cli::data::args::DataArgs::default(),
         output: OutputArgs {
-            out: PathBuf::from("out"),
-            prefix: "WORD".to_string(),
-            suffix: "ADDR".to_string(),
+            out: PathBuf::from("out/word_addr.hex"),
             record_width: 16,
             format: OutputFormat::Hex,
-            combined: false,
             stats: false,
             quiet: false,
         },
@@ -50,7 +47,7 @@ val2 = { value = 0x5678, type = "u16" }
 
     commands::build(&args, None).expect("build should succeed");
 
-    let hex_path = std::path::Path::new("out/WORD_block_ADDR.hex");
+    let hex_path = std::path::Path::new("out/word_addr.hex");
     assert!(hex_path.exists(), "output file should exist");
 
     let content = std::fs::read_to_string(hex_path).expect("read hex file");
@@ -110,12 +107,9 @@ val = { value = 0xABCD, type = "u16" }
         },
         data: mint_cli::data::args::DataArgs::default(),
         output: OutputArgs {
-            out: PathBuf::from("out"),
-            prefix: "WORD".to_string(),
-            suffix: "CRC".to_string(),
+            out: PathBuf::from("out/word_crc.hex"),
             record_width: 16,
             format: OutputFormat::Hex,
-            combined: false,
             stats: false,
             quiet: false,
         },
@@ -123,7 +117,7 @@ val = { value = 0xABCD, type = "u16" }
 
     commands::build(&args, None).expect("build with CRC should succeed");
 
-    let hex_path = std::path::Path::new("out/WORD_block_CRC.hex");
+    let hex_path = std::path::Path::new("out/word_crc.hex");
     assert!(hex_path.exists(), "output file should exist");
 }
 
@@ -156,12 +150,9 @@ byte_val = { value = 42, type = "u8" }
         },
         data: mint_cli::data::args::DataArgs::default(),
         output: OutputArgs {
-            out: PathBuf::from("out"),
-            prefix: "WORD".to_string(),
-            suffix: "U8".to_string(),
+            out: PathBuf::from("out/word_u8_reject.hex"),
             record_width: 16,
             format: OutputFormat::Hex,
-            combined: false,
             stats: false,
             quiet: false,
         },
@@ -206,12 +197,9 @@ text = { value = "HELLO", type = "u8", size = 8 }
         },
         data: mint_cli::data::args::DataArgs::default(),
         output: OutputArgs {
-            out: PathBuf::from("out"),
-            prefix: "WORD".to_string(),
-            suffix: "STR".to_string(),
+            out: PathBuf::from("out/word_str_reject.hex"),
             record_width: 16,
             format: OutputFormat::Hex,
-            combined: false,
             stats: false,
             quiet: false,
         },
@@ -251,12 +239,9 @@ val = { value = 0x1234, type = "u16" }
         },
         data: mint_cli::data::args::DataArgs::default(),
         output: OutputArgs {
-            out: PathBuf::from("out"),
-            prefix: "WORD".to_string(),
-            suffix: "VOFF".to_string(),
+            out: PathBuf::from("out/word_voff.hex"),
             record_width: 16,
             format: OutputFormat::Hex,
-            combined: false,
             stats: false,
             quiet: false,
         },
@@ -264,7 +249,7 @@ val = { value = 0x1234, type = "u16" }
 
     commands::build(&args, None).expect("build should succeed");
 
-    let hex_path = std::path::Path::new("out/WORD_block_VOFF.hex");
+    let hex_path = std::path::Path::new("out/word_voff.hex");
     assert!(hex_path.exists(), "output file should exist");
 
     let content = std::fs::read_to_string(hex_path).expect("read hex file");

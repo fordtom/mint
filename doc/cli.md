@@ -21,16 +21,16 @@ Specifies which blocks to build. Two formats are supported:
 
 ```bash
 # Build single block
-mint config@layout.toml --xlsx data.xlsx -v Default
+mint config@layout.toml --xlsx data.xlsx -v Default -o config.hex
 
 # Build multiple specific blocks
-mint config@layout.toml calibration@layout.toml --xlsx data.xlsx -v Default
+mint config@layout.toml calibration@layout.toml --xlsx data.xlsx -v Default -o firmware.hex
 
 # Build all blocks from a file
-mint layout.toml --xlsx data.xlsx -v Default
+mint layout.toml --xlsx data.xlsx -v Default -o output.hex
 
 # Mix both styles
-mint header@layout.toml calibration.toml --xlsx data.xlsx -v Default
+mint header@layout.toml calibration.toml --xlsx data.xlsx -v Default -o combined.hex
 ```
 
 ---
@@ -44,7 +44,7 @@ You can specify exactly one data source (`--xlsx`, `--postgres`, `--rest`, or `-
 Path to Excel workbook containing variant data.
 
 ```bash
-mint layout.toml --xlsx data.xlsx -v Default
+mint layout.toml --xlsx data.xlsx -v Default -o output.hex
 ```
 
 ### `--main-sheet <NAME>`
@@ -52,7 +52,7 @@ mint layout.toml --xlsx data.xlsx -v Default
 Override the default main sheet name (`Main`) for the excel data source.
 
 ```bash
-mint layout.toml --xlsx data.xlsx --main-sheet Config -v Default
+mint layout.toml --xlsx data.xlsx --main-sheet Config -v Default -o output.hex
 ```
 
 ### `--postgres <PATH or JSON>`
@@ -61,10 +61,10 @@ Use PostgreSQL as the data source. Accepts a JSON file path or inline JSON strin
 
 ```bash
 # Using a config file
-mint layout.toml --postgres pg_config.json -v Default
+mint layout.toml --postgres pg_config.json -v Default -o output.hex
 
 # Using inline JSON
-mint layout.toml --postgres '{"url":"...","query_template":"..."}' -v Default
+mint layout.toml --postgres '{"url":"...","query_template":"..."}' -v Default -o output.hex
 ```
 
 See [Data Sources](sources.md#postgres--p---postgres) for config format details.
@@ -75,10 +75,10 @@ Use REST API as the data source. Accepts a JSON file path or inline JSON string.
 
 ```bash
 # Using a config file
-mint layout.toml --rest rest_config.json -v Default
+mint layout.toml --rest rest_config.json -v Default -o output.hex
 
 # Using inline JSON
-mint layout.toml --rest '{"url":"...","headers":{...}}' -v Default
+mint layout.toml --rest '{"url":"...","headers":{...}}' -v Default -o output.hex
 ```
 
 See [Data Sources](sources.md#rest--r---rest) for config format details.
@@ -91,10 +91,10 @@ The JSON format is an object with variant names as top-level keys. Each variant 
 
 ```bash
 # Using a JSON file
-mint layout.toml --json data.json -v Debug/Default
+mint layout.toml --json data.json -v Debug/Default -o output.hex
 
 # Using inline JSON
-mint layout.toml --json '{"Default":{"key1":123,"key2":"value"},"Debug":{"key1":456}}' -v Debug/Default
+mint layout.toml --json '{"Default":{"key1":123,"key2":"value"},"Debug":{"key1":456}}' -v Debug/Default -o output.hex
 ```
 
 **Example JSON format:**
@@ -121,49 +121,31 @@ Variant columns to query, in priority order. The first non-empty value found win
 
 ```bash
 # Single variant
-mint layout.toml --xlsx data.xlsx -v Default
+mint layout.toml --xlsx data.xlsx -v Default -o output.hex
 
 # Fallback chain: try Debug first, then Default
-mint layout.toml --xlsx data.xlsx -v Debug/Default
+mint layout.toml --xlsx data.xlsx -v Debug/Default -o output.hex
 
 # Three-level fallback
-mint layout.toml --xlsx data.xlsx -v Production/Debug/Default
+mint layout.toml --xlsx data.xlsx -v Production/Debug/Default -o output.hex
 ```
 
 ---
 
 ## Output Options
 
-### `-o, --out <DIR>`
+### `-o, --out <FILE>`
 
-Output directory for generated files. Created if it doesn't exist.
+Output file path. Parent directories are created if they don't exist.
 
-**Default:** `out`
-
-```bash
-mint layout.toml --xlsx data.xlsx -v Default -o build/hex
-```
-
-### `--prefix <STR>`
-
-String prepended to output filenames.
-
-**Default:** empty
+**Default:** `out.hex`
 
 ```bash
-# Produces: out/FW_config.hex
-mint config@layout.toml --xlsx data.xlsx -v Default --prefix FW_
-```
+# Output to specific file
+mint layout.toml --xlsx data.xlsx -v Default -o build/firmware.hex
 
-### `--suffix <STR>`
-
-String appended to output filenames (before extension).
-
-**Default:** empty
-
-```bash
-# Produces: out/config_v2.hex
-mint config@layout.toml --xlsx data.xlsx -v Default --suffix _v2
+# Output with .mot extension for Motorola S-Record
+mint layout.toml --xlsx data.xlsx -v Default -o build/firmware.mot --format mot
 ```
 
 ### `--format <FORMAT>`
@@ -177,10 +159,10 @@ Output file format.
 
 ```bash
 # Intel HEX (default)
-mint layout.toml --xlsx data.xlsx -v Default --format hex
+mint layout.toml --xlsx data.xlsx -v Default -o output.hex --format hex
 
 # Motorola S-Record
-mint layout.toml --xlsx data.xlsx -v Default --format mot
+mint layout.toml --xlsx data.xlsx -v Default -o output.mot --format mot
 ```
 
 ### `--record-width <N>`
@@ -191,31 +173,10 @@ Bytes per data record in output file. Range: 1-64.
 
 ```bash
 # 16 bytes per record (shorter lines)
-mint layout.toml --xlsx data.xlsx -v Default --record-width 16
+mint layout.toml --xlsx data.xlsx -v Default -o output.hex --record-width 16
 
 # 64 bytes per record (longer lines)
-mint layout.toml --xlsx data.xlsx -v Default --record-width 64
-```
-
-### `--combined`
-
-Emit a single output file containing all blocks instead of one file per block.
-
-```bash
-# Without --combined: out/config.hex, out/calibration.hex
-mint config@layout.toml calibration@layout.toml --xlsx data.xlsx -v Default
-
-# With --combined: out/combined.hex
-mint config@layout.toml calibration@layout.toml --xlsx data.xlsx -v Default --combined
-```
-
-### `--pad-to-end`
-
-Pad output to full block length. When enabled, the output file will contain padding bytes up to the block's defined length. Bear in mind that other features (such as CRC checking across the whole block) can/will already have padded the block to the full length, rendering this option useless.
-
-```bash
-# Output padded to full block length
-mint layout.toml --xlsx data.xlsx -v Default --pad-to-end
+mint layout.toml --xlsx data.xlsx -v Default -o output.hex --record-width 64
 ```
 
 ---
@@ -227,7 +188,7 @@ mint layout.toml --xlsx data.xlsx -v Default --pad-to-end
 Enable strict type conversions. Errors on lossy casts instead of saturating/truncating.
 
 ```bash
-mint layout.toml --xlsx data.xlsx -v Default --strict
+mint layout.toml --xlsx data.xlsx -v Default -o output.hex --strict
 ```
 
 **Without `--strict`:**
@@ -249,7 +210,7 @@ mint layout.toml --xlsx data.xlsx -v Default --strict
 Show detailed build statistics after completion.
 
 ```bash
-mint layout.toml --xlsx data.xlsx -v Default --stats
+mint layout.toml --xlsx data.xlsx -v Default -o output.hex --stats
 ```
 
 **Example output:**
@@ -291,7 +252,7 @@ mint layout.toml --xlsx data.xlsx -v Default --stats
 Suppress all output except errors.
 
 ```bash
-mint layout.toml --xlsx data.xlsx -v Default --quiet
+mint layout.toml --xlsx data.xlsx -v Default -o output.hex --quiet
 ```
 
 ---
@@ -321,7 +282,7 @@ mint --version
 ### Basic build with Excel data
 
 ```bash
-mint layout.toml --xlsx data.xlsx -v Default
+mint layout.toml --xlsx data.xlsx -v Default -o firmware.hex
 ```
 
 ### Production build with all options
@@ -332,9 +293,7 @@ mint \
   calibration@layout.toml \
   --xlsx data.xlsx \
   -v Production/Default \
-  -o release/firmware \
-  --prefix FW_ \
-  --suffix _v1.2.3 \
+  -o release/FW_v1.2.3.mot \
   --format mot \
   --record-width 32 \
   --strict \
@@ -347,7 +306,7 @@ mint \
 mint layout.toml \
   --postgres pg_config.json \
   -v Production/Default \
-  --combined
+  -o firmware.hex
 ```
 
 See [Data Sources](sources.md#postgres--p---postgres) for config format.
@@ -358,7 +317,7 @@ See [Data Sources](sources.md#postgres--p---postgres) for config format.
 mint layout.toml \
   --rest rest_config.json \
   -v Production/Default \
-  --combined
+  -o firmware.hex
 ```
 
 See [Data Sources](sources.md#rest--r---rest) for config format.
@@ -369,7 +328,7 @@ See [Data Sources](sources.md#rest--r---rest) for config format.
 mint layout.toml \
   --json data.json \
   -v Debug/Default \
-  --combined
+  -o firmware.hex
 ```
 
 See [Data Sources](sources.md#json---json) for format details.

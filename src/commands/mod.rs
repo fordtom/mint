@@ -11,12 +11,12 @@ use crate::layout::errors::LayoutError;
 use crate::layout::settings::Endianness;
 use crate::output;
 use crate::output::errors::OutputError;
-use crate::output::{DataRange, prepare_combined, prepare_separate};
+use crate::output::{DataRange, OutputFile};
 use rayon::prelude::*;
 use stats::{BlockStat, BuildStats};
 use std::collections::{HashMap, HashSet};
 use std::time::Instant;
-use writer::write_outputs;
+use writer::write_output;
 
 #[derive(Debug, Clone)]
 struct ResolvedBlock {
@@ -149,23 +149,15 @@ fn output_results(results: Vec<BlockBuildResult>, args: &Args) -> Result<BuildSt
         })
         .collect();
 
-    let files = if args.output.combined {
-        check_overlaps(&named_ranges)?;
-        let ranges = named_ranges.into_iter().map(|(_, r)| r).collect();
-        vec![prepare_combined(
-            ranges,
-            args.output.format,
-            args.output.record_width as usize,
-        )]
-    } else {
-        prepare_separate(
-            named_ranges,
-            args.output.format,
-            args.output.record_width as usize,
-        )
+    check_overlaps(&named_ranges)?;
+    let ranges: Vec<DataRange> = named_ranges.into_iter().map(|(_, r)| r).collect();
+    let output_file = OutputFile {
+        ranges,
+        format: args.output.format,
+        record_width: args.output.record_width as usize,
     };
 
-    write_outputs(&files, &args.output)?;
+    write_output(&output_file, &args.output)?;
     Ok(stats)
 }
 

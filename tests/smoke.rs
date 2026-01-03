@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use mint_cli::commands;
 
 #[path = "common/mod.rs"]
@@ -30,13 +32,13 @@ fn smoke_build_examples_all_formats_and_options() {
             let args_hex =
                 common::build_args(layout_path, blk, mint_cli::output::args::OutputFormat::Hex);
             commands::build(&args_hex, Some(ds.as_ref())).expect("build hex");
-            common::assert_out_file_exists(blk, mint_cli::output::args::OutputFormat::Hex);
+            common::assert_out_file_exists(&args_hex.output.out);
 
             // Mot
             let args_mot =
                 common::build_args(layout_path, blk, mint_cli::output::args::OutputFormat::Mot);
             commands::build(&args_mot, Some(ds.as_ref())).expect("build mot");
-            common::assert_out_file_exists(blk, mint_cli::output::args::OutputFormat::Mot);
+            common::assert_out_file_exists(&args_mot.output.out);
         }
 
         let block_inputs = cfg
@@ -49,14 +51,14 @@ fn smoke_build_examples_all_formats_and_options() {
             .collect::<Vec<_>>();
 
         if !block_inputs.is_empty() {
-            let mut args_combined = common::build_args_for_layouts(
+            let args_combined = common::build_args_for_layouts(
                 block_inputs,
                 mint_cli::output::args::OutputFormat::Hex,
+                "out/combined.hex",
             );
-            args_combined.output.combined = true;
 
             commands::build(&args_combined, Some(ds.as_ref())).expect("build combined");
-            common::assert_out_file_exists("combined", mint_cli::output::args::OutputFormat::Hex);
+            common::assert_out_file_exists(Path::new("out/combined.hex"));
         }
     }
 }

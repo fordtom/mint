@@ -9,7 +9,6 @@ mod common;
 
 // This integration test exercises:
 // - Big endian vs little endian
-// - --pad-to-end CLI flag (true and false)
 // - CRC at end and at explicit address
 // - record width variations (16 and 64)
 // - Output formats HEX and MOT (SREC address length auto-selection)
@@ -85,7 +84,7 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
     };
     let ds = mint_cli::data::create_data_source(&data_args).expect("datasource loads");
 
-    // Case 1: Big endian, swap, pad to end, CRC at explicit address, HEX with width 64
+    // Case 1: Big endian, CRC at explicit address, HEX with width 64
     let args_be_hex = mint_cli::args::Args {
         layout: mint_cli::layout::args::LayoutArgs {
             blocks: vec![BlockNames {
@@ -96,20 +95,17 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
         },
         data: data_args.clone(),
         output: OutputArgs {
-            out: PathBuf::from("out"),
-            prefix: "MIX".to_string(),
-            suffix: "A".to_string(),
+            out: PathBuf::from("out/mix_a.hex"),
             record_width: 64,
             format: OutputFormat::Hex,
-            combined: false,
             stats: false,
             quiet: false,
         },
     };
     commands::build(&args_be_hex, ds.as_deref()).expect("be-hex");
-    assert!(std::path::Path::new("out/MIX_block_A.hex").exists());
+    assert!(std::path::Path::new("out/mix_a.hex").exists());
 
-    // Case 2: Big endian, swap, pad to end, explicit CRC, MOT with width 16
+    // Case 2: Big endian, explicit CRC, MOT with width 16
     let args_be_mot = mint_cli::args::Args {
         layout: mint_cli::layout::args::LayoutArgs {
             blocks: vec![BlockNames {
@@ -120,20 +116,17 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
         },
         data: data_args.clone(),
         output: OutputArgs {
-            out: PathBuf::from("out"),
-            prefix: "MIX".to_string(),
-            suffix: "B".to_string(),
+            out: PathBuf::from("out/mix_b.mot"),
             record_width: 16,
             format: OutputFormat::Mot,
-            combined: false,
             stats: false,
             quiet: false,
         },
     };
     commands::build(&args_be_mot, ds.as_deref()).expect("be-mot");
-    assert!(std::path::Path::new("out/MIX_block_B.mot").exists());
+    assert!(std::path::Path::new("out/mix_b.mot").exists());
 
-    // Case 3: Little endian, no swap, no pad to end, CRC at end, HEX width 16, virtual_offset applied
+    // Case 3: Little endian, CRC at end, HEX width 16, virtual_offset applied
     let args_le_hex = mint_cli::args::Args {
         layout: mint_cli::layout::args::LayoutArgs {
             blocks: vec![BlockNames {
@@ -144,20 +137,17 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
         },
         data: data_args.clone(),
         output: OutputArgs {
-            out: PathBuf::from("out"),
-            prefix: "MIX".to_string(),
-            suffix: "C".to_string(),
+            out: PathBuf::from("out/mix_c.hex"),
             record_width: 16,
             format: OutputFormat::Hex,
-            combined: false,
             stats: false,
             quiet: false,
         },
     };
     commands::build(&args_le_hex, ds.as_deref()).expect("le-hex");
-    assert!(std::path::Path::new("out/MIX_block_C.hex").exists());
+    assert!(std::path::Path::new("out/mix_c.hex").exists());
 
-    // Case 4: Little endian, no swap, no pad, CRC at end, MOT width 64
+    // Case 4: Little endian, CRC at end, MOT width 64
     let args_le_mot = mint_cli::args::Args {
         layout: mint_cli::layout::args::LayoutArgs {
             blocks: vec![BlockNames {
@@ -168,16 +158,13 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
         },
         data: data_args,
         output: OutputArgs {
-            out: PathBuf::from("out"),
-            prefix: "MIX".to_string(),
-            suffix: "D".to_string(),
+            out: PathBuf::from("out/mix_d.mot"),
             record_width: 64,
             format: OutputFormat::Mot,
-            combined: false,
             stats: false,
             quiet: false,
         },
     };
     commands::build(&args_le_mot, ds.as_deref()).expect("le-mot");
-    assert!(std::path::Path::new("out/MIX_block_D.mot").exists());
+    assert!(std::path::Path::new("out/mix_d.mot").exists());
 }

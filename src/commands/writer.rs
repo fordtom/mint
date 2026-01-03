@@ -1,37 +1,26 @@
 use crate::output::OutputFile;
-use crate::output::args::{OutputArgs, OutputFormat};
+use crate::output::args::OutputArgs;
 use crate::output::errors::OutputError;
-use rayon::prelude::*;
 
-/// Write multiple output files in parallel.
-pub fn write_outputs(files: &[OutputFile], args: &OutputArgs) -> Result<(), OutputError> {
-    files.par_iter().try_for_each(|file| {
-        let contents = file.render()?;
-        write_output(args, &file.name, &contents)
-    })
-}
+/// Write a single output file to the path specified in args.
+pub fn write_output(file: &OutputFile, args: &OutputArgs) -> Result<(), OutputError> {
+    let contents = file.render()?;
 
-pub fn write_output(
-    args: &OutputArgs,
-    block_name: &str,
-    contents: &str,
-) -> Result<(), OutputError> {
-    let mut name_parts: Vec<String> = Vec::new();
-    if !args.prefix.is_empty() {
-        name_parts.push(args.prefix.clone());
+    // Create parent directory if it doesn't exist
+    if let Some(parent) = args.out.parent()
+        && !parent.as_os_str().is_empty()
+    {
+        std::fs::create_dir_all(parent).map_err(|e| {
+            OutputError::FileError(format!(
+                "failed to create directory {}: {}",
+                parent.display(),
+                e
+            ))
+        })?;
     }
-    name_parts.push(block_name.to_string());
-    if !args.suffix.is_empty() {
-        name_parts.push(args.suffix.clone());
-    }
-    let ext = match args.format {
-        OutputFormat::Hex => "hex",
-        OutputFormat::Mot => "mot",
-    };
-    let out_filename = format!("{}.{}", name_parts.join("_"), ext);
-    let out_path = args.out.join(out_filename);
-    std::fs::write(out_path, contents).map_err(|e| {
-        OutputError::FileError(format!("failed to write block {}: {}", block_name, e))
+
+    std::fs::write(&args.out, contents).map_err(|e| {
+        OutputError::FileError(format!("failed to write {}: {}", args.out.display(), e))
     })?;
     Ok(())
 }

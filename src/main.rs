@@ -18,13 +18,6 @@ fn main() -> Result<(), NvmError> {
         .first()
         .ok_or(layout::errors::LayoutError::NoBlocksProvided)?;
 
-    std::fs::create_dir_all(&args.output.out).map_err(|e| {
-        NvmError::Output(mint_cli::output::errors::OutputError::FileError(format!(
-            "failed to create output directory: {}",
-            e
-        )))
-    })?;
-
     let stats = commands::build(&args, data_source.as_deref())?;
 
     if !args.output.quiet {

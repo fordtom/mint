@@ -19,7 +19,12 @@ pub fn write_layout_file(file_stem: &str, contents: &str) -> String {
     path
 }
 
+/// Build test args with output written to out/{block_name}.{ext}
 pub fn build_args(layout_path: &str, block_name: &str, format: OutputFormat) -> Args {
+    let ext = match format {
+        OutputFormat::Hex => "hex",
+        OutputFormat::Mot => "mot",
+    };
     Args {
         layout: LayoutArgs {
             blocks: vec![BlockNames {
@@ -34,12 +39,9 @@ pub fn build_args(layout_path: &str, block_name: &str, format: OutputFormat) -> 
             ..Default::default()
         },
         output: OutputArgs {
-            out: PathBuf::from("out"),
-            prefix: "PRE".to_string(),
-            suffix: "SUF".to_string(),
+            out: PathBuf::from(format!("out/{}.{}", block_name, ext)),
             record_width: 32,
             format,
-            combined: false,
             stats: false,
             quiet: false,
         },
@@ -62,30 +64,21 @@ pub fn find_working_datasource() -> Option<Box<dyn DataSource>> {
     None
 }
 
-pub fn assert_out_file_exists(block_name: &str, format: OutputFormat) {
-    let ext = match format {
-        OutputFormat::Hex => "hex",
-        OutputFormat::Mot => "mot",
-    };
-    let expected = format!("{}_{}_{}.{}", "PRE", block_name, "SUF", ext);
-    assert!(Path::new("out").join(expected).exists());
+/// Assert that the output file exists at the given path
+pub fn assert_out_file_exists(out_path: &Path) {
+    assert!(
+        out_path.exists(),
+        "expected output file to exist: {}",
+        out_path.display()
+    );
 }
 
-pub fn assert_out_file_exists_custom(
-    block_name: &str,
-    prefix: &str,
-    suffix: &str,
+/// Build test args for multiple layouts, output to the specified path
+pub fn build_args_for_layouts(
+    layouts: Vec<BlockNames>,
     format: OutputFormat,
-) {
-    let ext = match format {
-        OutputFormat::Hex => "hex",
-        OutputFormat::Mot => "mot",
-    };
-    let expected = format!("{}_{}_{}.{}", prefix, block_name, suffix, ext);
-    assert!(Path::new("out").join(expected).exists());
-}
-
-pub fn build_args_for_layouts(layouts: Vec<BlockNames>, format: OutputFormat) -> Args {
+    out_path: &str,
+) -> Args {
     Args {
         layout: LayoutArgs {
             blocks: layouts,
@@ -97,12 +90,9 @@ pub fn build_args_for_layouts(layouts: Vec<BlockNames>, format: OutputFormat) ->
             ..Default::default()
         },
         output: OutputArgs {
-            out: PathBuf::from("out"),
-            prefix: "PRE".to_string(),
-            suffix: "SUF".to_string(),
+            out: PathBuf::from(out_path),
             record_width: 32,
             format,
-            combined: true,
             stats: false,
             quiet: false,
         },

@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use mint_cli::commands;
 use mint_cli::layout::args::BlockNames;
@@ -26,12 +26,9 @@ fn test_file_expands_all_blocks() {
         },
         data: Default::default(),
         output: mint_cli::output::args::OutputArgs {
-            out: PathBuf::from("out"),
-            prefix: "EXPAND".to_string(),
-            suffix: "TEST".to_string(),
+            out: PathBuf::from("out/expand_test.hex"),
             record_width: 32,
             format: mint_cli::output::args::OutputFormat::Hex,
-            combined: false,
             stats: false,
             quiet: true,
         },
@@ -46,14 +43,7 @@ fn test_file_expands_all_blocks() {
         "Should build all blocks in the file"
     );
 
-    for block_name in cfg.blocks.keys() {
-        common::assert_out_file_exists_custom(
-            block_name,
-            "EXPAND",
-            "TEST",
-            mint_cli::output::args::OutputFormat::Hex,
-        );
-    }
+    common::assert_out_file_exists(Path::new("out/expand_test.hex"));
 }
 
 #[test]
@@ -83,12 +73,9 @@ fn test_deduplication_file_and_specific() {
         },
         data: Default::default(),
         output: mint_cli::output::args::OutputArgs {
-            out: PathBuf::from("out"),
-            prefix: "DEDUP".to_string(),
-            suffix: "TEST".to_string(),
+            out: PathBuf::from("out/dedup_test.hex"),
             record_width: 32,
             format: mint_cli::output::args::OutputFormat::Hex,
-            combined: false,
             stats: false,
             quiet: true,
         },
@@ -105,7 +92,7 @@ fn test_deduplication_file_and_specific() {
 }
 
 #[test]
-fn test_file_expansion_with_combined() {
+fn test_file_expansion_builds_all_blocks() {
     common::ensure_out_dir();
 
     let layout_path = "tests/data/blocks.toml";
@@ -124,12 +111,9 @@ fn test_file_expansion_with_combined() {
         },
         data: Default::default(),
         output: mint_cli::output::args::OutputArgs {
-            out: PathBuf::from("out"),
-            prefix: "COMBINED".to_string(),
-            suffix: "EXPAND".to_string(),
+            out: PathBuf::from("out/all_blocks.hex"),
             record_width: 32,
             format: mint_cli::output::args::OutputFormat::Hex,
-            combined: true,
             stats: false,
             quiet: true,
         },
@@ -141,13 +125,8 @@ fn test_file_expansion_with_combined() {
     assert_eq!(
         stats.blocks_processed,
         cfg.blocks.len(),
-        "Should build all blocks in combined mode"
+        "Should build all blocks"
     );
 
-    common::assert_out_file_exists_custom(
-        "combined",
-        "COMBINED",
-        "EXPAND",
-        mint_cli::output::args::OutputFormat::Hex,
-    );
+    common::assert_out_file_exists(Path::new("out/all_blocks.hex"));
 }
