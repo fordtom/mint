@@ -1,6 +1,7 @@
 pub mod args;
 pub mod checksum;
 pub mod errors;
+pub mod report;
 
 use crate::layout::header::Header;
 use crate::layout::settings::{CrcArea, CrcConfig, CrcLocation, Endianness, Settings};
@@ -31,6 +32,7 @@ fn resolve_crc(
     length: usize,
     header: &Header,
     settings: &Settings,
+    block_len_bytes: u32,
 ) -> Result<Option<(u32, CrcConfig)>, OutputError> {
     // Merge header CRC with settings CRC
     let resolved = header
@@ -61,9 +63,16 @@ fn resolve_crc(
 
     let crc_offset = match location {
         CrcLocation::Address(address) => {
-            let crc_offset = address.checked_sub(header.start_address).ok_or_else(|| {
+            let raw_offset = address.checked_sub(header.start_address).ok_or_else(|| {
                 OutputError::HexOutputError("CRC address before block start.".to_string())
             })?;
+            let crc_offset = if settings.word_addressing {
+                raw_offset.checked_mul(2).ok_or_else(|| {
+                    OutputError::HexOutputError("CRC address overflows block length.".to_string())
+                })?
+            } else {
+                raw_offset
+            };
 
             if crc_offset < length as u32 {
                 return Err(OutputError::HexOutputError(
@@ -76,7 +85,7 @@ fn resolve_crc(
         CrcLocation::Keyword(option) => match option.as_str() {
             "end_data" => (length as u32 + 3) & !3,
             "end_block" => {
-                let offset = header.length.saturating_sub(4);
+                let offset = block_len_bytes.saturating_sub(4);
                 if offset < length as u32 {
                     return Err(OutputError::HexOutputError(
                         "CRC at end_block overlaps with payload data.".to_string(),
@@ -93,7 +102,7 @@ fn resolve_crc(
         },
     };
 
-    if header.length < crc_offset + 4 {
+    if block_len_bytes < crc_offset + 4 {
         return Err(OutputError::HexOutputError(
             "CRC location would overrun block.".to_string(),
         ));
@@ -116,7 +125,12 @@ pub fn bytestream_to_datarange(
     settings: &Settings,
     padding_bytes: u32,
 ) -> Result<DataRange, OutputError> {
-    if bytestream.len() > header.length as usize {
+    let addr_mult: u32 = if settings.word_addressing { 2 } else { 1 };
+    let block_len_bytes = header.length.checked_mul(addr_mult).ok_or_else(|| {
+        OutputError::HexOutputError("Block length overflows address space.".to_string())
+    })?;
+
+    if bytestream.len() > block_len_bytes as usize {
         return Err(OutputError::HexOutputError(
             "Bytestream length exceeds block length.".to_string(),
         ));
@@ -131,12 +145,9 @@ pub fn bytestream_to_datarange(
     }
 
     // Resolve CRC configuration (location + settings) from header + global defaults
-    let crc_config = resolve_crc(bytestream.len(), header, settings)?;
+    let crc_config = resolve_crc(bytestream.len(), header, settings, block_len_bytes)?;
 
     let mut used_size = (bytestream.len() as u32).saturating_sub(padding_bytes);
-
-    // Address multiplier for word-addressing mode (2x for 16-bit words)
-    let addr_mult: u32 = if settings.word_addressing { 2 } else { 1 };
 
     // If CRC is disabled for this block, return early with no CRC
     let Some((crc_offset, crc_settings)) = crc_config else {
@@ -146,7 +157,7 @@ pub fn bytestream_to_datarange(
             crc_address: 0,
             crc_bytestream: Vec::new(),
             used_size,
-            allocated_size: header.length * addr_mult,
+            allocated_size: block_len_bytes,
         });
     };
 
@@ -174,18 +185,18 @@ pub fn bytestream_to_datarange(
         }
         CrcArea::BlockZeroCrc => {
             // Pad to full block, zero CRC location, then calculate
-            bytestream.resize(header.length as usize, header.padding);
+            bytestream.resize(block_len_bytes as usize, header.padding);
             bytestream[crc_offset as usize..(crc_offset + 4) as usize].fill(0);
             checksum::calculate_crc(&bytestream, &crc_settings)
         }
         CrcArea::BlockPadCrc => {
             // Pad to full block (CRC location contains padding), then calculate
-            bytestream.resize(header.length as usize, header.padding);
+            bytestream.resize(block_len_bytes as usize, header.padding);
             checksum::calculate_crc(&bytestream, &crc_settings)
         }
         CrcArea::BlockOmitCrc => {
             // Pad to full block, calculate CRC excluding CRC bytes
-            bytestream.resize(header.length as usize, header.padding);
+            bytestream.resize(block_len_bytes as usize, header.padding);
             let before = &bytestream[..crc_offset as usize];
             let after = &bytestream[(crc_offset + 4) as usize..];
             let combined: Vec<u8> = [before, after].concat();
@@ -203,13 +214,15 @@ pub fn bytestream_to_datarange(
         byte_swap_inplace(&mut crc_bytes);
     }
 
+    let start_address = header.start_address * addr_mult + settings.virtual_offset;
+
     Ok(DataRange {
-        start_address: header.start_address * addr_mult + settings.virtual_offset,
+        start_address,
         bytestream,
-        crc_address: (header.start_address + crc_offset) * addr_mult + settings.virtual_offset,
+        crc_address: start_address + crc_offset,
         crc_bytestream: crc_bytes.to_vec(),
         used_size,
-        allocated_size: header.length * addr_mult,
+        allocated_size: block_len_bytes,
     })
 }
 

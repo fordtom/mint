@@ -37,7 +37,7 @@ mint header@layout.toml calibration.toml --xlsx data.xlsx -v Default -o combined
 
 ## Data Source Options
 
-You can specify exactly one data source (`--xlsx`, `--postgres`, `--rest`, or `--json`) along with a variant (`-v`).
+You can specify exactly one data source (`--xlsx`, `--postgres`, `--http`, or `--json`) along with a variant (`-v`).
 
 ### `--xlsx <FILE>`
 
@@ -69,19 +69,19 @@ mint layout.toml --postgres '{"url":"...","query_template":"..."}' -v Default -o
 
 See [Data Sources](sources.md#postgres--p---postgres) for config format details.
 
-### `--rest <PATH or JSON>`
+### `--http <PATH or JSON>`
 
-Use REST API as the data source. Accepts a JSON file path or inline JSON string.
+Use HTTP API as the data source. Accepts a JSON file path or inline JSON string.
 
 ```bash
 # Using a config file
-mint layout.toml --rest rest_config.json -v Default -o output.hex
+mint layout.toml --http http_config.json -v Default -o output.hex
 
 # Using inline JSON
-mint layout.toml --rest '{"url":"...","headers":{...}}' -v Default -o output.hex
+mint layout.toml --http '{"url":"...","headers":{...}}' -v Default -o output.hex
 ```
 
-See [Data Sources](sources.md#rest--r---rest) for config format details.
+See [Data Sources](sources.md#http---http) for config format details.
 
 ### `--json <PATH or JSON>`
 
@@ -177,6 +177,14 @@ mint layout.toml --xlsx data.xlsx -v Default -o output.hex --record-width 16
 
 # 64 bytes per record (longer lines)
 mint layout.toml --xlsx data.xlsx -v Default -o output.hex --record-width 64
+```
+
+### `--export-json <FILE>`
+
+Export used `block.data` values as JSON. Report is nested by layout file, then block name.
+
+```bash
+mint layout.toml --xlsx data.xlsx -v Default -o output.hex --export-json build/report.json
 ```
 
 ---
@@ -311,16 +319,16 @@ mint layout.toml \
 
 See [Data Sources](sources.md#postgres--p---postgres) for config format.
 
-### Build with REST backend
+### Build with HTTP backend
 
 ```bash
 mint layout.toml \
-  --rest rest_config.json \
+  --http http_config.json \
   -v Production/Default \
   -o firmware.hex
 ```
 
-See [Data Sources](sources.md#rest--r---rest) for config format.
+See [Data Sources](sources.md#http---http) for config format.
 
 ### Build with JSON data source
 

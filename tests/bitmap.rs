@@ -1,5 +1,7 @@
 use std::io::Write;
 
+use mint_cli::layout::used_values::NoopValueSink;
+
 #[path = "common/mod.rs"]
 mod common;
 
@@ -31,6 +33,15 @@ padding = 0x00
     )
 }
 
+fn build_block(
+    block: &mint_cli::layout::block::Block,
+    settings: &mint_cli::layout::settings::Settings,
+    strict: bool,
+) -> Result<(Vec<u8>, u32), mint_cli::layout::errors::LayoutError> {
+    let mut noop = NoopValueSink;
+    block.build_bytestream(None, settings, strict, &mut noop)
+}
+
 #[test]
 fn bitmap_u8_literal_values() {
     common::ensure_out_dir();
@@ -54,9 +65,7 @@ fn bitmap_u8_literal_values() {
     let cfg = mint_cli::layout::load_layout(path.to_str().unwrap()).expect("parse");
     let block = cfg.blocks.get("block").expect("block");
 
-    let (bytes, _) = block
-        .build_bytestream(None, &cfg.settings, false)
-        .expect("build");
+    let (bytes, _) = build_block(block, &cfg.settings, false).expect("build");
 
     assert_eq!(bytes[0], 0xAF, "u8 bitmap packing: got {:#04x}", bytes[0]);
 }
@@ -83,9 +92,7 @@ fn bitmap_u16_little_endian() {
     let cfg = mint_cli::layout::load_layout(path.to_str().unwrap()).expect("parse");
     let block = cfg.blocks.get("block").expect("block");
 
-    let (bytes, _) = block
-        .build_bytestream(None, &cfg.settings, false)
-        .expect("build");
+    let (bytes, _) = build_block(block, &cfg.settings, false).expect("build");
 
     assert_eq!(&bytes[0..2], &[0xAB, 0xCD], "u16 LE bitmap");
 }
@@ -116,9 +123,7 @@ fn bitmap_i16_signed_negative_values() {
     let cfg = mint_cli::layout::load_layout(path.to_str().unwrap()).expect("parse");
     let block = cfg.blocks.get("block").expect("block");
 
-    let (bytes, _) = block
-        .build_bytestream(None, &cfg.settings, false)
-        .expect("build");
+    let (bytes, _) = build_block(block, &cfg.settings, false).expect("build");
 
     // -1 in 4 bits = 0xF, -8 in 4 bits = 0x8
     // Combined: 0x8F in low byte, 0x00 in high byte
@@ -153,9 +158,7 @@ fn bitmap_u32_mixed_fields() {
     let cfg = mint_cli::layout::load_layout(path.to_str().unwrap()).expect("parse");
     let block = cfg.blocks.get("block").expect("block");
 
-    let (bytes, _) = block
-        .build_bytestream(None, &cfg.settings, false)
-        .expect("build");
+    let (bytes, _) = build_block(block, &cfg.settings, false).expect("build");
 
     assert_eq!(
         &bytes[0..4],
@@ -186,9 +189,8 @@ fn bitmap_saturation_non_strict() {
     let cfg = mint_cli::layout::load_layout(path.to_str().unwrap()).expect("parse");
     let block = cfg.blocks.get("block").expect("block");
 
-    let (bytes, _) = block
-        .build_bytestream(None, &cfg.settings, false)
-        .expect("saturation should succeed in non-strict");
+    let (bytes, _) =
+        build_block(block, &cfg.settings, false).expect("saturation should succeed in non-strict");
 
     assert_eq!(bytes[0], 7, "3-bit field saturates 10 to 7");
 }
@@ -214,7 +216,7 @@ fn bitmap_strict_rejects_out_of_range() {
     let cfg = mint_cli::layout::load_layout(path.to_str().unwrap()).expect("parse");
     let block = cfg.blocks.get("block").expect("block");
 
-    let res = block.build_bytestream(None, &cfg.settings, true);
+    let res = build_block(block, &cfg.settings, true);
     assert!(res.is_err(), "strict mode rejects out-of-range value");
 }
 
@@ -239,7 +241,7 @@ fn bitmap_rejects_wrong_bit_sum() {
     let cfg = mint_cli::layout::load_layout(path.to_str().unwrap()).expect("parse");
     let block = cfg.blocks.get("block").expect("block");
 
-    let res = block.build_bytestream(None, &cfg.settings, false);
+    let res = build_block(block, &cfg.settings, false);
     assert!(res.is_err(), "bitmap with wrong bit sum should error");
 }
 
@@ -263,7 +265,7 @@ fn bitmap_rejects_zero_bits() {
     let cfg = mint_cli::layout::load_layout(path.to_str().unwrap()).expect("parse");
     let block = cfg.blocks.get("block").expect("block");
 
-    let res = block.build_bytestream(None, &cfg.settings, false);
+    let res = build_block(block, &cfg.settings, false);
     assert!(res.is_err(), "bitmap with zero-bit field should error");
 }
 
@@ -287,7 +289,7 @@ fn bitmap_rejects_float_storage() {
     let cfg = mint_cli::layout::load_layout(path.to_str().unwrap()).expect("parse");
     let block = cfg.blocks.get("block").expect("block");
 
-    let res = block.build_bytestream(None, &cfg.settings, false);
+    let res = build_block(block, &cfg.settings, false);
     assert!(res.is_err(), "bitmap with float storage should error");
 }
 
@@ -310,6 +312,6 @@ fn bitmap_rejects_size_key() {
     let cfg = mint_cli::layout::load_layout(path.to_str().unwrap()).expect("parse");
     let block = cfg.blocks.get("block").expect("block");
 
-    let res = block.build_bytestream(None, &cfg.settings, false);
+    let res = build_block(block, &cfg.settings, false);
     assert!(res.is_err(), "bitmap with size key should error");
 }

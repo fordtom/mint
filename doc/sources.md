@@ -1,6 +1,6 @@
 # Data Sources
 
-mint supports four data source types: Excel workbooks, Postgres databases, REST APIs, and raw JSON. A source is not strictly necessary - if a layout contains only values it will build without one. You cannot use more than one source in a single build.
+mint supports four data source types: Excel workbooks, Postgres databases, HTTP APIs, and raw JSON. A source is not strictly necessary - if a layout contains only values it will build without one. You cannot use more than one source in a single build.
 
 ## Excel (`--xlsx`)
 
@@ -66,34 +66,40 @@ mint layout.toml --postgres '{"url":"...","query_template":"..."}' -v Debug/Defa
 
 ---
 
-## REST (`--rest`)
+## HTTP (`--http`)
 
 ```bash
-mint layout.toml --rest config.json -v Debug/Default
+mint layout.toml --http config.json -v Debug/Default
 # or inline:
-mint layout.toml --rest '{"url":"...","headers":{...}}' -v Debug/Default
+mint layout.toml --http '{"url":"...","headers":{...}}' -v Debug/Default
 ```
 
 ### Config Format
 
 ```json
 {
-  "url": "https://api.example.com/config?variant=$1",
+  "url": "https://api.example.com/config?variant=$VERSION",
+  "method": "POST",
+  "body": "{\"variant\":\"$VERSION\"}",
   "headers": {
     "Authorization": "Bearer token123"
-  }
+  },
+  "data_path": ["data", "config"]
 }
 ```
 
-- **url**: HTTP endpoint URL template using `$1` as placeholder for the variant string (URL-encoded)
+- **url**: HTTP endpoint URL template using `$VERSION` as placeholder for the variant string (URL-encoded)
+- **method**: Optional HTTP method (`GET` or `POST`, default `GET`)
+- **body**: Optional request body template. `$VERSION` is substituted with the raw variant string
 - **headers**: Optional HTTP headers map
+- **data_path**: Optional array of keys to navigate into nested JSON responses before extracting values
 
 ### Response Requirements
 
 - Must return a JSON object mapping names to values
 - Native JSON arrays are supported for 1D/2D arrays
 - Space/comma/semicolon-delimited strings are also parsed as numeric arrays
-- Request is made once per variant with `$1` replaced by the URL-encoded variant string
+- Request is made once per variant with `$VERSION` replaced by the URL-encoded variant string in the URL and raw variant string in the body (if provided)
 
 ---
 
@@ -131,7 +137,7 @@ The JSON data source expects an object where:
 }
 ```
 
-Note that this is basically what the REST and Postgres data sources resolve to under the hood - this option is provided if you have a more complex way of retrieving this data in a script/separate process before calling mint.
+Note that this is basically what the HTTP and Postgres data sources resolve to under the hood - this option is provided if you have a more complex way of retrieving this data in a script/separate process before calling mint.
 
 ### Value Types
 

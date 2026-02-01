@@ -2,6 +2,7 @@ use super::entry::LeafEntry;
 use super::errors::LayoutError;
 use super::header::Header;
 use super::settings::{Endianness, Settings};
+use super::used_values::ValueSink;
 use crate::data::DataSource;
 
 use indexmap::IndexMap;
@@ -50,6 +51,7 @@ impl Block {
         data_source: Option<&dyn DataSource>,
         settings: &Settings,
         strict: bool,
+        value_sink: &mut dyn ValueSink,
     ) -> Result<(Vec<u8>, u32), LayoutError> {
         let mut state = BuildState {
             buffer: Vec::with_capacity((self.header.length as usize).min(64 * 1024)),
@@ -63,7 +65,15 @@ impl Block {
             word_addressing: settings.word_addressing,
         };
 
-        Self::build_bytestream_inner(&self.data, data_source, &mut state, &config)?;
+        let mut field_path = Vec::new();
+        Self::build_bytestream_inner(
+            &self.data,
+            data_source,
+            &mut state,
+            &config,
+            value_sink,
+            &mut field_path,
+        )?;
 
         Ok((state.buffer, state.padding_count))
     }
@@ -73,6 +83,8 @@ impl Block {
         data_source: Option<&dyn DataSource>,
         state: &mut BuildState,
         config: &BuildConfig,
+        value_sink: &mut dyn ValueSink,
+        field_path: &mut Vec<String>,
     ) -> Result<(), LayoutError> {
         match table {
             Entry::Leaf(leaf) => {
@@ -83,21 +95,42 @@ impl Block {
                     state.padding_count += 1;
                 }
 
-                let bytes = leaf.emit_bytes(data_source, config)?;
+                let bytes = leaf.emit_bytes(data_source, config, value_sink, field_path)?;
                 state.offset += bytes.len();
                 state.buffer.extend(bytes);
             }
             Entry::Branch(branch) => {
                 for (field_name, v) in branch.iter() {
-                    Self::build_bytestream_inner(v, data_source, state, config).map_err(|e| {
-                        LayoutError::InField {
-                            field: field_name.clone(),
-                            source: Box::new(e),
-                        }
+                    let path_len = field_path.len();
+                    let segments = split_field_path(field_name)?;
+                    field_path.extend(segments);
+                    let result = Self::build_bytestream_inner(
+                        v,
+                        data_source,
+                        state,
+                        config,
+                        value_sink,
+                        field_path,
+                    );
+                    field_path.truncate(path_len);
+                    result.map_err(|e| LayoutError::InField {
+                        field: field_name.clone(),
+                        source: Box::new(e),
                     })?;
                 }
             }
         }
         Ok(())
     }
+}
+
+fn split_field_path(field_name: &str) -> Result<Vec<String>, LayoutError> {
+    let segments: Vec<&str> = field_name.split('.').collect();
+    if segments.iter().any(|s| s.is_empty()) {
+        return Err(LayoutError::DataValueExportFailed(format!(
+            "Invalid field path '{}'.",
+            field_name
+        )));
+    }
+    Ok(segments.into_iter().map(|s| s.to_string()).collect())
 }

@@ -9,6 +9,7 @@ use crate::layout::args::BlockNames;
 use crate::layout::block::Config;
 use crate::layout::errors::LayoutError;
 use crate::layout::settings::Endianness;
+use crate::layout::used_values::{NoopValueSink, ValueCollector};
 use crate::output;
 use crate::output::errors::OutputError;
 use crate::output::{DataRange, OutputFile};
@@ -28,6 +29,7 @@ struct BlockBuildResult {
     block_names: BlockNames,
     data_range: DataRange,
     stat: BlockStat,
+    used_values: Option<serde_json::Value>,
 }
 
 fn resolve_blocks(
@@ -74,10 +76,13 @@ fn build_bytestreams(
     layouts: &HashMap<String, Config>,
     data_source: Option<&dyn DataSource>,
     strict: bool,
+    capture_values: bool,
 ) -> Result<Vec<BlockBuildResult>, NvmError> {
     blocks
         .par_iter()
-        .map(|resolved| build_single_bytestream(resolved, layouts, data_source, strict))
+        .map(|resolved| {
+            build_single_bytestream(resolved, layouts, data_source, strict, capture_values)
+        })
         .collect()
 }
 
@@ -86,13 +91,21 @@ fn build_single_bytestream(
     layouts: &HashMap<String, Config>,
     data_source: Option<&dyn DataSource>,
     strict: bool,
+    capture_values: bool,
 ) -> Result<BlockBuildResult, NvmError> {
     let result = (|| {
         let layout = &layouts[&resolved.file];
         let block = &layout.blocks[&resolved.name];
+        let mut collector = ValueCollector::new();
+        let mut noop = NoopValueSink;
+        let value_sink = if capture_values {
+            &mut collector as &mut dyn crate::layout::used_values::ValueSink
+        } else {
+            &mut noop as &mut dyn crate::layout::used_values::ValueSink
+        };
 
         let (bytestream, padding_bytes) =
-            block.build_bytestream(data_source, &layout.settings, strict)?;
+            block.build_bytestream(data_source, &layout.settings, strict, value_sink)?;
 
         let data_range = output::bytestream_to_datarange(
             bytestream,
@@ -118,6 +131,7 @@ fn build_single_bytestream(
             },
             data_range,
             stat,
+            used_values: capture_values.then(|| collector.into_value()),
         })
     })();
 
@@ -199,10 +213,53 @@ pub fn build(args: &Args, data_source: Option<&dyn DataSource>) -> Result<BuildS
     let start_time = Instant::now();
 
     let (resolved_blocks, layouts) = resolve_blocks(&args.layout.blocks)?;
-    let results = build_bytestreams(&resolved_blocks, &layouts, data_source, args.layout.strict)?;
+    let capture_values = args.output.export_json.is_some();
+    let mut results = build_bytestreams(
+        &resolved_blocks,
+        &layouts,
+        data_source,
+        args.layout.strict,
+        capture_values,
+    )?;
+
+    if let Some(path) = args.output.export_json.as_ref() {
+        let report = take_used_values_report(&mut results)?;
+        output::report::write_used_values_json(path, &report)?;
+    }
 
     let mut stats = output_results(results, args)?;
 
     stats.total_duration = start_time.elapsed();
     Ok(stats)
+}
+
+fn take_used_values_report(
+    results: &mut [BlockBuildResult],
+) -> Result<serde_json::Value, NvmError> {
+    let mut report = serde_json::Map::new();
+    for result in results {
+        let value = result.used_values.take().ok_or_else(|| {
+            OutputError::FileError(
+                "JSON export requested but values were not captured.".to_string(),
+            )
+        })?;
+        let file_entry = report
+            .entry(result.block_names.file.clone())
+            .or_insert_with(|| serde_json::Value::Object(serde_json::Map::new()));
+        let serde_json::Value::Object(blocks) = file_entry else {
+            return Err(OutputError::FileError(
+                "JSON export contains unexpected non-object entry.".to_string(),
+            )
+            .into());
+        };
+        if blocks.contains_key(&result.block_names.name) {
+            return Err(OutputError::FileError(format!(
+                "Duplicate block '{}' in JSON export for file '{}'.",
+                result.block_names.name, result.block_names.file
+            ))
+            .into());
+        }
+        blocks.insert(result.block_names.name.clone(), value);
+    }
+    Ok(serde_json::Value::Object(report))
 }

@@ -40,6 +40,10 @@ pub struct OutputArgs {
     )]
     pub format: OutputFormat,
 
+    /// Export used values as a JSON report.
+    #[arg(long, value_name = "FILE", help = "Export used values as JSON")]
+    pub export_json: Option<PathBuf>,
+
     /// Show detailed build statistics.
     #[arg(long, help = "Show detailed build statistics")]
     pub stats: bool,

@@ -44,7 +44,7 @@ pub enum CrcLocation {
 
 /// Unified CRC configuration used in both `[settings.crc]` and `[header.crc]`.
 /// All fields are optional; header values override settings values.
-/// At settings level, `location` should be "end" or "none" (not an address).
+/// At settings level, `location` must be "end_data" or "end_block" (not an address).
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct CrcConfig {
     pub location: Option<CrcLocation>,
