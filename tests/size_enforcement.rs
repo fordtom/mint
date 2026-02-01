@@ -49,8 +49,8 @@ short_array = { value = [1, 2, 3], type = "u16", size = 10 }
     let cfg = mint_cli::layout::load_layout(path.to_str().unwrap()).expect("parse layout");
     let block = cfg.blocks.get("block").expect("block present");
 
-    let (bytes, _padding) =
-        build_block(block, &cfg.settings, false, None).expect("lowercase size should allow padding");
+    let (bytes, _padding) = build_block(block, &cfg.settings, false, None)
+        .expect("lowercase size should allow padding");
 
     assert!(bytes.len() >= 20);
 }

@@ -189,8 +189,8 @@ fn bitmap_saturation_non_strict() {
     let cfg = mint_cli::layout::load_layout(path.to_str().unwrap()).expect("parse");
     let block = cfg.blocks.get("block").expect("block");
 
-    let (bytes, _) = build_block(block, &cfg.settings, false)
-        .expect("saturation should succeed in non-strict");
+    let (bytes, _) =
+        build_block(block, &cfg.settings, false).expect("saturation should succeed in non-strict");
 
     assert_eq!(bytes[0], 7, "3-bit field saturates 10 to 7");
 }

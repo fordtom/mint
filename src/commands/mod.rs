@@ -243,7 +243,23 @@ fn take_used_values_report(
                 "JSON export requested but values were not captured.".to_string(),
             )
         })?;
-        report.insert(result.block_names.name.clone(), value);
+        let file_entry = report
+            .entry(result.block_names.file.clone())
+            .or_insert_with(|| serde_json::Value::Object(serde_json::Map::new()));
+        let serde_json::Value::Object(blocks) = file_entry else {
+            return Err(OutputError::FileError(
+                "JSON export contains unexpected non-object entry.".to_string(),
+            )
+            .into());
+        };
+        if blocks.contains_key(&result.block_names.name) {
+            return Err(OutputError::FileError(format!(
+                "Duplicate block '{}' in JSON export for file '{}'.",
+                result.block_names.name, result.block_names.file
+            ))
+            .into());
+        }
+        blocks.insert(result.block_names.name.clone(), value);
     }
     Ok(serde_json::Value::Object(report))
 }

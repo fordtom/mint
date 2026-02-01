@@ -238,5 +238,5 @@ mint build firmware.toml --data params.xlsx --quiet --export-json report.json
 - [ ] Field paths match layout structure
 - [ ] Values are correctly typed in JSON
 - [ ] Thread-safe collection works with parallel block processing
-- [ ] Export works with all data source types (Excel, JSON, Postgres, REST)
+- [ ] Export works with all data source types (Excel, JSON, Postgres, HTTP)
 - [ ] Documentation updated with new CLI option

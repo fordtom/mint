@@ -49,6 +49,8 @@ area = "data"              # CRC coverage: "data", "block_zero_crc", "block_pad_
 When `word_addressing = true`:
 
 - Addresses in output are doubled (16-bit word addresses instead of byte addresses)
+- `start_address`, `length`, and absolute CRC `location` values are expressed in word addresses (16-bit units)
+- Block length in bytes becomes `length * 2`
 - Byte pairs are swapped in the output to recreate the word-addressed byte order
 - `u8` and `i8` types are not allowed (strings also blocked)
 - `virtual_offset` is applied after doubling, so it is not doubled
@@ -62,7 +64,7 @@ Each block requires a header section defining memory layout. CRC is configured p
 ```toml
 [blockname.header]
 start_address = 0x8B000    # Start address in memory (required)
-length = 0x1000            # Block size in bytes (required)
+length = 0x1000            # Block size in addresses (bytes unless word_addressing=true)
 padding = 0xFF             # Padding byte value (default: 0xFF)
 
 [blockname.header.crc]     # Optional: enables CRC for this block
@@ -80,6 +82,8 @@ area = "data"              # Override global area (optional)
 - `"end_data"` - Append CRC as u32 after data (4-byte aligned - designed such that it lands in a u32 placed at the end of the struct that you're building in flash. Note that the CRC for this setting if the area is set to 'data' will include any padding up to the alignment of the CRC itself.)
 - `"end_block"` - CRC in final 4 bytes of block
 - `0x8BFF0` - Absolute address for CRC placement - must be within the block
+
+Absolute CRC addresses use the same address units as `start_address` (word addresses when `word_addressing = true`).
 
 To disable CRC for a block, simply omit the `[header.crc]` section.
 

@@ -68,6 +68,52 @@ val2 = { value = 0x5678, type = "u16" }
     );
 }
 
+/// Verifies that block length is interpreted as word count in word-addressing mode.
+#[test]
+fn word_addressing_length_is_in_words() {
+    let layout = r#"
+[settings]
+endianness = "little"
+word_addressing = true
+
+[block.header]
+start_address = 0x1000
+length = 2
+padding = 0xFF
+
+[block.data]
+val1 = { value = 0x1234, type = "u16" }
+val2 = { value = 0x5678, type = "u16" }
+"#;
+
+    let path = common::write_layout_file("word_addr_len_words", layout);
+
+    let args = mint_cli::args::Args {
+        layout: mint_cli::layout::args::LayoutArgs {
+            blocks: vec![BlockNames {
+                name: "block".to_string(),
+                file: path,
+            }],
+            strict: false,
+        },
+        data: mint_cli::data::args::DataArgs::default(),
+        output: OutputArgs {
+            out: PathBuf::from("out/word_len_words.hex"),
+            record_width: 16,
+            format: OutputFormat::Hex,
+            export_json: None,
+            stats: false,
+            quiet: false,
+        },
+    };
+
+    commands::build(&args, None).expect("build should succeed");
+    assert!(
+        std::path::Path::new("out/word_len_words.hex").exists(),
+        "output file should exist"
+    );
+}
+
 /// Verifies that word_addressing with CRC also doubles the CRC address.
 #[test]
 fn word_addressing_doubles_crc_address() {

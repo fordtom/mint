@@ -40,6 +40,7 @@ message = { value = "Hi", type = "u8", size = 4 }
 "#;
 
     let layout_path = common::write_layout_file("export_json_layout", layout);
+    let layout_key = layout_path.clone();
 
     let data_args = data::args::DataArgs {
         json: Some(
@@ -77,12 +78,27 @@ message = { value = "Hi", type = "u8", size = 4 }
     let report = std::fs::read_to_string("out/export.json").expect("read json report");
     let json: serde_json::Value = serde_json::from_str(&report).expect("parse json report");
 
-    assert_eq!(json["config"]["device"]["id"].as_u64(), Some(0x1234));
-    assert_eq!(json["config"]["device"]["name"].as_str(), Some("UnitA"));
-    assert_eq!(json["config"]["flags"]["EnableDebug"].as_u64(), Some(1));
-    assert_eq!(json["config"]["flags"]["RegionCode"].as_u64(), Some(7));
-    assert_eq!(json["config"]["flags"]["reserved_1_3"].as_u64(), Some(0));
-    assert_eq!(json["config"]["coeffs"][0].as_u64(), Some(10));
-    assert_eq!(json["data"]["counter"].as_u64(), Some(99));
-    assert_eq!(json["data"]["message"].as_str(), Some("Hi"));
+    assert_eq!(
+        json[&layout_key]["config"]["device"]["id"].as_u64(),
+        Some(0x1234)
+    );
+    assert_eq!(
+        json[&layout_key]["config"]["device"]["name"].as_str(),
+        Some("UnitA")
+    );
+    assert_eq!(
+        json[&layout_key]["config"]["flags"]["EnableDebug"].as_u64(),
+        Some(1)
+    );
+    assert_eq!(
+        json[&layout_key]["config"]["flags"]["RegionCode"].as_u64(),
+        Some(7)
+    );
+    assert_eq!(
+        json[&layout_key]["config"]["flags"]["reserved_1_3"].as_u64(),
+        Some(0)
+    );
+    assert_eq!(json[&layout_key]["config"]["coeffs"][0].as_u64(), Some(10));
+    assert_eq!(json[&layout_key]["data"]["counter"].as_u64(), Some(99));
+    assert_eq!(json[&layout_key]["data"]["message"].as_str(), Some("Hi"));
 }
