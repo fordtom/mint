@@ -5,6 +5,7 @@ mod entry;
 pub mod errors;
 pub mod header;
 pub mod settings;
+pub mod used_values;
 pub mod value;
 
 use block::Config;

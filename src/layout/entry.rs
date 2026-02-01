@@ -1,6 +1,9 @@
 use super::block::BuildConfig;
 use super::conversions::clamp_bitfield_value;
 use super::errors::LayoutError;
+use super::used_values::{
+    ValueSink, array_2d_to_json, array_to_json, data_value_to_json, i128_to_json,
+};
 use super::value::{DataValue, ValueSource};
 use crate::data::DataSource;
 use serde::Deserialize;
@@ -131,6 +134,8 @@ impl LeafEntry {
         &self,
         data_source: Option<&dyn DataSource>,
         config: &BuildConfig,
+        value_sink: &mut dyn ValueSink,
+        field_path: &[String],
     ) -> Result<Vec<u8>, LayoutError> {
         if config.word_addressing && matches!(self.scalar_type, ScalarType::U8 | ScalarType::I8) {
             return Err(LayoutError::DataValueExportFailed(
@@ -140,18 +145,28 @@ impl LeafEntry {
 
         if let EntrySource::Bitmap(fields) = &self.source {
             self.validate_bitmap(fields)?;
-            return self.emit_bitmap(fields, data_source, config);
+            return self.emit_bitmap(fields, data_source, config, value_sink, field_path);
         }
 
         let (size, strict_len) = self.size_keys.resolve()?;
         match size {
-            None => self.emit_bytes_single(data_source, config),
-            Some(SizeSource::OneD(size)) => {
-                self.emit_bytes_1d(data_source, size, config, strict_len)
-            }
-            Some(SizeSource::TwoD(size)) => {
-                self.emit_bytes_2d(data_source, size, config, strict_len)
-            }
+            None => self.emit_bytes_single(data_source, config, value_sink, field_path),
+            Some(SizeSource::OneD(size)) => self.emit_bytes_1d(
+                data_source,
+                size,
+                config,
+                strict_len,
+                value_sink,
+                field_path,
+            ),
+            Some(SizeSource::TwoD(size)) => self.emit_bytes_2d(
+                data_source,
+                size,
+                config,
+                strict_len,
+                value_sink,
+                field_path,
+            ),
         }
     }
 
@@ -196,11 +211,12 @@ impl LeafEntry {
         fields: &[BitmapField],
         data_source: Option<&dyn DataSource>,
         config: &BuildConfig,
+        value_sink: &mut dyn ValueSink,
+        field_path: &[String],
     ) -> Result<Vec<u8>, LayoutError> {
         let signed = self.scalar_type.is_signed();
         let mut accumulator: u128 = 0;
         let mut offset: usize = 0;
-
         for field in fields {
             let value = field.resolve_value(data_source)?;
             let clamped = clamp_bitfield_value(&value, field.bits, signed, config.strict)?;
@@ -208,6 +224,11 @@ impl LeafEntry {
             let mask = (1u128 << field.bits) - 1;
             let pattern = (clamped as u128) & mask;
             accumulator |= pattern << offset;
+
+            let mut bitmap_path = field_path.to_vec();
+            bitmap_path.push(bitmap_field_key(field, offset));
+            value_sink.record_value(&bitmap_path, i128_to_json(clamped)?)?;
+
             offset += field.bits;
         }
 
@@ -218,6 +239,8 @@ impl LeafEntry {
         &self,
         data_source: Option<&dyn DataSource>,
         config: &BuildConfig,
+        value_sink: &mut dyn ValueSink,
+        field_path: &[String],
     ) -> Result<Vec<u8>, LayoutError> {
         match &self.source {
             EntrySource::Name(name) => {
@@ -228,9 +251,11 @@ impl LeafEntry {
                     )));
                 };
                 let value = ds.retrieve_single_value(name)?;
+                value_sink.record_value(field_path, data_value_to_json(&value)?)?;
                 value.to_bytes(self.scalar_type, config.endianness, config.strict)
             }
             EntrySource::Value(ValueSource::Single(v)) => {
+                value_sink.record_value(field_path, data_value_to_json(v)?)?;
                 v.to_bytes(self.scalar_type, config.endianness, config.strict)
             }
             EntrySource::Value(_) => Err(LayoutError::DataValueExportFailed(
@@ -246,6 +271,8 @@ impl LeafEntry {
         size: usize,
         config: &BuildConfig,
         strict_len: bool,
+        value_sink: &mut dyn ValueSink,
+        field_path: &[String],
     ) -> Result<Vec<u8>, LayoutError> {
         let elem = self.scalar_type.size_bytes();
         let total_bytes = size
@@ -270,9 +297,11 @@ impl LeafEntry {
                                 "Strings should have type u8.".to_string(),
                             ));
                         }
+                        value_sink.record_value(field_path, data_value_to_json(&v)?)?;
                         out.extend(v.string_to_bytes()?);
                     }
                     ValueSource::Array(v) => {
+                        value_sink.record_value(field_path, array_to_json(&v)?)?;
                         for v in v {
                             out.extend(v.to_bytes(
                                 self.scalar_type,
@@ -284,6 +313,7 @@ impl LeafEntry {
                 }
             }
             EntrySource::Value(ValueSource::Array(v)) => {
+                value_sink.record_value(field_path, array_to_json(v)?)?;
                 for v in v {
                     out.extend(v.to_bytes(self.scalar_type, config.endianness, config.strict)?);
                 }
@@ -294,6 +324,7 @@ impl LeafEntry {
                         "Strings should have type u8.".to_string(),
                     ));
                 }
+                value_sink.record_value(field_path, data_value_to_json(v)?)?;
                 out.extend(v.string_to_bytes()?);
             }
             EntrySource::Bitmap(_) => unreachable!("bitmap handled in emit_bytes"),
@@ -321,6 +352,8 @@ impl LeafEntry {
         size: [usize; 2],
         config: &BuildConfig,
         strict_len: bool,
+        value_sink: &mut dyn ValueSink,
+        field_path: &[String],
     ) -> Result<Vec<u8>, LayoutError> {
         match &self.source {
             EntrySource::Name(name) => {
@@ -366,6 +399,8 @@ impl LeafEntry {
                     ));
                 }
 
+                value_sink.record_value(field_path, array_2d_to_json(&data)?)?;
+
                 let mut out = Vec::with_capacity(total_bytes);
                 for row in data {
                     for v in row {
@@ -388,6 +423,13 @@ impl LeafEntry {
             )),
             EntrySource::Bitmap(_) => unreachable!("bitmap handled in emit_bytes"),
         }
+    }
+}
+
+fn bitmap_field_key(field: &BitmapField, offset: usize) -> String {
+    match &field.source {
+        BitmapFieldSource::Name(name) => name.clone(),
+        BitmapFieldSource::Value(_) => format!("reserved_{}_{}", offset, field.bits),
     }
 }
 

@@ -179,6 +179,14 @@ mint layout.toml --xlsx data.xlsx -v Default -o output.hex --record-width 16
 mint layout.toml --xlsx data.xlsx -v Default -o output.hex --record-width 64
 ```
 
+### `--export-json <FILE>`
+
+Export used `block.data` values as JSON.
+
+```bash
+mint layout.toml --xlsx data.xlsx -v Default -o output.hex --export-json build/report.json
+```
+
 ---
 
 ## Build Options

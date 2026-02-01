@@ -18,9 +18,37 @@ env:
   CICD_INTERMEDIATES_DIR: "_cicd-intermediates"
 
 jobs:
+  create-release:
+    name: Create release
+    runs-on: ubuntu-latest
+    env:
+      GH_REPO: ${{ github.repository }}
+    outputs:
+      tag_name: ${{ steps.tag.outputs.tag_name }}
+    steps:
+      - name: Resolve tag
+        id: tag
+        shell: bash
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          echo "tag_name=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure release exists
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.tag.outputs.tag_name }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists."
+          else
+            gh release create "$TAG" --generate-notes
+          fi
+
   build-release:
     name: ${{ matrix.job.target }} (${{ matrix.job.os }})
     runs-on: ${{ matrix.job.os }}
+    needs: create-release
     strategy:
       fail-fast: false
       matrix:
@@ -117,12 +145,9 @@ jobs:
           echo "PKG_CHECKSUM=${PKG_STAGING}/${PKG_NAME}.sha256" >> $GITHUB_ENV
 
       - name: Publish release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ inputs.tag || github.ref_name }}
-          generate_release_notes: ${{ matrix.job.target == 'x86_64-unknown-linux-musl' }}
-          files: |
-            ${{ env.PKG_PATH }}
-            ${{ env.PKG_CHECKSUM }}
+        shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ needs.create-release.outputs.tag_name }}"
+          gh release upload "$TAG" "${{ env.PKG_PATH }}" "${{ env.PKG_CHECKSUM }}" --clobber
