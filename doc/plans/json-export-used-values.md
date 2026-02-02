@@ -81,8 +81,7 @@ The exported JSON would have this format:
       "name": "config",
       "start_address": "0x1000",
       "allocated_size": 1024,
-      "used_size": 512,
-      "crc_value": "0xABCD1234"
+      "used_size": 512
     }
   ],
   "used_values": [

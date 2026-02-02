@@ -1,22 +1,11 @@
 {
   "settings": {
-    "endianness": "little",
-    "crc": {
-      "polynomial": 79764919,
-      "start": 4294967295,
-      "xor_out": 4294967295,
-      "ref_in": true,
-      "ref_out": true,
-      "area": "data"
-    }
+    "endianness": "little"
   },
   "config": {
     "header": {
       "start_address": 32768,
-      "length": 256,
-      "crc": {
-        "location": "end_data"
-      }
+      "length": 256
     },
     "data": {
       "device.id": { "value": 4660, "type": "u32" },
@@ -38,10 +27,7 @@
   "data": {
     "header": {
       "start_address": 33024,
-      "length": 256,
-      "crc": {
-        "location": 33264
-      }
+      "length": 256
     },
     "data": {
       "counter": { "name": "Counter", "type": "u64" },

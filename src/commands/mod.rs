@@ -7,7 +7,6 @@ use crate::layout;
 use crate::layout::args::BlockNames;
 use crate::layout::block::Config;
 use crate::layout::errors::LayoutError;
-use crate::layout::settings::Endianness;
 use crate::layout::used_values::{NoopValueSink, ValueCollector};
 use crate::output;
 use crate::output::DataRange;
@@ -105,14 +104,11 @@ fn build_single_bytestream(
             padding_bytes,
         )?;
 
-        let crc_value = extract_crc_value(&data_range.crc_bytestream, &layout.settings.endianness);
-
         let stat = BlockStat {
             name: resolved.name.clone(),
             start_address: data_range.start_address,
             allocated_size: data_range.allocated_size,
             used_size: data_range.used_size,
-            crc_value,
         };
 
         Ok(BlockBuildResult {
@@ -133,17 +129,6 @@ fn build_single_bytestream(
     })
 }
 
-fn extract_crc_value(crc_bytestream: &[u8], endianness: &Endianness) -> Option<u32> {
-    if crc_bytestream.len() < 4 {
-        return None;
-    }
-    let bytes: [u8; 4] = crc_bytestream[..4].try_into().ok()?;
-    Some(match endianness {
-        Endianness::Big => u32::from_be_bytes(bytes),
-        Endianness::Little => u32::from_le_bytes(bytes),
-    })
-}
-
 fn output_results(results: Vec<BlockBuildResult>, args: &Args) -> Result<BuildStats, NvmError> {
     let mut stats = BuildStats::new();
     let mut blocks: HashMap<String, HexFile> = HashMap::with_capacity(results.len());
@@ -154,12 +139,6 @@ fn output_results(results: Vec<BlockBuildResult>, args: &Args) -> Result<BuildSt
             result.data_range.start_address,
             result.data_range.bytestream,
         ));
-        if !result.data_range.crc_bytestream.is_empty() {
-            hexfile.append_segment(Segment::new(
-                result.data_range.crc_address,
-                result.data_range.crc_bytestream,
-            ));
-        }
         blocks.insert(format!("@{}", idx + 1), hexfile);
     }
 

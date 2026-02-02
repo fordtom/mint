@@ -108,59 +108,6 @@ val2 = { value = 0x5678, type = "u16" }
     );
 }
 
-/// Verifies that word_addressing with CRC also doubles the CRC address.
-#[test]
-fn word_addressing_doubles_crc_address() {
-    let layout = r#"
-[settings]
-endianness = "little"
-word_addressing = true
-
-[settings.crc]
-polynomial = 0x04C11DB7
-start = 0xFFFFFFFF
-xor_out = 0xFFFFFFFF
-ref_in = true
-ref_out = true
-area = "data"
-
-[block.header]
-start_address = 0x1000
-length = 0x20
-padding = 0xFF
-
-[block.header.crc]
-location = "end_data"
-
-[block.data]
-val = { value = 0xABCD, type = "u16" }
-"#;
-
-    let path = common::write_layout_file("word_addr_crc", layout);
-
-    let args = mint_cli::args::Args {
-        layout: mint_cli::layout::args::LayoutArgs {
-            blocks: vec![BlockNames {
-                name: "block".to_string(),
-                file: path,
-            }],
-            strict: false,
-        },
-        data: mint_cli::data::args::DataArgs::default(),
-        output: OutputArgs {
-            hexview: "@1 /XI -o out/word_crc.hex".to_string(),
-            export_json: None,
-            stats: false,
-            quiet: false,
-        },
-    };
-
-    commands::build(&args, None).expect("build with CRC should succeed");
-
-    let hex_path = std::path::Path::new("out/word_crc.hex");
-    assert!(hex_path.exists(), "output file should exist");
-}
-
 /// Verifies that u8 types are rejected when word_addressing is enabled.
 #[test]
 fn word_addressing_rejects_u8_type() {

@@ -2,21 +2,12 @@
 settings:
   endianness: "little"
   virtual_offset: 0x0
-  crc:
-    polynomial: 0x04C11DB7
-    start: 0xFFFFFFFF
-    xor_out: 0xFFFFFFFF
-    ref_in: true
-    ref_out: true
-    area: "data"
 
 block:
   header:
     start_address: 0x8B000
     length: 0x1000
     padding: 0xC0
-    crc:
-      location: 0x8BFF0
   data:
     some.struct.value:
       value: 0x1234
@@ -95,8 +86,6 @@ block2:
   header:
     start_address: 0x8C000
     length: 0x1000
-    crc:
-      location: 0x8CFF0
   data:
     another.struct.value:
       name: "Array"
@@ -115,8 +104,6 @@ block3:
   header:
     start_address: 0x8D000
     length: 0x1000
-    crc:
-      location: 0x8DFF0
   data:
     counters.boot_count:
       name: "BootCount"

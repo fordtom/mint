@@ -14,18 +14,10 @@ fn strict_conversions_success() {
 endianness = "little"
 virtual_offset = 0
 
-[settings.crc]
-polynomial = 0x04C11DB7
-start = 0xFFFFFFFF
-xor_out = 0xFFFFFFFF
-ref_in = true
-ref_out = true
-area = "data"
 
 [block.header]
 start_address = 0x80000
 length = 0x100
-crc_location = "end"
 padding = 0x00
 
 [block.data]
@@ -63,18 +55,10 @@ fn strict_conversions_fail_fractional_float_to_int() {
 endianness = "little"
 virtual_offset = 0
 
-[settings.crc]
-polynomial = 0x04C11DB7
-start = 0xFFFFFFFF
-xor_out = 0xFFFFFFFF
-ref_in = true
-ref_out = true
-area = "data"
 
 [block.header]
 start_address = 0x80000
 length = 0x100
-crc_location = "end"
 padding = 0x00
 
 [block.data]
@@ -112,18 +96,10 @@ fn strict_conversions_fail_large_int_to_f64_lossy() {
 endianness = "little"
 virtual_offset = 0
 
-[settings.crc]
-polynomial = 0x04C11DB7
-start = 0xFFFFFFFF
-xor_out = 0xFFFFFFFF
-ref_in = true
-ref_out = true
-area = "data"
 
 [block.header]
 start_address = 0x80000
 length = 0x100
-crc_location = "end"
 padding = 0x00
 
 [block.data]
@@ -161,18 +137,10 @@ fn strict_conversions_accept_bool_literals() {
 endianness = "little"
 virtual_offset = 0
 
-[settings.crc]
-polynomial = 0x04C11DB7
-start = 0xFFFFFFFF
-xor_out = 0xFFFFFFFF
-ref_in = true
-ref_out = true
-area = "data"
 
 [block.header]
 start_address = 0x80000
 length = 0x100
-crc_location = "end"
 padding = 0x00
 
 [block.data]

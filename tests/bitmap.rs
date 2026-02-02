@@ -13,18 +13,9 @@ fn bitmap_layout(data_content: &str) -> String {
 endianness = "little"
 virtual_offset = 0
 
-[settings.crc]
-polynomial = 0x04C11DB7
-start = 0xFFFFFFFF
-xor_out = 0xFFFFFFFF
-ref_in = true
-ref_out = true
-area = "data"
-
 [block.header]
 start_address = 0x80000
 length = 0x100
-crc_location = "end"
 padding = 0x00
 
 [block.data]
