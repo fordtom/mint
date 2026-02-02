@@ -5,6 +5,7 @@ use mint_cli::layout::args::BlockNames;
 
 #[path = "common/mod.rs"]
 mod common;
+use common::OutputFormat;
 
 #[test]
 fn test_missing_block_name_errors() {
@@ -53,11 +54,7 @@ fn test_duplicate_blocks_are_built_in_order() {
         },
     ];
 
-    let args = common::build_args_for_layouts(
-        blocks,
-        mint_cli::output::args::OutputFormat::Hex,
-        "out/dup_blocks.hex",
-    );
+    let args = common::build_args_for_layouts(blocks, OutputFormat::Hex, "out/dup_blocks.hex");
 
     let stats = commands::build(&args, Some(ds.as_ref())).expect("build should succeed");
     assert_eq!(stats.blocks_processed, 2, "duplicates should be built");

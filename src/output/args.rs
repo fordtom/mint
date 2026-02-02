@@ -1,12 +1,6 @@
 use std::path::PathBuf;
 
-use clap::{Args, ValueEnum};
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
-pub enum OutputFormat {
-    Hex,
-    Mot,
-}
+use clap::Args;
 
 /// Output configuration for the build command.
 #[derive(Args, Debug, Clone)]

@@ -6,7 +6,13 @@ use std::path::Path;
 use mint_cli::args::Args;
 use mint_cli::data::{self, DataSource};
 use mint_cli::layout::args::{BlockNames, LayoutArgs};
-use mint_cli::output::args::{OutputArgs, OutputFormat};
+use mint_cli::output::args::OutputArgs;
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum OutputFormat {
+    Hex,
+    Mot,
+}
 
 pub fn ensure_out_dir() {
     fs::create_dir_all("out").unwrap();

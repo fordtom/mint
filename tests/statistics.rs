@@ -5,6 +5,7 @@ use mint_cli::commands::{
 
 #[path = "common/mod.rs"]
 mod common;
+use common::OutputFormat;
 
 #[test]
 fn test_block_stat_collection() {
@@ -16,11 +17,7 @@ fn test_block_stat_collection() {
         return;
     };
 
-    let args = common::build_args(
-        layout_path,
-        "block",
-        mint_cli::output::args::OutputFormat::Hex,
-    );
+    let args = common::build_args(layout_path, "block", OutputFormat::Hex);
 
     let stats = commands::build(&args, Some(ds.as_ref())).expect("build should succeed");
 
@@ -59,7 +56,7 @@ fn test_build_stats_aggregation() {
 
     let args = common::build_args_for_layouts(
         block_inputs.clone(),
-        mint_cli::output::args::OutputFormat::Hex,
+        OutputFormat::Hex,
         "out/stats_aggregation.hex",
     );
 
@@ -135,7 +132,7 @@ fn test_multi_block_stats() {
 
     let args = common::build_args_for_layouts(
         block_inputs.clone(),
-        mint_cli::output::args::OutputFormat::Hex,
+        OutputFormat::Hex,
         "out/multi_block_stats.hex",
     );
 
