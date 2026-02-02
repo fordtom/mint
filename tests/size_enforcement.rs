@@ -22,7 +22,6 @@ fn lowercase_size_allows_padding() {
     let layout_toml = r#"
 [settings]
 endianness = "little"
-virtual_offset = 0
 
 
 [block.header]
@@ -54,7 +53,6 @@ fn uppercase_size_rejects_underfilled_1d() {
     let layout_toml = r#"
 [settings]
 endianness = "little"
-virtual_offset = 0
 
 
 [block.header]
@@ -86,7 +84,6 @@ fn uppercase_size_rejects_underfilled_2d() {
     let layout_toml = r#"
 [settings]
 endianness = "little"
-virtual_offset = 0
 
 
 [block.header]
@@ -125,7 +122,6 @@ fn both_size_and_uppercase_size_errors() {
     let layout_toml = r#"
 [settings]
 endianness = "little"
-virtual_offset = 0
 
 
 [block.header]
@@ -157,7 +153,6 @@ fn uppercase_size_accepts_exact_match() {
     let layout_toml = r#"
 [settings]
 endianness = "little"
-virtual_offset = 0
 
 
 [block.header]

@@ -1,7 +1,6 @@
 {
     "settings": {
-        "endianness": "little",
-        "virtual_offset": 0
+        "endianness": "little"
     },
     "block": {
         "header": {

@@ -3,10 +3,6 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize)]
 pub struct Settings {
     pub endianness: Endianness,
-    #[serde(default = "default_offset")]
-    pub virtual_offset: u32,
-    #[serde(default)]
-    pub word_addressing: bool,
 }
 
 #[derive(Debug, Deserialize, Clone, Copy)]
@@ -14,10 +10,6 @@ pub struct Settings {
 pub enum Endianness {
     Little,
     Big,
-}
-
-fn default_offset() -> u32 {
-    0
 }
 
 pub trait EndianBytes {

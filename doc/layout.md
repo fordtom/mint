@@ -25,21 +25,8 @@ is handled by the HexView-compatible output string.
 ```toml
 [settings]
 endianness = "little"      # "little" (default) or "big"
-virtual_offset = 0x0       # Offset added to all addresses
-word_addressing = false    # Enable for word-addressed memory (see below)
 
 ```
-
-**Word Addressing Mode:**
-
-When `word_addressing = true`:
-
-- Addresses in output are doubled (16-bit word addresses instead of byte addresses)
-- `start_address` and `length` values are expressed in word addresses (16-bit units)
-- Block length in bytes becomes `length * 2`
-- Byte pairs are swapped in the output to recreate the word-addressed byte order
-- `u8` and `i8` types are not allowed (strings also blocked)
-- `virtual_offset` is applied after doubling, so it is not doubled
 
 ---
 
@@ -50,7 +37,7 @@ Each block requires a header section defining memory layout.
 ```toml
 [blockname.header]
 start_address = 0x8B000    # Start address in memory (required)
-length = 0x1000            # Block size in addresses (bytes unless word_addressing=true)
+length = 0x1000            # Block size in bytes
 padding = 0xFF             # Padding byte value (default: 0xFF)
 
 ```

@@ -7,7 +7,6 @@
 
 [settings]
 endianness = "little"
-virtual_offset = 0x0
 
 # =============================================================================
 # block - main test block with Excel data references

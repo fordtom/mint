@@ -9,7 +9,6 @@ mod common;
 // - Big endian vs little endian
 // - record width variations (16 and 64)
 // - Output formats HEX and MOT (SREC address length auto-selection)
-// - virtual_offset changing start addresses
 // - 1D array strings and numeric arrays
 // - 2D array retrieval and padding
 // - mix of value sources (Value and Name)
@@ -19,7 +18,6 @@ fn mixed_feature_matrix() {
     let layout_be_pad_addr = r#"
 [settings]
 endianness = "big"
-virtual_offset = 0
 
 [block.header]
 start_address = 0x10000
@@ -35,7 +33,6 @@ single.i32 = { value = 42, type = "i32" }
     let layout_le_end = r#"
 [settings]
 endianness = "little"
-virtual_offset = 0x20000
 
 [block.header]
 start_address = 0x90000
@@ -99,7 +96,7 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
     commands::build(&args_be_mot, ds.as_deref()).expect("be-mot");
     assert!(std::path::Path::new("out/mix_b.mot").exists());
 
-    // Case 3: Little endian, HEX width 16, virtual_offset applied
+    // Case 3: Little endian, HEX width 16
     let args_le_hex = mint_cli::args::Args {
         layout: mint_cli::layout::args::LayoutArgs {
             blocks: vec![BlockNames {

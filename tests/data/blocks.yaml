@@ -1,7 +1,6 @@
 # YAML format test layout - contains block for format parsing verification
 settings:
   endianness: "little"
-  virtual_offset: 0x0
 
 block:
   header:

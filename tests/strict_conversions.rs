@@ -12,7 +12,6 @@ fn strict_conversions_success() {
     let layout_toml = r#"
 [settings]
 endianness = "little"
-virtual_offset = 0
 
 
 [block.header]
@@ -53,7 +52,6 @@ fn strict_conversions_fail_fractional_float_to_int() {
     let layout_toml = r#"
 [settings]
 endianness = "little"
-virtual_offset = 0
 
 
 [block.header]
@@ -94,7 +92,6 @@ fn strict_conversions_fail_large_int_to_f64_lossy() {
     let layout_toml = r#"
 [settings]
 endianness = "little"
-virtual_offset = 0
 
 
 [block.header]
@@ -135,7 +132,6 @@ fn strict_conversions_accept_bool_literals() {
     let layout_toml = r#"
 [settings]
 endianness = "little"
-virtual_offset = 0
 
 
 [block.header]

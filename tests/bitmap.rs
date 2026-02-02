@@ -11,7 +11,6 @@ fn bitmap_layout(data_content: &str) -> String {
         r#"
 [settings]
 endianness = "little"
-virtual_offset = 0
 
 [block.header]
 start_address = 0x80000

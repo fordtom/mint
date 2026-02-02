@@ -97,12 +97,7 @@ fn build_single_bytestream(
         let (bytestream, padding_bytes) =
             block.build_bytestream(data_source, &layout.settings, strict, value_sink)?;
 
-        let data_range = output::bytestream_to_datarange(
-            bytestream,
-            &block.header,
-            &layout.settings,
-            padding_bytes,
-        )?;
+        let data_range = output::bytestream_to_datarange(bytestream, &block.header, padding_bytes)?;
 
         let stat = BlockStat {
             name: resolved.name.clone(),
