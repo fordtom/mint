@@ -1,8 +1,6 @@
-use std::path::PathBuf;
-
 use mint_cli::commands;
 use mint_cli::layout::args::BlockNames;
-use mint_cli::output::args::{OutputArgs, OutputFormat};
+use mint_cli::output::args::OutputArgs;
 
 #[path = "common/mod.rs"]
 mod common;
@@ -95,9 +93,7 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
         },
         data: data_args.clone(),
         output: OutputArgs {
-            out: PathBuf::from("out/mix_a.hex"),
-            record_width: 64,
-            format: OutputFormat::Hex,
+            hexview: "@1 /XI:64 -o out/mix_a.hex".to_string(),
             export_json: None,
             stats: false,
             quiet: false,
@@ -117,9 +113,7 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
         },
         data: data_args.clone(),
         output: OutputArgs {
-            out: PathBuf::from("out/mix_b.mot"),
-            record_width: 16,
-            format: OutputFormat::Mot,
+            hexview: "@1 /XS:16 -o out/mix_b.mot".to_string(),
             export_json: None,
             stats: false,
             quiet: false,
@@ -139,9 +133,7 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
         },
         data: data_args.clone(),
         output: OutputArgs {
-            out: PathBuf::from("out/mix_c.hex"),
-            record_width: 16,
-            format: OutputFormat::Hex,
+            hexview: "@1 /XI:16 -o out/mix_c.hex".to_string(),
             export_json: None,
             stats: false,
             quiet: false,
@@ -161,9 +153,7 @@ arr2.i16 = { value = [10, -20, 30, -40], type = "i16", size = 4 }
         },
         data: data_args,
         output: OutputArgs {
-            out: PathBuf::from("out/mix_d.mot"),
-            record_width: 64,
-            format: OutputFormat::Mot,
+            hexview: "@1 /XS:64 -o out/mix_d.mot".to_string(),
             export_json: None,
             stats: false,
             quiet: false,

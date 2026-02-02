@@ -11,34 +11,15 @@ pub enum OutputFormat {
 /// Output configuration for the build command.
 #[derive(Args, Debug, Clone)]
 pub struct OutputArgs {
-    /// Output file path (e.g., "out/firmware.hex").
+    /// HexView-compatible CLI string (include -o <file> for output path).
+    /// Use @1, @2, ... to reference input blocks in the order given.
     #[arg(
         short = 'o',
         long,
-        value_name = "FILE",
-        default_value = "out.hex",
-        help = "Output file path"
+        value_name = "HEXVIEW",
+        help = "HexView-compatible CLI string (include -o <file>)"
     )]
-    pub out: PathBuf,
-
-    /// Number of bytes per HEX data record.
-    #[arg(
-        long,
-        value_name = "N",
-        default_value_t = 32u16,
-        value_parser = clap::value_parser!(u16).range(1..=64),
-        help = "Number of bytes per HEX data record (1..=64)",
-    )]
-    pub record_width: u16,
-
-    /// Output format: hex or mot.
-    #[arg(
-        long,
-        value_enum,
-        default_value_t = OutputFormat::Hex,
-        help = "Output format: hex or mot",
-    )]
-    pub format: OutputFormat,
+    pub hexview: String,
 
     /// Export used values as a JSON report.
     #[arg(long, value_name = "FILE", help = "Export used values as JSON")]

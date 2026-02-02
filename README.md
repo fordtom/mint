@@ -17,19 +17,20 @@ Install with `cargo install mint-cli` or via nix flakes.
 
 ```bash
 # Excel data source
-mint layout.toml --xlsx data.xlsx -v Default
+mint config@layout.toml --xlsx data.xlsx -v Default -o "@1 /XI -o out.hex"
 
 # Postgres data source
-mint layout.toml --postgres config.json -v Debug/Default
+mint config@layout.toml --postgres config.json -v Debug/Default -o "@1 /XI -o out.hex"
 
 # HTTP data source
-mint layout.toml --http config.json -v Debug/Default
+mint config@layout.toml --http config.json -v Debug/Default -o "@1 /XI -o out.hex"
 
 # JSON data source
-mint layout.toml --json data.json -v Debug/Default
+mint config@layout.toml --json data.json -v Debug/Default -o "@1 /XI -o out.hex"
 
 # Multiple blocks with options
-mint config@layout.toml calibration@layout.toml --xlsx data.xlsx -v Production/Default --stats
+mint config@layout.toml calibration@layout.toml --xlsx data.xlsx -v Production/Default \
+  -o "@1 /MO:@2 /XI -o out/combined.hex" --stats
 ```
 
 ### Layout Example

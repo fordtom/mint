@@ -1,8 +1,6 @@
-use std::path::PathBuf;
-
 use mint_cli::commands;
 use mint_cli::layout::args::BlockNames;
-use mint_cli::output::args::{OutputArgs, OutputFormat};
+use mint_cli::output::args::OutputArgs;
 
 #[path = "common/mod.rs"]
 mod common;
@@ -37,9 +35,7 @@ val2 = { value = 0x5678, type = "u16" }
         },
         data: mint_cli::data::args::DataArgs::default(),
         output: OutputArgs {
-            out: PathBuf::from("out/word_addr.hex"),
-            record_width: 16,
-            format: OutputFormat::Hex,
+            hexview: "@1 /XI -o out/word_addr.hex".to_string(),
             export_json: None,
             stats: false,
             quiet: false,
@@ -98,9 +94,7 @@ val2 = { value = 0x5678, type = "u16" }
         },
         data: mint_cli::data::args::DataArgs::default(),
         output: OutputArgs {
-            out: PathBuf::from("out/word_len_words.hex"),
-            record_width: 16,
-            format: OutputFormat::Hex,
+            hexview: "@1 /XI -o out/word_len_words.hex".to_string(),
             export_json: None,
             stats: false,
             quiet: false,
@@ -154,9 +148,7 @@ val = { value = 0xABCD, type = "u16" }
         },
         data: mint_cli::data::args::DataArgs::default(),
         output: OutputArgs {
-            out: PathBuf::from("out/word_crc.hex"),
-            record_width: 16,
-            format: OutputFormat::Hex,
+            hexview: "@1 /XI -o out/word_crc.hex".to_string(),
             export_json: None,
             stats: false,
             quiet: false,
@@ -198,9 +190,7 @@ byte_val = { value = 42, type = "u8" }
         },
         data: mint_cli::data::args::DataArgs::default(),
         output: OutputArgs {
-            out: PathBuf::from("out/word_u8_reject.hex"),
-            record_width: 16,
-            format: OutputFormat::Hex,
+            hexview: "@1 /XI -o out/word_u8_reject.hex".to_string(),
             export_json: None,
             stats: false,
             quiet: false,
@@ -246,9 +236,7 @@ text = { value = "HELLO", type = "u8", size = 8 }
         },
         data: mint_cli::data::args::DataArgs::default(),
         output: OutputArgs {
-            out: PathBuf::from("out/word_str_reject.hex"),
-            record_width: 16,
-            format: OutputFormat::Hex,
+            hexview: "@1 /XI -o out/word_str_reject.hex".to_string(),
             export_json: None,
             stats: false,
             quiet: false,
@@ -289,9 +277,7 @@ val = { value = 0x1234, type = "u16" }
         },
         data: mint_cli::data::args::DataArgs::default(),
         output: OutputArgs {
-            out: PathBuf::from("out/word_voff.hex"),
-            record_width: 16,
-            format: OutputFormat::Hex,
+            hexview: "@1 /XI -o out/word_voff.hex".to_string(),
             export_json: None,
             stats: false,
             quiet: false,

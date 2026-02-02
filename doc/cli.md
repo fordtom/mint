@@ -1,36 +1,28 @@
 # Command Line Interface
 
-mint builds flash blocks from layout files and data sources, emitting Intel HEX or Motorola S-Record files.
+mint builds flash blocks from layout files and data sources, then hands off output to HexView-compatible processing (h3xy).
 
 ```
-mint [OPTIONS] [BLOCK@FILE | FILE]...
+mint [OPTIONS] BLOCK@FILE...
 ```
 
 ## Positional Arguments
 
-### `[BLOCK@FILE | FILE]...`
+### `BLOCK@FILE...`
 
-Specifies which blocks to build. Two formats are supported:
+Specifies which blocks to build. Each argument must be a block name paired with a layout file.
 
-| Format              | Description                             |
-| ------------------- | --------------------------------------- |
-| `block@layout.toml` | Build specific block from layout file   |
-| `layout.toml`       | Build all blocks defined in layout file |
+Order is preserved and referenced as `@1`, `@2`, ... in the output string.
 
 **Examples:**
 
 ```bash
 # Build single block
-mint config@layout.toml --xlsx data.xlsx -v Default -o config.hex
+mint config@layout.toml --xlsx data.xlsx -v Default -o "@1 /XI -o config.hex"
 
 # Build multiple specific blocks
-mint config@layout.toml calibration@layout.toml --xlsx data.xlsx -v Default -o firmware.hex
-
-# Build all blocks from a file
-mint layout.toml --xlsx data.xlsx -v Default -o output.hex
-
-# Mix both styles
-mint header@layout.toml calibration.toml --xlsx data.xlsx -v Default -o combined.hex
+mint config@layout.toml calibration@layout.toml --xlsx data.xlsx -v Default \
+  -o "@1 /MO:@2 /XI -o firmware.hex"
 ```
 
 ---
@@ -44,7 +36,7 @@ You can specify exactly one data source (`--xlsx`, `--postgres`, `--http`, or `-
 Path to Excel workbook containing variant data.
 
 ```bash
-mint layout.toml --xlsx data.xlsx -v Default -o output.hex
+mint block@layout.toml --xlsx data.xlsx -v Default -o "@1 /XI -o output.hex"
 ```
 
 ### `--main-sheet <NAME>`
@@ -52,7 +44,7 @@ mint layout.toml --xlsx data.xlsx -v Default -o output.hex
 Override the default main sheet name (`Main`) for the excel data source.
 
 ```bash
-mint layout.toml --xlsx data.xlsx --main-sheet Config -v Default -o output.hex
+mint block@layout.toml --xlsx data.xlsx --main-sheet Config -v Default -o "@1 /XI -o output.hex"
 ```
 
 ### `--postgres <PATH or JSON>`
@@ -61,10 +53,10 @@ Use PostgreSQL as the data source. Accepts a JSON file path or inline JSON strin
 
 ```bash
 # Using a config file
-mint layout.toml --postgres pg_config.json -v Default -o output.hex
+mint block@layout.toml --postgres pg_config.json -v Default -o "@1 /XI -o output.hex"
 
 # Using inline JSON
-mint layout.toml --postgres '{"url":"...","query_template":"..."}' -v Default -o output.hex
+mint block@layout.toml --postgres '{"url":"...","query_template":"..."}' -v Default -o "@1 /XI -o output.hex"
 ```
 
 See [Data Sources](sources.md#postgres--p---postgres) for config format details.
@@ -75,10 +67,10 @@ Use HTTP API as the data source. Accepts a JSON file path or inline JSON string.
 
 ```bash
 # Using a config file
-mint layout.toml --http http_config.json -v Default -o output.hex
+mint block@layout.toml --http http_config.json -v Default -o "@1 /XI -o output.hex"
 
 # Using inline JSON
-mint layout.toml --http '{"url":"...","headers":{...}}' -v Default -o output.hex
+mint block@layout.toml --http '{"url":"...","headers":{...}}' -v Default -o "@1 /XI -o output.hex"
 ```
 
 See [Data Sources](sources.md#http---http) for config format details.
@@ -91,10 +83,10 @@ The JSON format is an object with variant names as top-level keys. Each variant 
 
 ```bash
 # Using a JSON file
-mint layout.toml --json data.json -v Debug/Default -o output.hex
+mint block@layout.toml --json data.json -v Debug/Default -o "@1 /XI -o output.hex"
 
 # Using inline JSON
-mint layout.toml --json '{"Default":{"key1":123,"key2":"value"},"Debug":{"key1":456}}' -v Debug/Default -o output.hex
+mint block@layout.toml --json '{"Default":{"key1":123,"key2":"value"},"Debug":{"key1":456}}' -v Debug/Default -o "@1 /XI -o output.hex"
 ```
 
 **Example JSON format:**
@@ -121,62 +113,34 @@ Variant columns to query, in priority order. The first non-empty value found win
 
 ```bash
 # Single variant
-mint layout.toml --xlsx data.xlsx -v Default -o output.hex
+mint block@layout.toml --xlsx data.xlsx -v Default -o "@1 /XI -o output.hex"
 
 # Fallback chain: try Debug first, then Default
-mint layout.toml --xlsx data.xlsx -v Debug/Default -o output.hex
+mint block@layout.toml --xlsx data.xlsx -v Debug/Default -o "@1 /XI -o output.hex"
 
 # Three-level fallback
-mint layout.toml --xlsx data.xlsx -v Production/Debug/Default -o output.hex
+mint block@layout.toml --xlsx data.xlsx -v Production/Debug/Default -o "@1 /XI -o output.hex"
 ```
 
 ---
 
 ## Output Options
 
-### `-o, --out <FILE>`
+### `-o, --out <HEXVIEW>`
 
-Output file path. Parent directories are created if they don't exist.
-
-**Default:** `out.hex`
-
-```bash
-# Output to specific file
-mint layout.toml --xlsx data.xlsx -v Default -o build/firmware.hex
-
-# Output with .mot extension for Motorola S-Record
-mint layout.toml --xlsx data.xlsx -v Default -o build/firmware.mot --format mot
-```
-
-### `--format <FORMAT>`
-
-Output file format.
-
-| Value | Description         | Extension |
-| ----- | ------------------- | --------- |
-| `hex` | Intel HEX (default) | `.hex`    |
-| `mot` | Motorola S-Record   | `.mot`    |
+HexView-compatible CLI string (h3xy). Include the output file with `-o <file>` inside the string.
+Use `@1`, `@2`, ... to reference input blocks in the order provided.
 
 ```bash
-# Intel HEX (default)
-mint layout.toml --xlsx data.xlsx -v Default -o output.hex --format hex
+# Intel HEX output (default bytes per line)
+mint block@layout.toml --xlsx data.xlsx -v Default -o "@1 /XI -o build/firmware.hex"
 
-# Motorola S-Record
-mint layout.toml --xlsx data.xlsx -v Default -o output.mot --format mot
-```
+# Motorola S-Record with 16 bytes per line
+mint block@layout.toml --xlsx data.xlsx -v Default -o "@1 /XS:16 -o build/firmware.mot"
 
-### `--record-width <N>`
-
-Bytes per data record in output file. Range: 1-64.
-
-**Default:** `32`
-
-```bash
-# 16 bytes per record (shorter lines)
-mint layout.toml --xlsx data.xlsx -v Default -o output.hex --record-width 16
-
-# 64 bytes per record (longer lines)
-mint layout.toml --xlsx data.xlsx -v Default -o output.hex --record-width 64
+# Merge two blocks (opaque) into a single HEX file
+mint config@layout.toml calibration@layout.toml --xlsx data.xlsx -v Default \
+  -o "@1 /MO:@2 /XI -o combined.hex"
 ```
 
 ### `--export-json <FILE>`
@@ -184,7 +148,9 @@ mint layout.toml --xlsx data.xlsx -v Default -o output.hex --record-width 64
 Export used `block.data` values as JSON. Report is nested by layout file, then block name.
 
 ```bash
-mint layout.toml --xlsx data.xlsx -v Default -o output.hex --export-json build/report.json
+mint block@layout.toml --xlsx data.xlsx -v Default \
+  -o "@1 /XI -o output.hex" \
+  --export-json build/report.json
 ```
 
 ---
@@ -196,7 +162,7 @@ mint layout.toml --xlsx data.xlsx -v Default -o output.hex --export-json build/r
 Enable strict type conversions. Errors on lossy casts instead of saturating/truncating.
 
 ```bash
-mint layout.toml --xlsx data.xlsx -v Default -o output.hex --strict
+mint block@layout.toml --xlsx data.xlsx -v Default -o "@1 /XI -o output.hex" --strict
 ```
 
 **Without `--strict`:**
@@ -218,7 +184,7 @@ mint layout.toml --xlsx data.xlsx -v Default -o output.hex --strict
 Show detailed build statistics after completion.
 
 ```bash
-mint layout.toml --xlsx data.xlsx -v Default -o output.hex --stats
+mint block@layout.toml --xlsx data.xlsx -v Default -o "@1 /XI -o output.hex" --stats
 ```
 
 **Example output:**
@@ -260,7 +226,7 @@ mint layout.toml --xlsx data.xlsx -v Default -o output.hex --stats
 Suppress all output except errors.
 
 ```bash
-mint layout.toml --xlsx data.xlsx -v Default -o output.hex --quiet
+mint block@layout.toml --xlsx data.xlsx -v Default -o "@1 /XI -o output.hex" --quiet
 ```
 
 ---
@@ -290,7 +256,7 @@ mint --version
 ### Basic build with Excel data
 
 ```bash
-mint layout.toml --xlsx data.xlsx -v Default -o firmware.hex
+mint block@layout.toml --xlsx data.xlsx -v Default -o "@1 /XI -o firmware.hex"
 ```
 
 ### Production build with all options
@@ -301,9 +267,7 @@ mint \
   calibration@layout.toml \
   --xlsx data.xlsx \
   -v Production/Default \
-  -o release/FW_v1.2.3.mot \
-  --format mot \
-  --record-width 32 \
+  -o "@1 /MO:@2 /XS:32 -o release/FW_v1.2.3.mot" \
   --strict \
   --stats
 ```
@@ -311,10 +275,10 @@ mint \
 ### Build with Postgres backend
 
 ```bash
-mint layout.toml \
+mint block@layout.toml \
   --postgres pg_config.json \
   -v Production/Default \
-  -o firmware.hex
+  -o "@1 /XI -o firmware.hex"
 ```
 
 See [Data Sources](sources.md#postgres--p---postgres) for config format.
@@ -322,10 +286,10 @@ See [Data Sources](sources.md#postgres--p---postgres) for config format.
 ### Build with HTTP backend
 
 ```bash
-mint layout.toml \
+mint block@layout.toml \
   --http http_config.json \
   -v Production/Default \
-  -o firmware.hex
+  -o "@1 /XI -o firmware.hex"
 ```
 
 See [Data Sources](sources.md#http---http) for config format.
@@ -333,10 +297,10 @@ See [Data Sources](sources.md#http---http) for config format.
 ### Build with JSON data source
 
 ```bash
-mint layout.toml \
+mint block@layout.toml \
   --json data.json \
   -v Debug/Default \
-  -o firmware.hex
+  -o "@1 /XI -o firmware.hex"
 ```
 
 See [Data Sources](sources.md#json---json) for format details.

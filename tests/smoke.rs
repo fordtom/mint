@@ -32,13 +32,13 @@ fn smoke_build_examples_all_formats_and_options() {
             let args_hex =
                 common::build_args(layout_path, blk, mint_cli::output::args::OutputFormat::Hex);
             commands::build(&args_hex, Some(ds.as_ref())).expect("build hex");
-            common::assert_out_file_exists(&args_hex.output.out);
+            common::assert_out_file_exists(Path::new(&format!("out/{blk}.hex")));
 
             // Mot
             let args_mot =
                 common::build_args(layout_path, blk, mint_cli::output::args::OutputFormat::Mot);
             commands::build(&args_mot, Some(ds.as_ref())).expect("build mot");
-            common::assert_out_file_exists(&args_mot.output.out);
+            common::assert_out_file_exists(Path::new(&format!("out/{blk}.mot")));
         }
 
         let block_inputs = cfg
