@@ -5,7 +5,7 @@ use clap::Args;
 /// Output configuration for the build command.
 #[derive(Args, Debug, Clone)]
 pub struct OutputArgs {
-    /// HexView-compatible CLI string (include -o <file> for output path).
+    /// HexView-compatible CLI string (include `-o <file>` for output path).
     /// Use @1, @2, ... to reference input blocks in the order given.
     #[arg(
         short = 'o',
