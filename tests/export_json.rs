@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use mint_cli::commands;
 use mint_cli::data;
 use mint_cli::layout::args::{BlockNames, LayoutArgs};
-use mint_cli::output::args::{OutputArgs, OutputFormat};
+use mint_cli::output::args::OutputArgs;
 
 #[path = "common/mod.rs"]
 mod common;
@@ -56,17 +56,21 @@ message = { value = "Hi", type = "u8", size = 4 }
 
     let args = mint_cli::args::Args {
         layout: LayoutArgs {
-            blocks: vec![BlockNames {
-                name: "".to_string(),
-                file: layout_path,
-            }],
+            blocks: vec![
+                BlockNames {
+                    name: "config".to_string(),
+                    file: layout_path.clone(),
+                },
+                BlockNames {
+                    name: "data".to_string(),
+                    file: layout_path,
+                },
+            ],
             strict: false,
         },
         data: data_args,
         output: OutputArgs {
-            out: PathBuf::from("out/export.hex"),
-            record_width: 16,
-            format: OutputFormat::Hex,
+            hexview: "@1 /MO:@2 /XI -o out/export.hex".to_string(),
             export_json: Some(PathBuf::from("out/export.json")),
             stats: false,
             quiet: true,

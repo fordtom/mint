@@ -1,24 +1,12 @@
 {
     "settings": {
-        "endianness": "little",
-        "virtual_offset": 0,
-        "crc": {
-            "polynomial": 79764919,
-            "start": 4294967295,
-            "xor_out": 4294967295,
-            "ref_in": true,
-            "ref_out": true,
-            "area": "data"
-        }
+        "endianness": "little"
     },
     "block": {
         "header": {
             "start_address": 569344,
             "length": 4096,
-            "padding": 192,
-            "crc": {
-                "location": 573424
-            }
+            "padding": 192
         },
         "data": {
             "some.struct.value": {
@@ -108,10 +96,7 @@
     "block2": {
         "header": {
             "start_address": 573440,
-            "length": 4096,
-            "crc": {
-                "location": 577520
-            }
+            "length": 4096
         },
         "data": {
             "another.struct.value": {
@@ -134,10 +119,7 @@
     "block3": {
         "header": {
             "start_address": 577536,
-            "length": 4096,
-            "crc": {
-                "location": 581616
-            }
+            "length": 4096
         },
         "data": {
             "counters.boot_count": {

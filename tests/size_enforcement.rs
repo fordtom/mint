@@ -22,20 +22,11 @@ fn lowercase_size_allows_padding() {
     let layout_toml = r#"
 [settings]
 endianness = "little"
-virtual_offset = 0
 
-[settings.crc]
-polynomial = 0x04C11DB7
-start = 0xFFFFFFFF
-xor_out = 0xFFFFFFFF
-ref_in = true
-ref_out = true
-area = "data"
 
 [block.header]
 start_address = 0x80000
 length = 0x100
-crc_location = "end"
 padding = 0xFF
 
 [block.data]
@@ -62,20 +53,11 @@ fn uppercase_size_rejects_underfilled_1d() {
     let layout_toml = r#"
 [settings]
 endianness = "little"
-virtual_offset = 0
 
-[settings.crc]
-polynomial = 0x04C11DB7
-start = 0xFFFFFFFF
-xor_out = 0xFFFFFFFF
-ref_in = true
-ref_out = true
-area = "data"
 
 [block.header]
 start_address = 0x80000
 length = 0x100
-crc_location = "end"
 padding = 0xFF
 
 [block.data]
@@ -102,20 +84,11 @@ fn uppercase_size_rejects_underfilled_2d() {
     let layout_toml = r#"
 [settings]
 endianness = "little"
-virtual_offset = 0
 
-[settings.crc]
-polynomial = 0x04C11DB7
-start = 0xFFFFFFFF
-xor_out = 0xFFFFFFFF
-ref_in = true
-ref_out = true
-area = "data"
 
 [block.header]
 start_address = 0x80000
 length = 0x1000
-crc_location = "end"
 padding = 0xFF
 
 [block.data]
@@ -149,20 +122,11 @@ fn both_size_and_uppercase_size_errors() {
     let layout_toml = r#"
 [settings]
 endianness = "little"
-virtual_offset = 0
 
-[settings.crc]
-polynomial = 0x04C11DB7
-start = 0xFFFFFFFF
-xor_out = 0xFFFFFFFF
-ref_in = true
-ref_out = true
-area = "data"
 
 [block.header]
 start_address = 0x80000
 length = 0x100
-crc_location = "end"
 padding = 0xFF
 
 [block.data]
@@ -189,20 +153,11 @@ fn uppercase_size_accepts_exact_match() {
     let layout_toml = r#"
 [settings]
 endianness = "little"
-virtual_offset = 0
 
-[settings.crc]
-polynomial = 0x04C11DB7
-start = 0xFFFFFFFF
-xor_out = 0xFFFFFFFF
-ref_in = true
-ref_out = true
-area = "data"
 
 [block.header]
 start_address = 0x80000
 length = 0x100
-crc_location = "end"
 padding = 0xFF
 
 [block.data]

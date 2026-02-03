@@ -8,27 +8,33 @@ pub struct BlockNames {
 }
 
 pub fn parse_block_arg(block: &str) -> Result<BlockNames, LayoutError> {
-    let parts: Vec<&str> = block.split('@').collect();
-
-    match parts.len() {
-        2 => Ok(BlockNames {
-            name: parts[0].to_string(),
-            file: parts[1].to_string(),
-        }),
-        1 => Ok(BlockNames {
-            name: String::new(),
-            file: parts[0].to_string(),
-        }),
-        _ => Err(LayoutError::InvalidBlockArgument(format!(
-            "Failed to unpack block {}",
+    let Some((name, file)) = block.split_once('@') else {
+        return Err(LayoutError::InvalidBlockArgument(format!(
+            "Expected BLOCK@FILE, got '{}'",
             block
-        ))),
+        )));
+    };
+    if name.is_empty() || file.is_empty() {
+        return Err(LayoutError::InvalidBlockArgument(format!(
+            "Expected BLOCK@FILE, got '{}'",
+            block
+        )));
     }
+
+    Ok(BlockNames {
+        name: name.to_string(),
+        file: file.to_string(),
+    })
 }
 
 #[derive(Args, Debug)]
 pub struct LayoutArgs {
-    #[arg(value_name = "BLOCK@FILE | FILE", num_args = 1.., value_parser = parse_block_arg, help = "One or more blocks as name@layout_file or a layout_file (toml/yaml/json) to build all blocks")]
+    #[arg(
+        value_name = "BLOCK@FILE",
+        num_args = 1..,
+        value_parser = parse_block_arg,
+        help = "One or more blocks as name@layout_file (toml/yaml/json)"
+    )]
     pub blocks: Vec<BlockNames>,
 
     #[arg(

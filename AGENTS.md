@@ -31,7 +31,7 @@ mint is an embedded development tool that works with layout files (toml/yaml/jso
 
 ## Development Environment
 
-- **Nix**: Use `nix develop` for the environment.
+- **Nix**: Use `nix develop` for the environment. If tools are missing, default to `nix develop` without asking.
 - **Commands**:
   - Build: `cargo build`
   - Test: `cargo test` (Always run after changes)

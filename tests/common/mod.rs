@@ -1,12 +1,18 @@
 #![allow(dead_code)]
 
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use mint_cli::args::Args;
 use mint_cli::data::{self, DataSource};
 use mint_cli::layout::args::{BlockNames, LayoutArgs};
-use mint_cli::output::args::{OutputArgs, OutputFormat};
+use mint_cli::output::args::OutputArgs;
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum OutputFormat {
+    Hex,
+    Mot,
+}
 
 pub fn ensure_out_dir() {
     fs::create_dir_all("out").unwrap();
@@ -25,6 +31,7 @@ pub fn build_args(layout_path: &str, block_name: &str, format: OutputFormat) -> 
         OutputFormat::Hex => "hex",
         OutputFormat::Mot => "mot",
     };
+    let out_path = format!("out/{}.{}", block_name, ext);
     Args {
         layout: LayoutArgs {
             blocks: vec![BlockNames {
@@ -39,9 +46,7 @@ pub fn build_args(layout_path: &str, block_name: &str, format: OutputFormat) -> 
             ..Default::default()
         },
         output: OutputArgs {
-            out: PathBuf::from(format!("out/{}.{}", block_name, ext)),
-            record_width: 32,
-            format,
+            hexview: build_hexview(1, &out_path, format),
             export_json: None,
             stats: false,
             quiet: false,
@@ -80,6 +85,7 @@ pub fn build_args_for_layouts(
     format: OutputFormat,
     out_path: &str,
 ) -> Args {
+    let block_count = layouts.len();
     Args {
         layout: LayoutArgs {
             blocks: layouts,
@@ -91,12 +97,29 @@ pub fn build_args_for_layouts(
             ..Default::default()
         },
         output: OutputArgs {
-            out: PathBuf::from(out_path),
-            record_width: 32,
-            format,
+            hexview: build_hexview(block_count, out_path, format),
             export_json: None,
             stats: false,
             quiet: false,
         },
     }
+}
+
+fn build_hexview(block_count: usize, out_path: &str, format: OutputFormat) -> String {
+    let output_flag = match format {
+        OutputFormat::Hex => "/XI:32",
+        OutputFormat::Mot => "/XS:32",
+    };
+
+    let mut parts = Vec::with_capacity(2 + block_count.saturating_sub(1));
+    if block_count > 0 {
+        parts.push("@1".to_string());
+    }
+    for idx in 2..=block_count {
+        parts.push(format!("/MO:@{idx}"));
+    }
+    parts.push(output_flag.to_string());
+    parts.push("-o".to_string());
+    parts.push(out_path.to_string());
+    parts.join(" ")
 }

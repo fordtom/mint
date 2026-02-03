@@ -137,12 +137,6 @@ impl LeafEntry {
         value_sink: &mut dyn ValueSink,
         field_path: &[String],
     ) -> Result<Vec<u8>, LayoutError> {
-        if config.word_addressing && matches!(self.scalar_type, ScalarType::U8 | ScalarType::I8) {
-            return Err(LayoutError::DataValueExportFailed(
-                "u8/i8 types are not supported with word_addressing enabled.".into(),
-            ));
-        }
-
         if let EntrySource::Bitmap(fields) = &self.source {
             self.validate_bitmap(fields)?;
             return self.emit_bitmap(fields, data_source, config, value_sink, field_path);

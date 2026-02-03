@@ -5,6 +5,7 @@ use mint_cli::commands::{
 
 #[path = "common/mod.rs"]
 mod common;
+use common::OutputFormat;
 
 #[test]
 fn test_block_stat_collection() {
@@ -16,11 +17,7 @@ fn test_block_stat_collection() {
         return;
     };
 
-    let args = common::build_args(
-        layout_path,
-        "block",
-        mint_cli::output::args::OutputFormat::Hex,
-    );
+    let args = common::build_args(layout_path, "block", OutputFormat::Hex);
 
     let stats = commands::build(&args, Some(ds.as_ref())).expect("build should succeed");
 
@@ -59,7 +56,7 @@ fn test_build_stats_aggregation() {
 
     let args = common::build_args_for_layouts(
         block_inputs.clone(),
-        mint_cli::output::args::OutputFormat::Hex,
+        OutputFormat::Hex,
         "out/stats_aggregation.hex",
     );
 
@@ -91,7 +88,6 @@ fn test_space_efficiency_calculation() {
         start_address: 0x1000,
         allocated_size: 100,
         used_size: 80,
-        crc_value: Some(0x12345678),
     });
 
     stats.add_block(BlockStat {
@@ -99,7 +95,6 @@ fn test_space_efficiency_calculation() {
         start_address: 0x2000,
         allocated_size: 200,
         used_size: 120,
-        crc_value: Some(0x9ABCDEF0),
     });
 
     assert_eq!(stats.blocks_processed, 2);
@@ -137,7 +132,7 @@ fn test_multi_block_stats() {
 
     let args = common::build_args_for_layouts(
         block_inputs.clone(),
-        mint_cli::output::args::OutputFormat::Hex,
+        OutputFormat::Hex,
         "out/multi_block_stats.hex",
     );
 
@@ -162,47 +157,8 @@ fn test_space_efficiency_edge_cases() {
         start_address: 0x1000,
         allocated_size: 100,
         used_size: 100,
-        crc_value: Some(0x12345678),
     });
 
     let efficiency = stats.space_efficiency();
     assert!((efficiency - 100.0).abs() < 0.01);
-}
-
-#[test]
-fn test_no_crc_section_returns_none_crc_value() {
-    common::ensure_out_dir();
-
-    let layout_content = r#"
-[settings]
-endianness = "little"
-virtual_offset = 0x0
-
-[block_no_crc.header]
-start_address = 0x1000
-length = 0x100
-padding = 0xFF
-
-[block_no_crc.data]
-device.id = { value = 0x1234, type = "u32" }
-device.name = { value = "TestDevice", type = "u8", size = 16 }
-"#;
-
-    let layout_path = common::write_layout_file("test_no_crc", layout_content);
-
-    let args = common::build_args(
-        &layout_path,
-        "block_no_crc",
-        mint_cli::output::args::OutputFormat::Hex,
-    );
-
-    let stats = commands::build(&args, None).expect("build should succeed");
-
-    assert_eq!(stats.blocks_processed, 1);
-    let block_stat = &stats.block_stats[0];
-    assert_eq!(block_stat.name, "block_no_crc");
-    assert!(
-        block_stat.crc_value.is_none(),
-        "CRC value should be None when no crc section is present"
-    );
 }

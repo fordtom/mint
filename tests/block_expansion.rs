@@ -1,20 +1,17 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use mint_cli::commands;
 use mint_cli::layout::args::BlockNames;
 
 #[path = "common/mod.rs"]
 mod common;
+use common::OutputFormat;
 
 #[test]
-fn test_file_expands_all_blocks() {
+fn test_missing_block_name_errors() {
     common::ensure_out_dir();
 
     let layout_path = "tests/data/blocks.toml";
-
-    let Some(ds) = common::find_working_datasource() else {
-        return;
-    };
 
     let args = mint_cli::args::Args {
         layout: mint_cli::layout::args::LayoutArgs {
@@ -26,110 +23,40 @@ fn test_file_expands_all_blocks() {
         },
         data: Default::default(),
         output: mint_cli::output::args::OutputArgs {
-            out: PathBuf::from("out/expand_test.hex"),
-            record_width: 32,
-            format: mint_cli::output::args::OutputFormat::Hex,
+            hexview: "@1 /XI -o out/invalid.hex".to_string(),
             export_json: None,
             stats: false,
             quiet: true,
         },
     };
 
-    let stats = commands::build(&args, Some(ds.as_ref())).expect("build should succeed");
-
-    let cfg = mint_cli::layout::load_layout(layout_path).expect("layout loads");
-    assert_eq!(
-        stats.blocks_processed,
-        cfg.blocks.len(),
-        "Should build all blocks in the file"
-    );
-
-    common::assert_out_file_exists(Path::new("out/expand_test.hex"));
+    let result = commands::build(&args, None);
+    assert!(result.is_err(), "expected error for missing block name");
 }
 
 #[test]
-fn test_deduplication_file_and_specific() {
+fn test_duplicate_blocks_are_built_in_order() {
     common::ensure_out_dir();
 
     let layout_path = "tests/data/blocks.toml";
-
     let Some(ds) = common::find_working_datasource() else {
         return;
     };
 
-    let args = mint_cli::args::Args {
-        layout: mint_cli::layout::args::LayoutArgs {
-            blocks: vec![
-                BlockNames {
-                    name: String::new(),
-                    file: layout_path.to_string(),
-                },
-                // Request specific block that exists in the combined file
-                BlockNames {
-                    name: "block".to_string(),
-                    file: layout_path.to_string(),
-                },
-            ],
-            strict: false,
+    let blocks = vec![
+        BlockNames {
+            name: "block".to_string(),
+            file: layout_path.to_string(),
         },
-        data: Default::default(),
-        output: mint_cli::output::args::OutputArgs {
-            out: PathBuf::from("out/dedup_test.hex"),
-            record_width: 32,
-            format: mint_cli::output::args::OutputFormat::Hex,
-            export_json: None,
-            stats: false,
-            quiet: true,
+        BlockNames {
+            name: "block".to_string(),
+            file: layout_path.to_string(),
         },
-    };
+    ];
+
+    let args = common::build_args_for_layouts(blocks, OutputFormat::Hex, "out/dup_blocks.hex");
 
     let stats = commands::build(&args, Some(ds.as_ref())).expect("build should succeed");
-
-    let cfg = mint_cli::layout::load_layout(layout_path).expect("layout loads");
-    assert_eq!(
-        stats.blocks_processed,
-        cfg.blocks.len(),
-        "Should deduplicate and only build each block once"
-    );
-}
-
-#[test]
-fn test_file_expansion_builds_all_blocks() {
-    common::ensure_out_dir();
-
-    let layout_path = "tests/data/blocks.toml";
-
-    let Some(ds) = common::find_working_datasource() else {
-        return;
-    };
-
-    let args = mint_cli::args::Args {
-        layout: mint_cli::layout::args::LayoutArgs {
-            blocks: vec![BlockNames {
-                name: String::new(),
-                file: layout_path.to_string(),
-            }],
-            strict: false,
-        },
-        data: Default::default(),
-        output: mint_cli::output::args::OutputArgs {
-            out: PathBuf::from("out/all_blocks.hex"),
-            record_width: 32,
-            format: mint_cli::output::args::OutputFormat::Hex,
-            export_json: None,
-            stats: false,
-            quiet: true,
-        },
-    };
-
-    let stats = commands::build(&args, Some(ds.as_ref())).expect("build should succeed");
-
-    let cfg = mint_cli::layout::load_layout(layout_path).expect("layout loads");
-    assert_eq!(
-        stats.blocks_processed,
-        cfg.blocks.len(),
-        "Should build all blocks"
-    );
-
-    common::assert_out_file_exists(Path::new("out/all_blocks.hex"));
+    assert_eq!(stats.blocks_processed, 2, "duplicates should be built");
+    common::assert_out_file_exists(Path::new("out/dup_blocks.hex"));
 }

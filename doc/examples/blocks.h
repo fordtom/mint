@@ -17,7 +17,6 @@ typedef struct {
   uint16_t flags; /* bitmap */
   float coefficients[4];
   int16_t matrix[2][2];
-  uint32_t crc;
 } config_t;
 
 typedef struct {

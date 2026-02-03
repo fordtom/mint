@@ -7,15 +7,6 @@
 
 [settings]
 endianness = "little"
-virtual_offset = 0x0
-
-[settings.crc]
-polynomial = 0x04C11DB7
-start = 0xFFFFFFFF
-xor_out = 0xFFFFFFFF
-ref_in = true
-ref_out = true
-area = "data"
 
 # =============================================================================
 # block - main test block with Excel data references
@@ -24,9 +15,6 @@ area = "data"
 start_address = 0x8B000
 length = 0x1000
 padding = 0xC0
-
-[block.header.crc]
-location = "end_data"
 
 [block.data]
 # Literal numeric value
@@ -76,9 +64,6 @@ structs.astruct_array = { name = "AStructs", type = "f32", size = [10, 2] }
 start_address = 0x8C000
 length = 0x1000
 
-[block2.header.crc]
-location = 0x8CFF0
-
 [block2.data]
 # 2D array of u16 read from Excel sheet referenced by the Main sheet value
 another.struct.value = { name = "Array", type = "u16", size = [10, 2] }
@@ -94,9 +79,6 @@ another.struct.description = { name = "Block2Description", type = "u8", size = 3
 start_address = 0x8D000
 length = 0x1000
 
-[block3.header.crc]
-location = 0x8DFF0
-
 [block3.data]
 counters.boot_count = { name = "BootCount", type = "u64" }
 limits.temperature_min = { name = "TemperatureMin", type = "i16" }
@@ -110,9 +92,6 @@ dlegal.notice = { name = "LegalNotice", type = "u8", size = 128 }
 [block_bitmap.header]
 start_address = 0x8E000
 length = 0x100
-
-[block_bitmap.header.crc]
-location = "end_data"
 
 [block_bitmap.data]
 # Normal scalar before bitmaps
@@ -150,9 +129,6 @@ start_address = 0x8000
 length = 0x100
 padding = 0xFF
 
-[simple_block.header.crc]
-location = "end_data"
-
 [simple_block.data]
 device.id = { value = 0x1234, type = "u32" }
 device.name = { value = "TestDevice", type = "u8", size = 16 }
@@ -171,9 +147,6 @@ magic = { value = 0xDEADBEEF, type = "u32" }
 start_address = 0x1000
 length = 0x100
 padding = 0xFF
-
-[pg_block.header.crc]
-location = "end_data"
 
 [pg_block.data]
 # Values available in both Postgres and Excel

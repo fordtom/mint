@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use mint_cli::commands;
 use mint_cli::data::create_data_source;
 
@@ -23,9 +21,7 @@ fn test_build_without_excel() {
         },
         data: Default::default(),
         output: mint_cli::output::args::OutputArgs {
-            out: PathBuf::from("out/simple_block.hex"),
-            record_width: 32,
-            format: mint_cli::output::args::OutputFormat::Hex,
+            hexview: "@1 /XI -o out/simple_block.hex".to_string(),
             export_json: None,
             stats: false,
             quiet: true,
@@ -62,9 +58,7 @@ fn test_error_when_name_without_excel() {
         },
         data: Default::default(),
         output: mint_cli::output::args::OutputArgs {
-            out: PathBuf::from("out/error_test.hex"),
-            record_width: 32,
-            format: mint_cli::output::args::OutputFormat::Hex,
+            hexview: "@1 /XI -o out/error_test.hex".to_string(),
             export_json: None,
             stats: false,
             quiet: true,
