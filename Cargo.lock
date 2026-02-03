@@ -534,11 +534,10 @@ dependencies = [
 
 [[package]]
 name = "h3xy"
-version = "0.1.0"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5008a05e63491b21b9aa85b95e61089f462a328002a1c1d8c9f4dbfb13771c29"
+checksum = "851efd9c0bb10005ded47a5fb02a82a72a6f3f3ecd794911e898461b38f6798e"
 dependencies = [
- "clap",
  "crc",
  "thiserror",
 ]
