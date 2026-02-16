@@ -7,7 +7,7 @@ use mint_cli::error::*;
 use mint_cli::layout;
 use mint_cli::visuals;
 
-fn main() -> Result<(), NvmError> {
+fn main() -> Result<(), MintError> {
     let args = Args::parse();
 
     let data_source = data::create_data_source(&args.data)?;
@@ -16,7 +16,7 @@ fn main() -> Result<(), NvmError> {
     args.layout
         .blocks
         .first()
-        .ok_or(layout::errors::LayoutError::NoBlocksProvided)?;
+        .ok_or(layout::error::LayoutError::NoBlocksProvided)?;
 
     let stats = commands::build(&args, data_source.as_deref())?;
 

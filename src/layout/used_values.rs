@@ -1,6 +1,6 @@
 use serde_json::{Map, Number, Value};
 
-use crate::layout::errors::LayoutError;
+use crate::layout::error::LayoutError;
 use crate::layout::value::DataValue;
 
 /// Records resolved values for export.

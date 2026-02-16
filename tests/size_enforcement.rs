@@ -10,7 +10,7 @@ fn build_block(
     settings: &mint_cli::layout::settings::Settings,
     strict: bool,
     data_source: Option<&dyn mint_cli::data::DataSource>,
-) -> Result<(Vec<u8>, u32), mint_cli::layout::errors::LayoutError> {
+) -> Result<(Vec<u8>, u32), mint_cli::layout::error::LayoutError> {
     let mut noop = NoopValueSink;
     block.build_bytestream(data_source, settings, strict, &mut noop)
 }

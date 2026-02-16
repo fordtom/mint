@@ -1,5 +1,5 @@
 use super::entry::ScalarType;
-use super::errors::LayoutError;
+use super::error::LayoutError;
 use super::settings::{EndianBytes, Endianness};
 use super::value::DataValue;
 

@@ -3,15 +3,15 @@ mod writer;
 
 use crate::args::Args;
 use crate::data::DataSource;
-use crate::error::NvmError;
+use crate::error::MintError;
 use crate::layout;
 use crate::layout::args::BlockNames;
 use crate::layout::block::Config;
-use crate::layout::errors::LayoutError;
+use crate::layout::error::LayoutError;
 use crate::layout::settings::Endianness;
 use crate::layout::used_values::{NoopValueSink, ValueCollector};
 use crate::output;
-use crate::output::errors::OutputError;
+use crate::output::error::OutputError;
 use crate::output::{DataRange, OutputFile};
 use rayon::prelude::*;
 use stats::{BlockStat, BuildStats};
@@ -77,7 +77,7 @@ fn build_bytestreams(
     data_source: Option<&dyn DataSource>,
     strict: bool,
     capture_values: bool,
-) -> Result<Vec<BlockBuildResult>, NvmError> {
+) -> Result<Vec<BlockBuildResult>, MintError> {
     blocks
         .par_iter()
         .map(|resolved| {
@@ -92,7 +92,7 @@ fn build_single_bytestream(
     data_source: Option<&dyn DataSource>,
     strict: bool,
     capture_values: bool,
-) -> Result<BlockBuildResult, NvmError> {
+) -> Result<BlockBuildResult, MintError> {
     let result = (|| {
         let layout = &layouts[&resolved.file];
         let block = &layout.blocks[&resolved.name];
@@ -135,7 +135,7 @@ fn build_single_bytestream(
         })
     })();
 
-    result.map_err(|e| NvmError::InBlock {
+    result.map_err(|e| MintError::InBlock {
         block_name: resolved.name.clone(),
         layout_file: resolved.file.clone(),
         source: Box::new(e),
@@ -153,7 +153,7 @@ fn extract_crc_value(crc_bytestream: &[u8], endianness: &Endianness) -> Option<u
     })
 }
 
-fn output_results(results: Vec<BlockBuildResult>, args: &Args) -> Result<BuildStats, NvmError> {
+fn output_results(results: Vec<BlockBuildResult>, args: &Args) -> Result<BuildStats, MintError> {
     let mut stats = BuildStats::new();
     let named_ranges: Vec<(String, DataRange)> = results
         .into_iter()
@@ -175,7 +175,7 @@ fn output_results(results: Vec<BlockBuildResult>, args: &Args) -> Result<BuildSt
     Ok(stats)
 }
 
-fn check_overlaps(named_ranges: &[(String, DataRange)]) -> Result<(), NvmError> {
+fn check_overlaps(named_ranges: &[(String, DataRange)]) -> Result<(), MintError> {
     for i in 0..named_ranges.len() {
         for j in (i + 1)..named_ranges.len() {
             let (ref name_a, ref range_a) = named_ranges[i];
@@ -209,7 +209,7 @@ fn check_overlaps(named_ranges: &[(String, DataRange)]) -> Result<(), NvmError> 
     Ok(())
 }
 
-pub fn build(args: &Args, data_source: Option<&dyn DataSource>) -> Result<BuildStats, NvmError> {
+pub fn build(args: &Args, data_source: Option<&dyn DataSource>) -> Result<BuildStats, MintError> {
     let start_time = Instant::now();
 
     let (resolved_blocks, layouts) = resolve_blocks(&args.layout.blocks)?;
@@ -235,7 +235,7 @@ pub fn build(args: &Args, data_source: Option<&dyn DataSource>) -> Result<BuildS
 
 fn take_used_values_report(
     results: &mut [BlockBuildResult],
-) -> Result<serde_json::Value, NvmError> {
+) -> Result<serde_json::Value, MintError> {
     let mut report = serde_json::Map::new();
     for result in results {
         let value = result.used_values.take().ok_or_else(|| {

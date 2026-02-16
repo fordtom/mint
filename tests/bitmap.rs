@@ -37,7 +37,7 @@ fn build_block(
     block: &mint_cli::layout::block::Block,
     settings: &mint_cli::layout::settings::Settings,
     strict: bool,
-) -> Result<(Vec<u8>, u32), mint_cli::layout::errors::LayoutError> {
+) -> Result<(Vec<u8>, u32), mint_cli::layout::error::LayoutError> {
     let mut noop = NoopValueSink;
     block.build_bytestream(None, settings, strict, &mut noop)
 }

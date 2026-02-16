@@ -1,11 +1,11 @@
 use thiserror::Error;
 
-use crate::data::errors::DataError;
-use crate::layout::errors::LayoutError;
-use crate::output::errors::OutputError;
+use crate::data::error::DataError;
+use crate::layout::error::LayoutError;
+use crate::output::error::OutputError;
 
 #[derive(Debug, Error)]
-pub enum NvmError {
+pub enum MintError {
     #[error(transparent)]
     Layout(#[from] LayoutError),
 
@@ -20,6 +20,6 @@ pub enum NvmError {
         block_name: String,
         layout_file: String,
         #[source]
-        source: Box<NvmError>,
+        source: Box<MintError>,
     },
 }

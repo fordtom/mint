@@ -1,4 +1,4 @@
-use super::errors::LayoutError;
+use super::error::LayoutError;
 use clap::Args;
 
 #[derive(Debug, Clone)]

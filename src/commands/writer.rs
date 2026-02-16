@@ -1,6 +1,6 @@
 use crate::output::OutputFile;
 use crate::output::args::OutputArgs;
-use crate::output::errors::OutputError;
+use crate::output::error::OutputError;
 
 /// Write a single output file to the path specified in args.
 pub fn write_output(file: &OutputFile, args: &OutputArgs) -> Result<(), OutputError> {

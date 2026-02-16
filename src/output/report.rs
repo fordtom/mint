@@ -2,7 +2,7 @@ use std::path::Path;
 
 use serde_json::Value;
 
-use crate::output::errors::OutputError;
+use crate::output::error::OutputError;
 
 /// Write used values JSON report to disk.
 pub fn write_used_values_json(path: &Path, report: &Value) -> Result<(), OutputError> {
