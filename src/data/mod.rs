@@ -1,11 +1,11 @@
 pub mod args;
-pub mod errors;
+pub mod error;
 mod excel;
 mod helpers;
 mod json;
 
 use crate::layout::value::{DataValue, ValueSource};
-use errors::DataError;
+use error::DataError;
 use excel::ExcelDataSource;
 use json::JsonDataSource;
 

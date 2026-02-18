@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 
 use super::DataSource;
 use super::args::DataArgs;
-use super::errors::DataError;
+use super::error::DataError;
 use super::helpers;
 use crate::layout::value::{DataValue, ValueSource};
 

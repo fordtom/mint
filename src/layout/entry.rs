@@ -1,6 +1,6 @@
 use super::block::BuildConfig;
 use super::conversions::clamp_bitfield_value;
-use super::errors::LayoutError;
+use super::error::LayoutError;
 use super::used_values::{
     ValueSink, array_2d_to_json, array_to_json, data_value_to_json, i128_to_json,
 };

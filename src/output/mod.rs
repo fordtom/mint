@@ -1,12 +1,12 @@
 pub mod args;
 pub mod checksum;
-pub mod errors;
+pub mod error;
 pub mod report;
 
 use crate::layout::header::Header;
 use crate::layout::settings::{CrcArea, CrcConfig, CrcLocation, Endianness, Settings};
 use crate::output::args::OutputFormat;
-use errors::OutputError;
+use error::OutputError;
 
 use bin_file::{BinFile, IHexFormat};
 

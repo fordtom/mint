@@ -1,5 +1,5 @@
 use super::entry::LeafEntry;
-use super::errors::LayoutError;
+use super::error::LayoutError;
 use super::header::Header;
 use super::settings::{Endianness, Settings};
 use super::used_values::ValueSink;

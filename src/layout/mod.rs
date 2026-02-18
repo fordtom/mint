@@ -2,14 +2,14 @@ pub mod args;
 pub mod block;
 mod conversions;
 mod entry;
-pub mod errors;
+pub mod error;
 pub mod header;
 pub mod settings;
 pub mod used_values;
 pub mod value;
 
 use block::Config;
-use errors::LayoutError;
+use error::LayoutError;
 use std::path::Path;
 
 pub fn load_layout(filename: &str) -> Result<Config, LayoutError> {
