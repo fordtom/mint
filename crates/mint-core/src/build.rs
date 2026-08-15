@@ -588,10 +588,6 @@ fn take_used_values_report(
 mod tests {
     use super::*;
 
-    fn range(start_address: u32, allocated_size: u32) -> DataRange {
-        range_with_unit(start_address, allocated_size, 8)
-    }
-
     fn range_with_unit(
         start_address: u32,
         allocated_size: u32,
@@ -608,33 +604,29 @@ mod tests {
     }
 
     #[test]
-    fn c28x_overlap_checks_use_scaled_octet_addresses() {
-        let adjacent = vec![
-            ("first".to_owned(), range_with_unit(0x1000, 4, 16)),
-            ("second".to_owned(), range_with_unit(0x1002, 2, 16)),
-        ];
-        check_overlaps(&adjacent).expect("adjacent C28x ranges do not overlap");
-
-        let overlapping = vec![
-            ("first".to_owned(), range_with_unit(0x1000, 4, 16)),
-            ("second".to_owned(), range_with_unit(0x1001, 2, 16)),
-        ];
-        check_overlaps(&overlapping).expect_err("overlapping C28x ranges should fail");
-    }
-
-    #[test]
     fn allocated_ranges_reject_overlap_but_allow_adjacency() {
-        let adjacent = vec![
-            ("first".to_owned(), range(0x1000, 0x10)),
-            ("second".to_owned(), range(0x1010, 0x10)),
+        let cases = [
+            ("octet adjacency", 8, (0x1000, 0x10), (0x1010, 0x10), false),
+            ("octet overlap", 8, (0x1000, 0x11), (0x1010, 0x10), true),
+            ("C28x adjacency", 16, (0x1000, 4), (0x1002, 2), false),
+            ("C28x scaled overlap", 16, (0x1000, 4), (0x1001, 2), true),
         ];
-        check_overlaps(&adjacent).expect("adjacent ranges do not overlap");
 
-        let overlapping = vec![
-            ("first".to_owned(), range(0x1000, 0x11)),
-            ("second".to_owned(), range(0x1010, 0x10)),
-        ];
-        let error = check_overlaps(&overlapping).expect_err("overlap should be rejected");
-        assert!(error.to_string().contains("overlaps"), "{error}");
+        for (name, unit, first, second, should_overlap) in cases {
+            let ranges = vec![
+                ("first".to_owned(), range_with_unit(first.0, first.1, unit)),
+                (
+                    "second".to_owned(),
+                    range_with_unit(second.0, second.1, unit),
+                ),
+            ];
+            match check_overlaps(&ranges) {
+                Ok(()) => assert!(!should_overlap, "{name} should overlap"),
+                Err(error) => {
+                    assert!(should_overlap, "{name} should be adjacent: {error}");
+                    assert!(error.to_string().contains("overlaps"), "{name}: {error}");
+                }
+            }
+        }
     }
 }

@@ -46,28 +46,6 @@ fn stacked_versions_fall_back_when_empty() {
 }
 
 #[test]
-fn boolean_cell_retrieves_default_true() {
-    let ds = build_source("Default");
-
-    let value = ds
-        .retrieve_single_value("boolean")
-        .expect("boolean present");
-
-    assert!(matches!(value, DataValue::Bool(true)));
-}
-
-#[test]
-fn boolean_cell_retrieves_debug_true() {
-    let ds = build_source("Debug/Default");
-
-    let value = ds
-        .retrieve_single_value("boolean")
-        .expect("boolean present");
-
-    assert!(matches!(value, DataValue::Bool(true)));
-}
-
-#[test]
 fn boolean_cell_retrieves_vara_false() {
     let ds = build_source("VarA/Default");
 

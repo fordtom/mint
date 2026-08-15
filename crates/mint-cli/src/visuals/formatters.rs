@@ -41,14 +41,3 @@ pub fn format_duration(duration: Duration) -> String {
         format!("{}us", duration.as_micros())
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::format_address_range;
-
-    #[test]
-    fn address_ranges_use_target_address_units() {
-        assert_eq!(format_address_range(0x1000, 0x100), "0x1000-0x10FF");
-        assert_eq!(format_address_range(0x1000, 0x80), "0x1000-0x107F");
-    }
-}

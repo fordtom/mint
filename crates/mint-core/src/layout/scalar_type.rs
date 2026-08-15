@@ -225,50 +225,52 @@ mod tests {
     use super::{FixedPointType, ScalarType};
 
     #[test]
-    fn parses_builtin_scalar_types() {
-        assert_eq!("u16".parse::<ScalarType>().unwrap(), ScalarType::U16);
-        assert_eq!("f64".parse::<ScalarType>().unwrap(), ScalarType::F64);
-    }
+    fn parses_builtin_and_fixed_point_scalar_types() {
+        let cases = [
+            ("u16", ScalarType::U16),
+            ("f64", ScalarType::F64),
+            (
+                "uq0.16",
+                ScalarType::Fixed(FixedPointType {
+                    signed: false,
+                    integer_bits: 0,
+                    fractional_bits: 16,
+                    total_bits: 16,
+                }),
+            ),
+            (
+                "q15.16",
+                ScalarType::Fixed(FixedPointType {
+                    signed: true,
+                    integer_bits: 15,
+                    fractional_bits: 16,
+                    total_bits: 32,
+                }),
+            ),
+        ];
 
-    #[test]
-    fn parses_fixed_point_types_with_matching_widths() {
-        assert_eq!(
-            "uq0.16".parse::<ScalarType>().unwrap(),
-            ScalarType::Fixed(FixedPointType {
-                signed: false,
-                integer_bits: 0,
-                fractional_bits: 16,
-                total_bits: 16,
-            })
-        );
-        assert_eq!(
-            "q15.16".parse::<ScalarType>().unwrap(),
-            ScalarType::Fixed(FixedPointType {
-                signed: true,
-                integer_bits: 15,
-                fractional_bits: 16,
-                total_bits: 32,
-            })
-        );
-    }
-
-    #[test]
-    fn rejects_malformed_fixed_point_types() {
-        for value in ["q8", "q8.8.8", "q16.-1", "uq", "uq8."] {
-            let err = value.parse::<ScalarType>().expect_err("type should fail");
-            assert!(
-                err.contains("invalid fixed-point type"),
-                "expected targeted parse error for {value}, got: {err}"
-            );
+        for (value, expected) in cases {
+            assert_eq!(value.parse::<ScalarType>().unwrap(), expected);
         }
     }
 
     #[test]
-    fn rejects_unsupported_fixed_point_widths() {
-        let err = "q3.10".parse::<ScalarType>().expect_err("type should fail");
-        assert!(
-            err.contains("unsupported fixed-point width"),
-            "expected width error, got: {err}"
-        );
+    fn rejects_malformed_and_unsupported_fixed_point_types() {
+        let cases = [
+            ("q8", "invalid fixed-point type"),
+            ("q8.8.8", "invalid fixed-point type"),
+            ("q16.-1", "invalid fixed-point type"),
+            ("uq", "invalid fixed-point type"),
+            ("uq8.", "invalid fixed-point type"),
+            ("q3.10", "unsupported fixed-point width"),
+        ];
+
+        for (value, expected) in cases {
+            let err = value.parse::<ScalarType>().expect_err("type should fail");
+            assert!(
+                err.contains(expected),
+                "expected '{expected}' for {value}, got: {err}"
+            );
+        }
     }
 }

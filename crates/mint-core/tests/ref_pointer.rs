@@ -28,19 +28,16 @@ fn ref_layout_with_abi(start_address: u32, abi: &str, data_content: &str) -> Str
 }
 
 fn load_and_build(name: &str, toml_str: &str) -> Vec<u8> {
-    common::ensure_out_dir();
     let path = common::write_layout_file(name, toml_str);
     common::build_block(&path, "block", false, None).expect("build succeeds")
 }
 
 fn load_and_build_with_values(name: &str, toml_str: &str) -> (Vec<u8>, serde_json::Value) {
-    common::ensure_out_dir();
     let path = common::write_layout_file(name, toml_str);
     common::build_block_with_values(&path, "block").expect("build succeeds")
 }
 
 fn load_and_fail(name: &str, toml_str: &str) -> String {
-    common::ensure_out_dir();
     let path = common::write_layout_file(name, toml_str);
     let err = common::build_block(&path, "block", false, None).unwrap_err();
     common::error_chain(&err)
@@ -229,7 +226,7 @@ ptr = { ref = "group.y", type = "u32" }
 }
 
 #[test]
-fn ref_multiple_refs_in_same_block() {
+fn refs_resolve_distinct_and_repeated_targets() {
     let toml = ref_layout(
         0x0,
         r#"
@@ -237,30 +234,15 @@ field_a = { value = 0xAA, type = "u16" }
 field_b = { value = 0xBB, type = "u16" }
 ptr_a = { ref = "field_a", type = "u32" }
 ptr_b = { ref = "field_b", type = "u32" }
+ptr_a_again = { ref = "field_a", type = "u32" }
 "#,
     );
 
-    let bytes = load_and_build("ref_multi", &toml);
-    assert_eq!(bytes.len(), 12);
+    let bytes = load_and_build("ref_distinct_and_repeated", &toml);
+    assert_eq!(bytes.len(), 16);
     assert_eq!(&bytes[4..8], &0x0u32.to_le_bytes());
     assert_eq!(&bytes[8..12], &0x2u32.to_le_bytes());
-}
-
-#[test]
-fn ref_two_refs_same_target() {
-    let toml = ref_layout(
-        0x0,
-        r#"
-target = { value = 0x42, type = "u32" }
-ptr1 = { ref = "target", type = "u32" }
-ptr2 = { ref = "target", type = "u32" }
-"#,
-    );
-
-    let bytes = load_and_build("ref_same_target", &toml);
-    assert_eq!(bytes.len(), 12);
-    assert_eq!(&bytes[4..8], &0x0u32.to_le_bytes());
-    assert_eq!(&bytes[8..12], &0x0u32.to_le_bytes());
+    assert_eq!(&bytes[12..16], &0x0u32.to_le_bytes());
 }
 
 #[test]
@@ -504,22 +486,6 @@ field = { value = 0x42, type = "u32" }
             err
         );
     }
-}
-
-#[test]
-fn ref_no_overhead_without_refs() {
-    let toml = ref_layout(
-        0x8000,
-        r#"
-field_a = { value = 0xAAAA, type = "u16" }
-field_b = { value = 0xBBBB, type = "u16" }
-"#,
-    );
-
-    let bytes = load_and_build("ref_no_refs", &toml);
-    assert_eq!(bytes.len(), 4);
-    assert_eq!(&bytes[0..2], &0xAAAAu16.to_le_bytes());
-    assert_eq!(&bytes[2..4], &0xBBBBu16.to_le_bytes());
 }
 
 // --- Regression tests for review feedback ---

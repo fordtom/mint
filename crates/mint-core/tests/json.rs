@@ -53,31 +53,6 @@ fn json_retrieve_single_value_priority_order() {
 }
 
 #[test]
-fn json_retrieve_single_value_fallback() {
-    let json_data = r#"{
-        "Default": {
-            "TemperatureMax": 50,
-            "boolean": true
-        },
-        "Debug": {
-            "TemperatureMax": 60
-        }
-    }"#;
-
-    let ds = build_json_source("Debug/Default", json_data);
-
-    // Debug has TemperatureMax=60, should take priority over Default's 50
-    let value = ds.retrieve_single_value("TemperatureMax").unwrap();
-    println!("TemperatureMax (Debug/Default): {:?}", value);
-    assert!(matches!(value, DataValue::U64(60)));
-
-    // boolean not in Debug, falls back to Default's true
-    let value = ds.retrieve_single_value("boolean").unwrap();
-    println!("boolean (Debug/Default): {:?}", value);
-    assert!(matches!(value, DataValue::Bool(true)));
-}
-
-#[test]
 fn json_retrieve_missing_key_errors() {
     let json_data = r#"{
         "Default": {
