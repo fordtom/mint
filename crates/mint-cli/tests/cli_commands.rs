@@ -282,6 +282,42 @@ fn explicit_build_invocation_writes_output() {
 }
 
 #[test]
+fn render_failure_does_not_write_output_or_used_values() {
+    let layout = common::write_layout_file(
+        "invalid-record-width",
+        r#"
+[mint]
+abi = "ti-c28x-eabi"
+
+[block.header]
+start_address = 0
+length = 2
+
+[block.data]
+value = { value = 1, type = "u16" }
+"#,
+    );
+    let out = common::unique_out_path("invalid-record-width", "hex");
+    let report = common::unique_out_path("invalid-record-width", "json");
+
+    let output = mint_command()
+        .args(["build", &format!("{layout}#block"), "--record-width", "3"])
+        .arg("--export-json")
+        .arg(&report)
+        .arg("--out")
+        .arg(&out)
+        .output()
+        .expect("mint build should run");
+
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains(
+        "record width 3 octets is not divisible by the target's 2-octet addressable unit"
+    ));
+    assert!(!out.exists(), "render failure wrote output");
+    assert!(!report.exists(), "render failure wrote used values");
+}
+
+#[test]
 fn format_extension_mismatch_warning_respects_quiet() {
     let warning = "warning: output extension '.hex' does not match Motorola S-Record format";
     for (stem, quiet) in [("format-mismatch", false), ("quiet-format-mismatch", true)] {
