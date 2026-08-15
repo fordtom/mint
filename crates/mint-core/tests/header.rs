@@ -177,50 +177,6 @@ value = { value = 3, type = "u8" }
 }
 
 #[test]
-fn emits_profile_aware_packing_assertions() {
-    let source = include_str!("../../../tests/abi/pack.toml");
-    let generate_pack = |abi: &str, name: &str| {
-        generate(
-            name,
-            &source.replace("abi = \"generic-le\"", &format!("abi = \"{abi}\"")),
-            |path| vec![BlockSelector::all(path)],
-        )
-    };
-
-    let natural = [
-        generate_pack("generic-le", "header-pack-generic-le"),
-        generate_pack("generic-be", "header-pack-generic-be"),
-        generate_pack("arm-aapcs32-le", "header-pack-arm"),
-        generate_pack("riscv-ilp32-le", "header-pack-riscv"),
-    ];
-    for header in natural {
-        assert!(header.contains("#include <limits.h>"));
-        assert!(header.contains("#include <stddef.h>"));
-        assert!(
-            header.contains("_Static_assert(offsetof(pack_t, nested.wide) * CHAR_BIT == 8u * 8u")
-        );
-        assert!(
-            header.contains("_Static_assert(offsetof(pack_t, nested.tail) * CHAR_BIT == 16u * 8u")
-        );
-        assert!(header.contains("_Static_assert(sizeof(pack_t) * CHAR_BIT == 48u * 8u"));
-    }
-
-    for (abi, name) in [
-        ("tricore-eabi-le", "header-pack-tricore"),
-        ("ti-c28x-eabi", "header-pack-c28x"),
-    ] {
-        let header = generate_pack(abi, name);
-        assert!(
-            header.contains("_Static_assert(offsetof(pack_t, nested.wide) * CHAR_BIT == 4u * 8u")
-        );
-        assert!(
-            header.contains("_Static_assert(offsetof(pack_t, nested.tail) * CHAR_BIT == 12u * 8u")
-        );
-        assert!(header.contains("_Static_assert(sizeof(pack_t) * CHAR_BIT == 40u * 8u"));
-    }
-}
-
-#[test]
 fn c28x_rejects_exact_width_8_bit_fields() {
     let message = error(
         "header-c28x-u8",

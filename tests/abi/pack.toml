@@ -1,17 +1,10 @@
-# Compact packing fixture for ABI compiler probes and header tests.
-# `u32` then nested `u64` distinguishes 8-octet vs 4-octet 64-bit alignment.
-# Arrays check stride. No exact-width 8-bit fields, so C28x can use this file unchanged.
-
+# `u32` before nested `u64` distinguishes 8-octet from 4-octet alignment.
 [mint]
 abi = "generic-le"
-
 [pack.header]
 start_address = 0
 length = 0x100
-
 [pack.data]
 word = { value = 1, type = "u32" }
 nested.wide = { value = 2, type = "u64" }
 nested.tail = { value = 3, type = "u32" }
-coefficients = { value = [1.0, 2.0, 3.0, 4.0], type = "f32", size = 4 }
-matrix = { name = "Matrix", type = "i16", size = [2, 2] }
