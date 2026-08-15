@@ -17,6 +17,8 @@
         pkgs = import nixpkgs {
           inherit system;
           overlays = [(import rust-overlay)];
+          config.allowUnfreePredicate = package:
+            nixpkgs.lib.getName package == "c2000-cgt";
         };
         rustToolchain = pkgs.rust-bin.stable.latest.default.override {
           extensions = ["rust-src" "rustfmt" "clippy" "rust-analyzer"];
@@ -33,11 +35,67 @@
           cargoTestFlags = ["-p" "mint-cli"];
           buildType = "release";
         };
+
+        mkGccAbiProbe = {
+          name,
+          abi,
+          compiler,
+          flags,
+        }:
+          pkgs.runCommand name {} ''
+            substitute ${./doc/examples/block.toml} layout.toml \
+              --replace-fail 'abi = "generic-le"' 'abi = "${abi}"'
+            ${mintPkg}/bin/mint header layout.toml -o mint_abi.h
+            ${compiler} ${nixpkgs.lib.escapeShellArgs flags} \
+              -I. -c ${./tests/abi/compiler-probe.c} -o probe.o
+            touch $out
+          '';
       in {
         packages = {
           default = mintPkg;
           mint = mintPkg;
         };
+
+        checks = nixpkgs.lib.optionalAttrs (system == "x86_64-linux") (let
+          armGcc = pkgs.pkgsCross.arm-embedded.buildPackages.gccWithoutTargetLibc;
+          riscvGcc = pkgs.pkgsCross.riscv32-embedded.buildPackages.gccWithoutTargetLibc;
+          commonFlags = ["-std=c11" "-ffreestanding" "-Wall" "-Wextra" "-Werror" "-pedantic"];
+        in {
+          abi-generic-le = mkGccAbiProbe {
+            name = "mint-abi-generic-le";
+            abi = "generic-le";
+            compiler = "${armGcc}/bin/arm-none-eabi-gcc";
+            flags = commonFlags ++ ["-mcpu=cortex-m3" "-mthumb" "-mabi=aapcs" "-mfloat-abi=soft" "-DMINT_ARM"];
+          };
+          abi-arm-aapcs32-le = mkGccAbiProbe {
+            name = "mint-abi-arm-aapcs32-le";
+            abi = "arm-aapcs32-le";
+            compiler = "${armGcc}/bin/arm-none-eabi-gcc";
+            flags = commonFlags ++ ["-mcpu=cortex-m3" "-mthumb" "-mabi=aapcs" "-mfloat-abi=soft" "-DMINT_ARM"];
+          };
+          abi-riscv-ilp32-le = mkGccAbiProbe {
+            name = "mint-abi-riscv-ilp32-le";
+            abi = "riscv-ilp32-le";
+            compiler = "${riscvGcc}/bin/riscv32-none-elf-gcc";
+            flags = commonFlags ++ ["-march=rv32imac" "-mabi=ilp32" "-DMINT_RISCV"];
+          };
+          abi-generic-be = mkGccAbiProbe {
+            name = "mint-abi-generic-be";
+            abi = "generic-be";
+            compiler = "${armGcc}/bin/arm-none-eabi-gcc";
+            flags = commonFlags ++ ["-mcpu=cortex-m3" "-mthumb" "-mabi=aapcs" "-mfloat-abi=soft" "-mbig-endian" "-DMINT_ARM" "-DMINT_EXPECT_BIG_ENDIAN"];
+          };
+          abi-ti-c28x-eabi = pkgs.runCommand "mint-abi-ti-c28x-eabi" {} ''
+            substitute ${./doc/examples/block.toml} layout.toml \
+              --replace-fail 'abi = "generic-le"' 'abi = "ti-c28x-eabi"' \
+              --replace-fail 'type = "u8"' 'type = "u16"'
+            ${mintPkg}/bin/mint header layout.toml -o mint_abi.h
+            ${pkgs.c2000-cgt}/bin/cl2000 --abi=eabi --c11 --compile_only --quiet \
+              --define=MINT_TI_C28X --include_path=. --output_file=probe.obj \
+              ${./tests/abi/compiler-probe.c}
+            touch $out
+          '';
+        });
 
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [

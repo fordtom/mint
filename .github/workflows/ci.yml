@@ -10,6 +10,37 @@ permissions:
   contents: read
 
 jobs:
+  abi-free:
+    name: ABI compilers (free)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v5
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+
+      - name: Check free compiler ABIs
+        run: >-
+          nix build --print-build-logs
+          .#checks.x86_64-linux.abi-generic-le
+          .#checks.x86_64-linux.abi-arm-aapcs32-le
+          .#checks.x86_64-linux.abi-riscv-ilp32-le
+          .#checks.x86_64-linux.abi-generic-be
+
+  abi-ti-c28x:
+    name: ABI compiler (TI C28x)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v5
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+
+      - name: Check TI C28x EABI
+        run: nix build --print-build-logs .#checks.x86_64-linux.abi-ti-c28x-eabi
+
   rust-style:
     name: Rust style
     runs-on: ubuntu-latest

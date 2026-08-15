@@ -1,5 +1,4 @@
 use std::fs;
-use std::path::Path;
 use std::process::Command;
 
 #[path = "common/mod.rs"]
@@ -11,22 +10,8 @@ fn mint_command() -> Command {
     command
 }
 
-fn compile_c11(source: &Path, include: &Path, object: &Path) -> std::process::Output {
-    let compiler =
-        std::env::var_os("CC").unwrap_or_else(|| if cfg!(windows) { "clang" } else { "cc" }.into());
-    Command::new(compiler)
-        .args(["-std=c11", "-Wall", "-Wextra", "-Werror", "-pedantic", "-c"])
-        .arg(source)
-        .arg("-I")
-        .arg(include)
-        .arg("-o")
-        .arg(object)
-        .output()
-        .expect("C compiler should run")
-}
-
 #[test]
-fn generated_example_header_is_checked_in_and_compiles_as_c11() {
+fn generated_example_header_is_checked_in() {
     let header_path = common::unique_out_path("generated-blocks", "h");
     let output = mint_command()
         .args(["header", "../../doc/examples/block.toml", "-o"])
@@ -44,59 +29,6 @@ fn generated_example_header_is_checked_in_and_compiles_as_c11() {
         .expect("checked-in generated header is readable")
         .replace("\r\n", "\n");
     assert_eq!(generated, checked_in);
-
-    let source_path = header_path.with_extension("c");
-    let object_path = header_path.with_extension("o");
-    let header_name = header_path
-        .file_name()
-        .expect("header has a file name")
-        .to_string_lossy();
-    fs::write(
-        &source_path,
-        format!(
-            r#"#include <stddef.h>
-#include "{header_name}"
-#include "{header_name}"
-
-_Static_assert(CONFIG_DEVICE_NAME_LEN == 16u, "name extent");
-_Static_assert(CONFIG_MATRIX_ROWS == 2u, "matrix rows");
-_Static_assert(CONFIG_MATRIX_COLS == 2u, "matrix columns");
-_Static_assert(CONFIG_FLAGS_ENABLE_DEBUG_SHIFT == 0u, "bitmap shift");
-_Static_assert(CONFIG_FLAGS_REGION_CODE_MASK == UINT16_C(0x00F0), "bitmap mask");
-_Static_assert(CONFIG_SCHEMA_FINGERPRINT == UINT64_C(0x206A2310660BB1CF), "config fingerprint");
-_Static_assert(DATA_CONFIG_SCHEMA_FINGERPRINT == CONFIG_SCHEMA_FINGERPRINT, "cross-block fingerprint");
-_Static_assert(offsetof(config_t, schema) == 0u, "schema offset");
-_Static_assert(offsetof(config_t, device.id) == 8u, "device id offset");
-_Static_assert(offsetof(config_t, device.name) == 12u, "device name offset");
-_Static_assert(offsetof(config_t, flags) == 32u, "flags offset");
-_Static_assert(offsetof(config_t, coefficients) == 36u, "coefficients offset");
-_Static_assert(offsetof(config_t, matrix) == 52u, "matrix offset");
-_Static_assert(offsetof(config_t, checksum) == 60u, "checksum offset");
-_Static_assert(sizeof(config_t) == 64u, "config size");
-_Static_assert(sizeof(data_t) == 48u, "data size");
-
-int use_generated_header(config_t *config, data_t *data) {{
-  config->device.id = 1u;
-  config->device.name[0] = 2u;
-  config->matrix[0][0] = 3;
-  data->message[0] = config->device.name[0];
-  return (int)(config->coefficients[0] + (float)data->message[0]);
-}}
-"#
-        ),
-    )
-    .expect("C source writes");
-
-    let compile = compile_c11(
-        &source_path,
-        header_path.parent().expect("header has a parent"),
-        &object_path,
-    );
-    assert!(
-        compile.status.success(),
-        "C compiler stderr: {}",
-        String::from_utf8_lossy(&compile.stderr)
-    );
 }
 
 #[test]
