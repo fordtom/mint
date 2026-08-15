@@ -39,9 +39,11 @@ impl ExcelDataSource {
         })?;
 
         let main_sheet_name = options.main_sheet.as_str();
-        let main_sheet = workbook
-            .worksheet_range(main_sheet_name)
-            .map_err(|_| DataError::MiscError("Main sheet not found.".to_owned()))?;
+        let worksheets = workbook.worksheets();
+        let main_sheet = worksheets
+            .iter()
+            .find_map(|(name, sheet)| (name == main_sheet_name).then_some(sheet))
+            .ok_or_else(|| DataError::MiscError("Main sheet not found.".to_owned()))?;
 
         let rows: Vec<_> = main_sheet.rows().collect();
         let (headers, data_rows) = match rows.split_first() {
@@ -68,13 +70,10 @@ impl ExcelDataSource {
         let variant_columns =
             Self::collect_variant_columns(headers, &rows, data_rows, &options.variants)?;
 
-        let mut sheets: HashMap<String, Range<Data>> =
-            HashMap::with_capacity(workbook.worksheets().len().saturating_sub(1));
-        for (name, sheet) in workbook.worksheets() {
-            if name != main_sheet_name {
-                sheets.insert(name.clone(), sheet);
-            }
-        }
+        let sheets = worksheets
+            .into_iter()
+            .filter(|(name, _)| name != main_sheet_name)
+            .collect();
 
         Ok(Self {
             names,
