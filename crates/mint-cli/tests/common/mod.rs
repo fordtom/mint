@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 static UNIQUE_FILE_ID: AtomicU64 = AtomicU64::new(0);
@@ -28,12 +28,4 @@ pub fn unique_out_path(stem: &str, ext: &str) -> PathBuf {
     ensure_out_dir();
     let unique_id = UNIQUE_FILE_ID.fetch_add(1, Ordering::Relaxed);
     test_out_dir().join(format!("{stem}-{unique_id}.{ext}"))
-}
-
-pub fn assert_out_file_exists(out_path: &Path) {
-    assert!(
-        out_path.exists(),
-        "expected output file to exist: {}",
-        out_path.display()
-    );
 }

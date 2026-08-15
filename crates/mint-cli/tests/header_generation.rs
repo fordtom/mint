@@ -27,7 +27,6 @@ fn compile_c11(source: &Path, include: &Path, object: &Path) -> std::process::Ou
 
 #[test]
 fn generated_example_header_is_checked_in_and_compiles_as_c11() {
-    common::ensure_out_dir();
     let header_path = common::unique_out_path("generated-blocks", "h");
     let output = mint_command()
         .args(["header", "../../doc/examples/block.toml", "-o"])

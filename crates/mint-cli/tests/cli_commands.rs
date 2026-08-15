@@ -49,67 +49,60 @@ fn abi_list_prints_supported_profiles() {
 }
 
 #[test]
-fn abi_show_describes_layout_rules() {
-    let output = mint_command()
-        .args(["abi", "show", "generic-le"])
-        .output()
-        .expect("mint abi show should run");
+fn abi_show_reports_profile_layout_rules() {
+    let show = |profile| {
+        let output = mint_command()
+            .args(["abi", "show", profile])
+            .output()
+            .expect("mint abi show should run");
+        assert!(
+            output.status.success(),
+            "{profile} stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(output.stderr.is_empty(), "{profile} wrote to stderr");
+        String::from_utf8(output.stdout).expect("stdout is utf8")
+    };
 
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).expect("stdout is utf8");
-    assert!(stdout.contains("name: generic-le"));
-    assert!(stdout.contains("family: generic-natural"));
-    assert!(stdout.contains("byte order: little"));
-    assert!(stdout.contains("target addressable unit: 8 bits"));
-    assert!(stdout.contains("output addresses: octet addresses"));
-    assert!(stdout.contains("aggregate rules:"));
-    assert!(stdout.contains("type  storage  alignment  stride  C type"));
-    assert!(stdout.contains("u64"));
-    assert!(stdout.contains("all sizes, alignments and strides are in octets"));
-    assert!(output.stderr.is_empty());
-}
+    let generic = show("generic-le");
+    for expected in [
+        "name: generic-le",
+        "family: generic-natural",
+        "byte order: little",
+        "target addressable unit: 8 bits",
+        "output addresses: octet addresses",
+        "aggregate rules:",
+        "type  storage  alignment  stride  C type",
+        "u64",
+        "all sizes, alignments and strides are in octets",
+    ] {
+        assert!(generic.contains(expected), "missing {expected}: {generic}");
+    }
 
-#[test]
-fn abi_show_reports_tricore_64_bit_alignment() {
-    let output = mint_command()
-        .args(["abi", "show", "tricore-eabi-le"])
-        .output()
-        .expect("mint abi show should run");
-
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).expect("stdout is utf8");
-    let u64_row = stdout
-        .lines()
-        .find(|line| line.starts_with("u64"))
-        .expect("u64 row");
+    let tricore = show("tricore-eabi-le");
     assert_eq!(
-        u64_row.split_whitespace().collect::<Vec<_>>(),
+        tricore
+            .lines()
+            .find(|line| line.starts_with("u64"))
+            .expect("TriCore u64 row")
+            .split_whitespace()
+            .collect::<Vec<_>>(),
         ["u64", "8", "4", "8", "uint64_t"]
     );
-}
 
-#[test]
-fn abi_show_reports_c28x_support_and_output_addressing() {
-    let output = mint_command()
-        .args(["abi", "show", "ti-c28x-eabi"])
-        .output()
-        .expect("mint abi show should run");
-
-    assert!(output.status.success());
-    let stdout = String::from_utf8(output.stdout).expect("stdout is utf8");
-    assert!(stdout.contains("target addressable unit: 16 bits"));
-    assert!(stdout.contains("2 × target word address"));
+    let c28x = show("ti-c28x-eabi");
+    assert!(c28x.contains("target addressable unit: 16 bits"));
+    assert!(c28x.contains("2 × target word address"));
     assert!(
-        stdout
-            .lines()
+        c28x.lines()
             .any(|line| line.starts_with("u8") && line.contains("unsupported"))
     );
-    let u64_row = stdout
-        .lines()
-        .find(|line| line.starts_with("u64"))
-        .expect("u64 row");
     assert_eq!(
-        u64_row.split_whitespace().collect::<Vec<_>>(),
+        c28x.lines()
+            .find(|line| line.starts_with("u64"))
+            .expect("C28x u64 row")
+            .split_whitespace()
+            .collect::<Vec<_>>(),
         ["u64", "8", "4", "8", "uint64_t"]
     );
 }
@@ -265,8 +258,6 @@ fn missing_command_reports_top_level_usage() {
 
 #[test]
 fn explicit_build_invocation_writes_output() {
-    common::ensure_out_dir();
-
     let out = common::unique_out_path("build", "hex");
 
     let output = mint_command()
@@ -287,49 +278,40 @@ fn explicit_build_invocation_writes_output() {
         "stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );
-    common::assert_out_file_exists(&out);
+    assert!(out.exists(), "expected output file: {}", out.display());
 }
 
 #[test]
-fn format_extension_mismatch_warns_without_renaming() {
-    let out = common::unique_out_path("format-mismatch", "hex");
-    let output = mint_command()
-        .args([
-            "build",
-            "../mint-core/tests/data/blocks.toml#simple_block",
-            "--format",
-            "mot",
-            "--out",
-        ])
-        .arg(&out)
-        .output()
-        .expect("mint build should run");
+fn format_extension_mismatch_warning_respects_quiet() {
+    let warning = "warning: output extension '.hex' does not match Motorola S-Record format";
+    for (stem, quiet) in [("format-mismatch", false), ("quiet-format-mismatch", true)] {
+        let out = common::unique_out_path(stem, "hex");
+        let mut command = mint_command();
+        command
+            .args([
+                "build",
+                "../mint-core/tests/data/blocks.toml#simple_block",
+                "--format",
+                "mot",
+                "--out",
+            ])
+            .arg(&out);
+        if quiet {
+            command.arg("--quiet");
+        }
+        let output = command.output().expect("mint build should run");
 
-    assert!(output.status.success());
-    assert!(
-        String::from_utf8(output.stderr)
-            .expect("stderr is utf8")
-            .contains("warning: output extension '.hex' does not match Motorola S-Record format")
-    );
-    common::assert_out_file_exists(&out);
-}
-
-#[test]
-fn quiet_suppresses_format_extension_warning() {
-    let out = common::unique_out_path("quiet-format-mismatch", "hex");
-    let output = mint_command()
-        .args([
-            "build",
-            "../mint-core/tests/data/blocks.toml#simple_block",
-            "--format",
-            "mot",
-            "--out",
-        ])
-        .arg(&out)
-        .arg("--quiet")
-        .output()
-        .expect("mint build should run");
-
-    assert!(output.status.success());
-    assert!(output.stderr.is_empty());
+        assert!(
+            output.status.success(),
+            "quiet={quiet} stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let stderr = String::from_utf8(output.stderr).expect("stderr is utf8");
+        if quiet {
+            assert!(stderr.is_empty(), "stderr: {stderr}");
+        } else {
+            assert!(stderr.contains(warning), "stderr: {stderr}");
+        }
+        assert!(out.exists(), "expected output file: {}", out.display());
+    }
 }

@@ -393,6 +393,69 @@ impl Block {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::Value;
+
+    #[derive(Default)]
+    struct RecordingSink {
+        paths: Vec<String>,
+    }
+
+    impl ValueSink for RecordingSink {
+        fn record_value(&mut self, path: &[String], _value: Value) -> Result<(), LayoutError> {
+            self.paths.push(path.join("."));
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn value_sink_records_values_in_declaration_order() {
+        let config = crate::layout::parse_toml_layout(
+            r#"
+[mint]
+abi = "generic-le"
+
+[mint.checksum.crc32]
+polynomial = 0x04C11DB7
+start = 0xFFFFFFFF
+xor_out = 0xFFFFFFFF
+ref_in = true
+ref_out = true
+
+[block.header]
+start_address = 0x1000
+length = 0x40
+
+[block.data]
+first = { value = 1, type = "u16" }
+pointer = { ref = "first", type = "u16" }
+fingerprint = { fingerprint = true, type = "u64" }
+checksum_one = { checksum = "crc32", type = "u32" }
+after_checksum = { value = 2, type = "u32" }
+checksum_two = { checksum = "crc32", type = "u32" }
+"#,
+        )
+        .expect("layout parses");
+        let mut fingerprints = HashMap::new();
+        fingerprints.insert("block".to_owned(), 0x636c_a69e_b274_aafa);
+        let mut sink = RecordingSink::default();
+
+        let output = config.blocks["block"]
+            .emit("block", &fingerprints, None, &config.mint, false, &mut sink)
+            .expect("block emits");
+
+        assert_eq!(
+            sink.paths,
+            [
+                "first",
+                "pointer",
+                "fingerprint",
+                "checksum_one",
+                "after_checksum",
+                "checksum_two",
+            ]
+        );
+        assert_eq!(output.checksum_values.len(), 2);
+    }
 
     #[test]
     fn short_fixed_size_leaves_pad_internally_with_the_padding_byte() {

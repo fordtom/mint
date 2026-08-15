@@ -30,31 +30,48 @@ length = 0x20
 }
 
 #[test]
-fn toml_rejects_unknown_mint_key() {
-    let path = write_layout(
-        "unknown-mint-key",
-        "toml",
-        r#"
+fn toml_rejects_unknown_mint_keys() {
+    let cases = [
+        (
+            "unknown-mint-key",
+            "abi = \"generic-le\"\nunknown = true",
+            "unknown",
+        ),
+        ("legacy-endianness", "endianness = \"little\"", "endianness"),
+        (
+            "virtual-offset",
+            "abi = \"generic-le\"\nvirtual_offset = 0",
+            "virtual_offset",
+        ),
+    ];
+
+    for (name, config, key) in cases {
+        let path = write_layout(
+            name,
+            "toml",
+            &format!(
+                r#"
 [mint]
-abi = "generic-le"
-unknown = true
+{config}
 
 [block.header]
 start_address = 0x1000
 length = 0x20
 
 [block.data]
-value = { value = 1, type = "u16" }
-"#,
-    );
+value = {{ value = 1, type = "u16" }}
+"#
+            ),
+        );
 
-    let err = mint_core::layout::load_layout(&path).expect_err("layout should be rejected");
-    let message = err.to_string();
-    assert!(
-        message.contains("unknown field") && message.contains("unknown"),
-        "expected unknown-field error, got: {}",
-        message
-    );
+        let message = mint_core::layout::load_layout(&path)
+            .expect_err("layout should be rejected")
+            .to_string();
+        assert!(
+            message.contains("unknown field") && message.contains(key),
+            "expected unknown-field error for '{key}', got: {message}"
+        );
+    }
 }
 
 #[test]
@@ -106,33 +123,6 @@ value = { value = 1, type = "u16" }
 }
 
 #[test]
-fn toml_rejects_the_legacy_endianness_setting() {
-    let path = write_layout(
-        "legacy-endianness",
-        "toml",
-        r#"
-[mint]
-endianness = "little"
-
-[block.header]
-start_address = 0x1000
-length = 0x20
-
-[block.data]
-value = { value = 1, type = "u16" }
-"#,
-    );
-
-    let error = mint_core::layout::load_layout(&path)
-        .expect_err("layout should be rejected")
-        .to_string();
-    assert!(
-        error.contains("unknown field") && error.contains("endianness"),
-        "{error}"
-    );
-}
-
-#[test]
 fn toml_rejects_unknown_block_key() {
     let path = write_layout(
         "unknown-block-key",
@@ -158,34 +148,6 @@ value = { value = 1, type = "u16" }
     assert!(
         message.contains("unknown field") && message.contains("unexpected"),
         "expected unknown-field error, got: {message}"
-    );
-}
-
-#[test]
-fn toml_rejects_virtual_offset() {
-    let path = write_layout(
-        "virtual-offset",
-        "toml",
-        r#"
-[mint]
-abi = "generic-le"
-virtual_offset = 0
-
-[block.header]
-start_address = 0x1000
-length = 0x20
-
-[block.data]
-value = { value = 1, type = "u16" }
-"#,
-    );
-
-    let err = mint_core::layout::load_layout(&path).expect_err("layout should be rejected");
-    let message = err.to_string();
-    assert!(
-        message.contains("unknown field") && message.contains("virtual_offset"),
-        "expected virtual_offset unknown-field error, got: {}",
-        message
     );
 }
 

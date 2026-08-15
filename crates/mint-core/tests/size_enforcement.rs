@@ -1,5 +1,3 @@
-use std::io::Write;
-
 use mint_core::data::{ExcelDataSource, ExcelDataSourceOptions};
 use mint_core::error::MintError;
 use mint_core::layout::error::LayoutError;
@@ -129,10 +127,12 @@ matrix = { value = [1, 2, 3, 4], type = "u8", size = [2, 2] }
 }
 
 #[test]
-fn uppercase_size_rejects_underfilled_1d() {
-    common::ensure_out_dir();
-
-    let layout_toml = r#"
+fn uppercase_size_accepts_exact_and_rejects_underfilled_1d() {
+    let write_layout = |name: &str, values: &str| {
+        common::write_layout_file(
+            name,
+            &format!(
+                r#"
 [mint]
 abi = "generic-le"
 
@@ -142,14 +142,20 @@ length = 0x100
 padding = 0xFF
 
 [block.data]
-short_array = { value = [1, 2, 3], type = "u16", SIZE = 10 }
-"#;
+values = {{ value = [{values}], type = "u16", SIZE = 5 }}
+"#
+            ),
+        )
+    };
 
-    let path = common::unique_out_path("test_uppercase_size_1d", "toml");
-    let mut f = std::fs::File::create(&path).unwrap();
-    f.write_all(layout_toml.as_bytes()).unwrap();
+    let exact = write_layout("uppercase_size_exact", "1, 2, 3, 4, 5");
+    let bytes = common::build_block(&exact, "block", false, None)
+        .expect("SIZE should accept an exact array length");
+    assert_eq!(&bytes[..10], &[1, 0, 2, 0, 3, 0, 4, 0, 5, 0]);
 
-    let error = common::build_block(&path, "block", false, None)
+    let underfilled = write_layout("uppercase_size_underfilled", "1, 2, 3");
+
+    let error = common::build_block(&underfilled, "block", false, None)
         .expect_err("SIZE should reject underfilled array");
     assert!(matches!(
         &error,
@@ -163,8 +169,6 @@ short_array = { value = [1, 2, 3], type = "u16", SIZE = 10 }
 
 #[test]
 fn uppercase_size_rejects_underfilled_2d() {
-    common::ensure_out_dir();
-
     let layout_toml = r#"
 [mint]
 abi = "generic-le"
@@ -178,9 +182,7 @@ padding = 0xFF
 matrix = { name = "CalibrationMatrix", type = "i16", SIZE = [5, 3] }
 "#;
 
-    let path = common::unique_out_path("test_uppercase_size_2d", "toml");
-    let mut f = std::fs::File::create(&path).unwrap();
-    f.write_all(layout_toml.as_bytes()).unwrap();
+    let path = common::write_layout_file("test_uppercase_size_2d", layout_toml);
 
     let ds = default_excel_source();
 
@@ -192,8 +194,6 @@ matrix = { name = "CalibrationMatrix", type = "i16", SIZE = [5, 3] }
 
 #[test]
 fn both_size_and_uppercase_size_errors() {
-    common::ensure_out_dir();
-
     let layout_toml = r#"
 [mint]
 abi = "generic-le"
@@ -207,11 +207,9 @@ padding = 0xFF
 both = { value = [1, 2, 3], type = "u16", size = 5, SIZE = 10 }
 "#;
 
-    let path = common::unique_out_path("test_both_sizes", "toml");
-    let mut f = std::fs::File::create(&path).unwrap();
-    f.write_all(layout_toml.as_bytes()).unwrap();
+    let path = common::write_layout_file("test_both_sizes", layout_toml);
 
-    let error = mint_core::layout::load_layout(path.to_str().unwrap())
+    let error = mint_core::layout::load_layout(&path)
         .expect_err("using both size and SIZE should fail parsing")
         .to_string();
     assert!(

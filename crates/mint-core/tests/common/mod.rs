@@ -15,7 +15,7 @@ fn test_out_dir() -> PathBuf {
         .join(std::process::id().to_string())
 }
 
-pub fn ensure_out_dir() {
+fn ensure_out_dir() {
     fs::create_dir_all(test_out_dir()).unwrap();
 }
 

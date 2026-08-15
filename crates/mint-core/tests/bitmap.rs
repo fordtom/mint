@@ -1,9 +1,6 @@
-use std::io::Write;
-
 #[path = "common/mod.rs"]
 mod common;
 
-/// Helper to create a minimal layout with bitmap in data section
 fn bitmap_layout(data_content: &str) -> String {
     format!(
         r#"
@@ -21,297 +18,135 @@ padding = 0x00
     )
 }
 
-#[test]
-fn bitmap_u8_literal_values() {
-    common::ensure_out_dir();
+fn build_bitmap(
+    name: &str,
+    data_content: &str,
+    strict: bool,
+) -> Result<Vec<u8>, mint_core::error::MintError> {
+    let layout = bitmap_layout(data_content);
+    let path = common::write_layout_file(name, &layout);
+    common::build_block(path, "block", strict, None)
+}
 
-    // u8 bitmap: bit0=1, bits1-2=3, bits3-7=0x15 (21)
-    // Expected: 0b10101_11_1 = 0xAF
-    let layout = bitmap_layout(
-        r#"flags = { type = "u8", bitmap = [
+#[test]
+fn bitmap_storage_packs_literal_signed_and_high_bit_values() {
+    let bytes = build_bitmap(
+        "bitmap-storage",
+        r#"u8_fields = { type = "u8", bitmap = [
     { bits = 1, value = 1 },
     { bits = 2, value = 3 },
     { bits = 5, value = 21 },
-] }"#,
-    );
-
-    let path = common::unique_out_path("test_bitmap_u8", "toml");
-    std::fs::File::create(&path)
-        .unwrap()
-        .write_all(layout.as_bytes())
-        .unwrap();
-
-    let bytes = common::build_block(&path, "block", false, None).expect("build");
-
-    assert_eq!(bytes[0], 0xAF, "u8 bitmap packing: got {:#04x}", bytes[0]);
-}
-
-#[test]
-fn bitmap_u16_little_endian() {
-    common::ensure_out_dir();
-
-    // u16 bitmap: bits0-7=0xAB, bits8-15=0xCD
-    // Little endian: [0xAB, 0xCD]
-    let layout = bitmap_layout(
-        r#"val = { type = "u16", bitmap = [
+] }
+u16_fields = { type = "u16", bitmap = [
     { bits = 8, value = 0xAB },
     { bits = 8, value = 0xCD },
-] }"#,
-    );
-
-    let path = common::unique_out_path("test_bitmap_u16_le", "toml");
-    std::fs::File::create(&path)
-        .unwrap()
-        .write_all(layout.as_bytes())
-        .unwrap();
-
-    let bytes = common::build_block(&path, "block", false, None).expect("build");
-
-    assert_eq!(&bytes[0..2], &[0xAB, 0xCD], "u16 LE bitmap");
-}
-
-#[test]
-fn bitmap_i16_signed_negative_values() {
-    common::ensure_out_dir();
-
-    // i16 bitmap with signed interpretation
-    // bits0-3: -1 (4-bit signed = 0xF)
-    // bits4-7: -8 (4-bit signed = 0x8, which is -8 in 4-bit two's complement)
-    // bits8-15: 0
-    // Result: 0x008F in little endian = [0x8F, 0x00]
-    let layout = bitmap_layout(
-        r#"flags = { type = "i16", bitmap = [
+] }
+signed_fields = { type = "i16", bitmap = [
     { bits = 4, value = -1 },
     { bits = 4, value = -8 },
     { bits = 8, value = 0 },
-] }"#,
-    );
-
-    let path = common::unique_out_path("test_bitmap_i16_signed", "toml");
-    std::fs::File::create(&path)
-        .unwrap()
-        .write_all(layout.as_bytes())
-        .unwrap();
-
-    let bytes = common::build_block(&path, "block", false, None).expect("build");
-
-    // -1 in 4 bits = 0xF, -8 in 4 bits = 0x8
-    // Combined: 0x8F in low byte, 0x00 in high byte
-    assert_eq!(
-        &bytes[0..2],
-        &[0x8F, 0x00],
-        "i16 signed bitmap: got {:02x?}",
-        &bytes[0..2]
-    );
-}
-
-#[test]
-fn bitmap_signed_storage_preserves_high_bit_patterns() {
-    common::ensure_out_dir();
-
-    let i8_layout = bitmap_layout(
-        r#"flags = { type = "i8", bitmap = [
-    { bits = 8, value = -1 },
-] }"#,
-    );
-    let i8_path = common::write_layout_file("bitmap_i8_high_bit", &i8_layout);
-    let i8_bytes = common::build_block(&i8_path, "block", false, None).expect("build");
-    assert_eq!(&i8_bytes[0..1], &[0xFF]);
-
-    let i16_layout = bitmap_layout(
-        r#"flags = { type = "i16", bitmap = [
-    { bits = 16, value = -32768 },
-] }"#,
-    );
-    let i16_path = common::write_layout_file("bitmap_i16_high_bit", &i16_layout);
-    let i16_bytes = common::build_block(&i16_path, "block", false, None).expect("build");
-    assert_eq!(&i16_bytes[0..2], &[0x00, 0x80]);
-}
-
-#[test]
-fn bitmap_u32_mixed_fields() {
-    common::ensure_out_dir();
-
-    // u32: bit0=true(1), bits1-8=0xFF, bits9-31=0
-    // Result: 0x000001FF in little endian
-    let layout = bitmap_layout(
-        r#"status = { type = "u32", bitmap = [
+] }
+u32_fields = { type = "u32", bitmap = [
     { bits = 1, value = true },
     { bits = 8, value = 255 },
     { bits = 23, value = 0 },
+] }
+i8_high_bit = { type = "i8", bitmap = [
+    { bits = 8, value = -1 },
+] }
+i16_high_bit = { type = "i16", bitmap = [
+    { bits = 16, value = -32768 },
 ] }"#,
-    );
-
-    let path = common::unique_out_path("test_bitmap_u32", "toml");
-    std::fs::File::create(&path)
-        .unwrap()
-        .write_all(layout.as_bytes())
-        .unwrap();
-
-    let bytes = common::build_block(&path, "block", false, None).expect("build");
+        false,
+    )
+    .expect("bitmap storage should build");
 
     assert_eq!(
-        &bytes[0..4],
-        &[0xFF, 0x01, 0x00, 0x00],
-        "u32 bitmap: got {:02x?}",
-        &bytes[0..4]
+        &bytes[..16],
+        &[
+            0xAF, 0x00, // u8 fields and u16 alignment
+            0xAB, 0xCD, // u16 little-endian storage
+            0x8F, 0x00, // signed four-bit fields
+            0x00, 0x00, // u32 alignment
+            0xFF, 0x01, 0x00, 0x00, // mixed u32 fields
+            0xFF, 0x00, // i8 high bit and i16 alignment
+            0x00, 0x80, // i16 high bit
+        ]
     );
 }
 
 #[test]
-fn bitmap_saturation_non_strict() {
-    common::ensure_out_dir();
-
-    // 3-bit unsigned field, value 10 should saturate to 7
-    let layout = bitmap_layout(
-        r#"sat = { type = "u8", bitmap = [
+fn bitmap_out_of_range_value_saturates_or_errors_by_strictness() {
+    let data_content = r#"field = { type = "u8", bitmap = [
     { bits = 3, value = 10 },
     { bits = 5, value = 0 },
-] }"#,
+] }"#;
+
+    let bytes = build_bitmap("bitmap-saturation", data_content, false)
+        .expect("non-strict bitmap value should saturate");
+    assert_eq!(bytes[0], 7);
+
+    let error = build_bitmap("bitmap-strict", data_content, true)
+        .expect_err("strict bitmap value should be rejected");
+    let chain = common::error_chain(&error);
+    assert!(
+        chain.contains("bitfield value 10 out of range for 3-bit unsigned field (0..=7)"),
+        "unexpected error: {chain}"
     );
-
-    let path = common::unique_out_path("test_bitmap_saturate", "toml");
-    std::fs::File::create(&path)
-        .unwrap()
-        .write_all(layout.as_bytes())
-        .unwrap();
-
-    let bytes = common::build_block(&path, "block", false, None)
-        .expect("saturation should succeed in non-strict");
-
-    assert_eq!(bytes[0], 7, "3-bit field saturates 10 to 7");
 }
 
 #[test]
-fn bitmap_strict_rejects_out_of_range() {
-    common::ensure_out_dir();
-
-    // 3-bit unsigned field, value 10 is out of range (max 7)
-    let layout = bitmap_layout(
-        r#"bad = { type = "u8", bitmap = [
-    { bits = 3, value = 10 },
-    { bits = 5, value = 0 },
-] }"#,
-    );
-
-    let path = common::unique_out_path("test_bitmap_strict_range", "toml");
-    std::fs::File::create(&path)
-        .unwrap()
-        .write_all(layout.as_bytes())
-        .unwrap();
-
-    let res = common::build_block(&path, "block", true, None);
-    assert!(res.is_err(), "strict mode rejects out-of-range value");
-}
-
-#[test]
-fn bitmap_rejects_wrong_bit_sum() {
-    common::ensure_out_dir();
-
-    // u8 needs 8 bits, but we only provide 7
-    let layout = bitmap_layout(
-        r#"bad = { type = "u8", bitmap = [
+fn bitmap_validation_rejects_invalid_shapes() {
+    let cases = [
+        (
+            "wrong-bit-sum",
+            r#"field = { type = "u8", bitmap = [
     { bits = 3, value = 0 },
     { bits = 4, value = 0 },
 ] }"#,
-    );
-
-    let path = common::unique_out_path("test_bitmap_bad_sum", "toml");
-    std::fs::File::create(&path)
-        .unwrap()
-        .write_all(layout.as_bytes())
-        .unwrap();
-
-    let res = common::build_block(&path, "block", false, None);
-    assert!(res.is_err(), "bitmap with wrong bit sum should error");
-}
-
-#[test]
-fn bitmap_rejects_zero_bits() {
-    common::ensure_out_dir();
-
-    let layout = bitmap_layout(
-        r#"bad = { type = "u8", bitmap = [
+            "Bitmap total bits (7) must equal storage width (8).",
+        ),
+        (
+            "zero-bit-field",
+            r#"field = { type = "u8", bitmap = [
     { bits = 0, value = 0 },
     { bits = 8, value = 0 },
 ] }"#,
-    );
-
-    let path = common::unique_out_path("test_bitmap_zero_bits", "toml");
-    std::fs::File::create(&path)
-        .unwrap()
-        .write_all(layout.as_bytes())
-        .unwrap();
-
-    let res = common::build_block(&path, "block", false, None);
-    assert!(res.is_err(), "bitmap with zero-bit field should error");
-}
-
-#[test]
-fn bitmap_rejects_float_storage() {
-    common::ensure_out_dir();
-
-    let layout = bitmap_layout(
-        r#"bad = { type = "f32", bitmap = [
+            "Bitmap field bits must be > 0.",
+        ),
+        (
+            "float-storage",
+            r#"field = { type = "f32", bitmap = [
     { bits = 16, value = 0 },
     { bits = 16, value = 0 },
 ] }"#,
-    );
-
-    let path = common::unique_out_path("test_bitmap_float", "toml");
-    std::fs::File::create(&path)
-        .unwrap()
-        .write_all(layout.as_bytes())
-        .unwrap();
-
-    let res = common::build_block(&path, "block", false, None);
-    assert!(res.is_err(), "bitmap with float storage should error");
-}
-
-#[test]
-fn bitmap_rejects_size_key() {
-    common::ensure_out_dir();
-
-    let layout = bitmap_layout(
-        r#"bad = { type = "u8", size = 2, bitmap = [
+            "Bitmap requires integer storage type.",
+        ),
+        (
+            "size-key",
+            r#"field = { type = "u8", size = 2, bitmap = [
     { bits = 8, value = 0 },
 ] }"#,
-    );
-
-    let path = common::unique_out_path("test_bitmap_size_key", "toml");
-    std::fs::File::create(&path)
-        .unwrap()
-        .write_all(layout.as_bytes())
-        .unwrap();
-
-    let res = common::build_block(&path, "block", false, None);
-    assert!(res.is_err(), "bitmap with size key should error");
-}
-
-#[test]
-fn bitmap_rejects_field_wider_than_storage() {
-    common::ensure_out_dir();
-
-    // Reject an oversized field before summing the bitmap widths.
-    let layout = bitmap_layout(
-        r#"bad = { type = "u64", bitmap = [
+            "size/SIZE keys are forbidden with bitmap.",
+        ),
+        (
+            "field-wider-than-storage",
+            r#"field = { type = "u64", bitmap = [
     { bits = 9223372036854775807, value = 0 },
     { bits = 9223372036854775807, value = 0 },
     { bits = 66, value = 0 },
 ] }"#,
-    );
+            "Bitmap field bits (9223372036854775807) exceed storage width (64).",
+        ),
+    ];
 
-    let path = common::unique_out_path("test_bitmap_oversized_bits", "toml");
-    std::fs::File::create(&path)
-        .unwrap()
-        .write_all(layout.as_bytes())
-        .unwrap();
-
-    let res = common::build_block(&path, "block", false, None);
-    let err = res.expect_err("oversized bitmap field should error");
-    let chain = common::error_chain(&err);
-    assert!(
-        chain.contains("exceed storage width"),
-        "unexpected error: {chain}"
-    );
+    for (name, data_content, expected) in cases {
+        let error = build_bitmap(name, data_content, false)
+            .expect_err("invalid bitmap shape should be rejected");
+        let chain = common::error_chain(&error);
+        assert!(
+            chain.contains(expected),
+            "{name}: unexpected error: {chain}"
+        );
+    }
 }
