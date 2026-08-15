@@ -125,7 +125,7 @@ jobs:
             --config "patch.crates-io.mint-core.path='$STAGE/mint-core-${RELEASE_VERSION}'"
 
       - name: Upload crate packages
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: crate-dist
           path: target/package/*.crate
@@ -172,7 +172,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload artifact manifest
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: release-dry-run-manifest
           path: SHA256SUMS
