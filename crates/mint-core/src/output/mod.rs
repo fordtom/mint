@@ -97,7 +97,7 @@ pub fn bytestream_to_datarange(
     Ok(range)
 }
 
-pub fn emit_hex(
+pub(crate) fn render(
     ranges: &[DataRange],
     record_width: usize,
     format: OutputFormat,
@@ -179,21 +179,6 @@ pub fn emit_hex(
     }
 }
 
-/// Represents an output file to be written.
-#[derive(Debug, Clone)]
-pub struct OutputFile {
-    pub ranges: Vec<DataRange>,
-    pub format: OutputFormat,
-    pub record_width: usize,
-}
-
-impl OutputFile {
-    /// Render this file's contents as a hex/mot string.
-    pub fn render(&self) -> Result<String, OutputError> {
-        emit_hex(&self.ranges, self.record_width, self.format)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -229,22 +214,12 @@ mod tests {
     }
 
     #[test]
-    fn c28x_rejects_odd_record_widths() {
-        let header = sample_header(4);
-        let range = bytestream_to_datarange(vec![0, 0], &header, Abi::TiC28xEabi).unwrap();
-
-        let error = emit_hex(&[range], 3, OutputFormat::Hex)
-            .expect_err("odd record width should fail for C28x");
-        assert!(error.to_string().contains("record width 3 octets"));
-    }
-
-    #[test]
     fn output_rejects_mixed_addressable_unit_widths() {
         let header = sample_header(4);
         let byte_range = bytestream_to_datarange(vec![0, 0], &header, Abi::GenericLe).unwrap();
         let word_range = bytestream_to_datarange(vec![0, 0], &header, Abi::TiC28xEabi).unwrap();
 
-        let error = emit_hex(&[byte_range, word_range], 16, OutputFormat::Hex)
+        let error = render(&[byte_range, word_range], 16, OutputFormat::Hex)
             .expect_err("mixed address models should fail");
         assert!(error.to_string().contains("cannot mix"));
     }

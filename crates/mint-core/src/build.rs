@@ -6,7 +6,7 @@ use crate::layout::error::LayoutError;
 use crate::layout::used_values::{NoopValueSink, ValueCollector};
 use crate::output;
 use crate::output::error::OutputError;
-use crate::output::{DataRange, OutputFile, OutputFormat};
+use crate::output::{DataRange, OutputFormat};
 use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
@@ -117,16 +117,8 @@ pub struct BuildArtifact {
 }
 
 impl BuildArtifact {
-    pub fn output_file(&self, format: OutputFormat, record_width: usize) -> OutputFile {
-        OutputFile {
-            ranges: self.ranges.clone(),
-            format,
-            record_width,
-        }
-    }
-
     pub fn render(&self, format: OutputFormat, record_width: usize) -> Result<String, OutputError> {
-        output::emit_hex(&self.ranges, record_width, format)
+        output::render(&self.ranges, record_width, format)
     }
 }
 
