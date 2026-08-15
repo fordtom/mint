@@ -704,7 +704,8 @@ impl LeafEntry {
             ))
         })?;
 
-        match &self.source {
+        let retrieved;
+        let value = match &self.source {
             EntrySource::Name(name) => {
                 let Some(ds) = data_source else {
                     return Err(LayoutError::MissingDataSheet(format!(
@@ -712,40 +713,24 @@ impl LeafEntry {
                         name
                     )));
                 };
-                match ds.retrieve_1d_array_or_string(name)? {
-                    ValueSource::Single(v) => {
-                        if !matches!(self.scalar_type, ScalarType::U8 | ScalarType::U16) {
-                            return Err(LayoutError::DataValueExportFailed(
-                                "Strings should have type u8 or u16.".to_owned(),
-                            ));
-                        }
-                        append_string(
-                            &mut out,
-                            v.string_to_bytes(self.scalar_type, config.abi.endianness())?,
-                            scalar_abi,
-                            config.padding,
-                        );
-                        value_sink.record_value(field_path, data_value_to_json(&v)?)?;
-                    }
-                    ValueSource::Array(v) => {
-                        for value in &v {
-                            append_array_element(
-                                &mut out,
-                                &value.to_bytes(
-                                    self.scalar_type,
-                                    config.abi.endianness(),
-                                    config.strict,
-                                )?,
-                                scalar_abi,
-                                config.padding,
-                            );
-                        }
-                        value_sink.record_value(field_path, array_to_json(&v)?)?;
-                    }
-                }
+                retrieved = ds.retrieve_1d_array_or_string(name)?;
+                &retrieved
             }
-            EntrySource::Value(ValueSource::Array(v)) => {
-                for value in v {
+            EntrySource::Value(value) => value,
+            EntrySource::Const(name) => {
+                self.validate_const(name, config.consts, Some(&SizeSource::OneD(size)))?
+            }
+            EntrySource::Bitmap(_) => unreachable!("bitmap handled in emit_bytes"),
+            EntrySource::Ref(_) => unreachable!("ref handled by block emitter"),
+            EntrySource::Checksum(_) => unreachable!("checksum handled by block emitter"),
+            EntrySource::Fingerprint(_) => {
+                unreachable!("fingerprint handled by block emitter")
+            }
+        };
+
+        match value {
+            ValueSource::Array(values) => {
+                for value in values {
                     append_array_element(
                         &mut out,
                         &value.to_bytes(
@@ -757,9 +742,9 @@ impl LeafEntry {
                         config.padding,
                     );
                 }
-                value_sink.record_value(field_path, array_to_json(v)?)?;
+                value_sink.record_value(field_path, array_to_json(values)?)?;
             }
-            EntrySource::Value(ValueSource::Single(v)) => {
+            ValueSource::Single(value) => {
                 if !matches!(self.scalar_type, ScalarType::U8 | ScalarType::U16) {
                     return Err(LayoutError::DataValueExportFailed(
                         "Strings should have type u8 or u16.".to_owned(),
@@ -767,50 +752,11 @@ impl LeafEntry {
                 }
                 append_string(
                     &mut out,
-                    v.string_to_bytes(self.scalar_type, config.abi.endianness())?,
+                    value.string_to_bytes(self.scalar_type, config.abi.endianness())?,
                     scalar_abi,
                     config.padding,
                 );
-                value_sink.record_value(field_path, data_value_to_json(v)?)?;
-            }
-            EntrySource::Const(name) => {
-                match self.validate_const(name, config.consts, Some(&SizeSource::OneD(size)))? {
-                    ValueSource::Array(v) => {
-                        for value in v {
-                            append_array_element(
-                                &mut out,
-                                &value.to_bytes(
-                                    self.scalar_type,
-                                    config.abi.endianness(),
-                                    config.strict,
-                                )?,
-                                scalar_abi,
-                                config.padding,
-                            );
-                        }
-                        value_sink.record_value(field_path, array_to_json(v)?)?;
-                    }
-                    ValueSource::Single(v) => {
-                        if !matches!(self.scalar_type, ScalarType::U8 | ScalarType::U16) {
-                            return Err(LayoutError::DataValueExportFailed(
-                                "Strings should have type u8 or u16.".to_owned(),
-                            ));
-                        }
-                        append_string(
-                            &mut out,
-                            v.string_to_bytes(self.scalar_type, config.abi.endianness())?,
-                            scalar_abi,
-                            config.padding,
-                        );
-                        value_sink.record_value(field_path, data_value_to_json(v)?)?;
-                    }
-                }
-            }
-            EntrySource::Bitmap(_) => unreachable!("bitmap handled in emit_bytes"),
-            EntrySource::Ref(_) => unreachable!("ref handled by block emitter"),
-            EntrySource::Checksum(_) => unreachable!("checksum handled by block emitter"),
-            EntrySource::Fingerprint(_) => {
-                unreachable!("fingerprint handled by block emitter")
+                value_sink.record_value(field_path, data_value_to_json(value)?)?;
             }
         }
 
