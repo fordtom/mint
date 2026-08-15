@@ -91,7 +91,7 @@
               --replace-fail 'type = "u8"' 'type = "u16"'
             ${mintPkg}/bin/mint header layout.toml -o mint_abi.h
             ${pkgs.c2000-cgt}/bin/cl2000 --abi=eabi --c11 --compile_only --quiet \
-              --define=MINT_TI_C28X --include_path=. --output_file=probe.obj \
+              --define=MINT_TI_C28X --include_path=${pkgs.c2000-cgt}/include --include_path=. --output_file=probe.obj \
               ${./tests/abi/compiler-probe.c}
             touch $out
           '';
