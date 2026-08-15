@@ -1,0 +1,10 @@
+# `u32` before nested `u64` distinguishes 8-octet from 4-octet alignment.
+[mint]
+abi = "generic-le"
+[pack.header]
+start_address = 0
+length = 0x100
+[pack.data]
+word = { value = 1, type = "u32" }
+nested.wide = { value = 2, type = "u64" }
+nested.tail = { value = 3, type = "u32" }

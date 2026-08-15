@@ -51,14 +51,16 @@ Each block also exposes `<block_name>.start_address` and `<block_name>.length` a
 
 The required `abi` setting selects the layout rules used for every block in the file. The currently supported profiles are:
 
-| ABI | Family | Byte order | Addressable unit |
+| ABI | Byte order | Address unit | Verification |
 | --- | --- | --- | --- |
-| `generic-le` | natural-width C layout | little-endian | 8 bits |
-| `generic-be` | natural-width C layout | big-endian | 8 bits |
-| `arm-aapcs32-le` | ARM AAPCS32 | little-endian | 8 bits |
-| `tricore-eabi-le` | Infineon TriCore EABI | little-endian | 8 bits |
-| `riscv-ilp32-le` | RISC-V ILP32 | little-endian | 8 bits |
-| `ti-c28x-eabi` | TI C28x EABI | little-endian | 16 bits |
+| `generic-le` | little-endian | 8 bits | Representative continuous check with GCC 15.2.0 (`arm-none-eabi`) in little-endian mode on Linux/Nix |
+| `generic-be` | big-endian | 8 bits | Representative continuous check with GCC 15.2.0 (`arm-none-eabi`) in big-endian mode on Linux/Nix |
+| `arm-aapcs32-le` | little-endian | 8 bits | Continuously checked with GCC 15.2.0 (`arm-none-eabi`), AAPCS soft-float Cortex-M3, on Linux/Nix |
+| `tricore-eabi-le` | little-endian | 8 bits | Unverified |
+| `riscv-ilp32-le` | little-endian | 8 bits | Continuously checked with GCC 15.2.0 (`riscv32-none-elf`), RV32IMAC ILP32, on Linux/Nix |
+| `ti-c28x-eabi` | little-endian | 16 bits | Continuously checked with TI C2000 CGT 25.11.0.LTS EABI on Linux/Nix |
+
+“Continuously checked” means CI compiles generated headers for the example layout and `tests/abi/pack.toml` and checks scalar storage and alignment, array stride, nested aggregates (including `u32` then nested `u64` packing), field offsets, final size, byte order and `CHAR_BIT`. “Unverified” means that Mint models the named ABI, but no compiler result is recorded yet. A manual compiler result must be labelled “Manually validated” with its compiler version and flags; it is not a recurring CI result.
 
 `generic-le`, `generic-be`, `arm-aapcs32-le` and `riscv-ilp32-le` share the same natural-width scalar and aggregate rules. TriCore and C28x align 64-bit scalars to 4 octets while retaining their 8-octet storage size and array stride. C28x rejects `u8`, `i8` and 8-bit fixed-point fields because its C library has 16-bit `char` and no exact-width 8-bit integer types. Strings can use `u8` or `u16` storage; C28x strings use `type = "u16"`, with one UTF-8 byte zero-extended into each 16-bit word. Run `mint abi list` for accepted names or `mint abi show ABI` for the effective scalar table.
 
@@ -104,7 +106,7 @@ mint header layout.toml#config layout.toml#data -o blocks.h
 
 Each selected block becomes a `<block>_t` typedef, and dotted paths become inline nested structs. Integer and floating-point fields use `<stdint.h>` storage types, while fixed-point fields use the matching signed or unsigned integer storage type with the Mint type in a comment. Bitmap, checksum, ref and fingerprint fields remain integer members. Ref members represent serialized target addresses, not C pointer objects.
 
-Generated headers include C11 `_Static_assert` checks for every field offset and final structure size. The checks compare `sizeof` and `offsetof` through `CHAR_BIT`, so Mint's octet offsets remain valid on targets whose C addressable unit is wider than 8 bits. Compiling the header with the target compiler therefore verifies that its C ABI agrees with Mint's selected profile.
+Generated headers include C11 `_Static_assert` checks for every field offset and final structure size. The checks compare `sizeof` and `offsetof` through `CHAR_BIT`, so Mint's octet offsets remain valid on targets whose C addressable unit is wider than 8 bits. Compiling the header with the target compiler tests that compiler and flag combination; see the ABI table for the combinations that CI checks.
 
 Array dimensions become reusable macros prefixed by the block and full field path. One-dimensional arrays use `_LEN`; two-dimensional arrays use `_ROWS` and `_COLS`. Named bitmap regions use `_SHIFT` and `_MASK` macros; literal reserved regions do not generate macros. Fingerprint fields emit an expected-value `<BLOCK>_<FIELD>_FINGERPRINT` macro.
 

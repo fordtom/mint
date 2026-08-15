@@ -177,50 +177,6 @@ value = { value = 3, type = "u8" }
 }
 
 #[test]
-fn emits_profile_aware_layout_assertions() {
-    let source = |abi: &str| {
-        format!(
-            r#"
-[mint]
-abi = "{abi}"
-
-[block.header]
-start_address = 0
-length = 0x20
-
-[block.data]
-word = {{ value = 1, type = "u32" }}
-nested.wide = {{ value = 2, type = "u64" }}
-"#
-        )
-    };
-
-    let arm = generate("header-arm-assertions", &source("arm-aapcs32-le"), |path| {
-        vec![BlockSelector::all(path)]
-    });
-    assert!(arm.contains("#include <limits.h>"));
-    assert!(arm.contains("#include <stddef.h>"));
-    assert!(arm.contains("_Static_assert(offsetof(block_t, nested.wide) * CHAR_BIT == 8u * 8u"));
-    assert!(arm.contains("_Static_assert(sizeof(block_t) * CHAR_BIT == 16u * 8u"));
-
-    let tricore = generate(
-        "header-tricore-assertions",
-        &source("tricore-eabi-le"),
-        |path| vec![BlockSelector::all(path)],
-    );
-    assert!(
-        tricore.contains("_Static_assert(offsetof(block_t, nested.wide) * CHAR_BIT == 4u * 8u")
-    );
-    assert!(tricore.contains("_Static_assert(sizeof(block_t) * CHAR_BIT == 12u * 8u"));
-
-    let c28x = generate("header-c28x-assertions", &source("ti-c28x-eabi"), |path| {
-        vec![BlockSelector::all(path)]
-    });
-    assert!(c28x.contains("_Static_assert(offsetof(block_t, nested.wide) * CHAR_BIT == 4u * 8u"));
-    assert!(c28x.contains("_Static_assert(sizeof(block_t) * CHAR_BIT == 12u * 8u"));
-}
-
-#[test]
 fn c28x_rejects_exact_width_8_bit_fields() {
     let message = error(
         "header-c28x-u8",

@@ -278,42 +278,13 @@ fn natural_scalar(scalar: ScalarType) -> ScalarAbi {
 
 #[cfg(test)]
 mod tests {
-    use super::{Abi, Endianness};
+    use super::Abi;
     use crate::layout::scalar_type::ScalarType;
 
     #[test]
     fn names_round_trip() {
         for abi in Abi::ALL {
             assert_eq!(abi.name().parse::<Abi>(), Ok(abi));
-        }
-    }
-
-    #[test]
-    fn generic_profiles_share_layout_but_not_byte_order() {
-        let little = Abi::GenericLe.scalar(ScalarType::U32).unwrap();
-        let big = Abi::GenericBe.scalar(ScalarType::U32).unwrap();
-        assert_eq!(little, big);
-        assert_eq!(Abi::GenericLe.endianness(), Endianness::Little);
-        assert_eq!(Abi::GenericBe.endianness(), Endianness::Big);
-    }
-
-    #[test]
-    fn arm_and_riscv_use_the_generic_natural_layout() {
-        for scalar in [
-            ScalarType::U8,
-            ScalarType::U16,
-            ScalarType::U32,
-            ScalarType::U64,
-            ScalarType::I8,
-            ScalarType::I16,
-            ScalarType::I32,
-            ScalarType::I64,
-            ScalarType::F32,
-            ScalarType::F64,
-        ] {
-            let generic = Abi::GenericLe.scalar(scalar).unwrap();
-            assert_eq!(Abi::ArmAapcs32Le.scalar(scalar).unwrap(), generic);
-            assert_eq!(Abi::RiscvIlp32Le.scalar(scalar).unwrap(), generic);
         }
     }
 
