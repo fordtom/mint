@@ -32,12 +32,12 @@ jobs:
     name: ABI compiler (TI C28x)
     runs-on: ubuntu-latest
     steps:
+      - name: Permit nested FHS installer sandbox
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: Checkout source code
         uses: actions/checkout@v5
-
       - name: Install Nix
         uses: cachix/install-nix-action@v31
-
       - name: Check TI C28x EABI
         run: nix build --print-build-logs .#checks.x86_64-linux.abi-ti-c28x-eabi
 
