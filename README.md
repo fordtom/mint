@@ -2,6 +2,8 @@
 
 mint builds static binary flash blocks from TOML layout files and Excel or JSON data sources. It also generates matching C headers and ABI fingerprints from those layouts.
 
+[Upgrading from v1](https://github.com/tomrford/mint/blob/main/doc/migration-v2.md)
+
 mint is available as:
 
 - `mint-core` - Rust library crate for layout parsing, data sources, bytestream assembly, output, C header rendering, ABI fingerprints, and in-memory build APIs.
