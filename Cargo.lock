@@ -496,7 +496,6 @@ dependencies = [
  "clap",
  "comfy-table",
  "mint-core",
- "serde_json",
 ]
 
 [[package]]
