@@ -64,6 +64,7 @@ impl OutputArgs {
                 matches!(extension.as_str(), "mot" | "srec" | "s19" | "s28" | "s37")
             }
             OutputFormat::Mot => matches!(extension.as_str(), "hex" | "ihex" | "ihx"),
+            _ => false,
         };
         if !conflicts {
             return None;
@@ -72,6 +73,7 @@ impl OutputArgs {
         let format_name = match self.format {
             OutputFormat::Hex => "Intel HEX",
             OutputFormat::Mot => "Motorola S-Record",
+            _ => "unknown",
         };
         Some(format!(
             "output extension '.{extension}' does not match {format_name} format"

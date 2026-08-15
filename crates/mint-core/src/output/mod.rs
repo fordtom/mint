@@ -9,6 +9,7 @@ use error::OutputError;
 use bin_file::{BinFile, IHexFormat};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum OutputFormat {
     Hex,
     Mot,

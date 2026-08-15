@@ -1,6 +1,7 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum LayoutError {
     #[error("file error: {0}")]
     FileError(String),

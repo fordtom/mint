@@ -5,6 +5,7 @@ use crate::layout::error::LayoutError;
 use crate::output::error::OutputError;
 
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum MintError {
     #[error(transparent)]
     Layout(#[from] LayoutError),
