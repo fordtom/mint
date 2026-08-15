@@ -113,34 +113,19 @@ pointer = { ref = "right", type = "u32" }
 
 #[test]
 fn reflist_fingerprint_tracks_topology_but_not_literal_values_or_underfill() {
-    let underfilled = fingerprint_of(&layout_with(
-        r#"
-target = { value = 1, type = "u32" }
-other = { value = 2, type = "u32" }
-ptrs = { ref = ["target"], type = "u32", size = 3 }
-"#,
-    ));
-    let explicit_zero = fingerprint_of(&layout_with(
-        r#"
-target = { value = 1, type = "u32" }
-other = { value = 2, type = "u32" }
-ptrs = { ref = ["target", 0, 0], type = "u32", size = 3 }
-"#,
-    ));
-    let arbitrary_literals = fingerprint_of(&layout_with(
-        r#"
-target = { value = 1, type = "u32" }
-other = { value = 2, type = "u32" }
-ptrs = { ref = ["target", 0x1234, 0x5678], type = "u32", size = 3 }
-"#,
-    ));
-    let changed_topology = fingerprint_of(&layout_with(
-        r#"
-target = { value = 1, type = "u32" }
-other = { value = 2, type = "u32" }
-ptrs = { ref = ["target", "other", 0], type = "u32", size = 3 }
-"#,
-    ));
+    let reflist = |targets: &str| {
+        fingerprint_of(&layout_with(&format!(
+            r#"
+target = {{ value = 1, type = "u32" }}
+other = {{ value = 2, type = "u32" }}
+ptrs = {{ ref = {targets}, type = "u32", size = 3 }}
+"#
+        )))
+    };
+    let underfilled = reflist(r#"["target"]"#);
+    let explicit_zero = reflist(r#"["target", 0, 0]"#);
+    let arbitrary_literals = reflist(r#"["target", 0x1234, 0x5678]"#);
+    let changed_topology = reflist(r#"["target", "other", 0]"#);
     let ordinary_values = fingerprint_of(&layout_with(
         r#"
 target = { value = 1, type = "u32" }
@@ -153,16 +138,12 @@ ptrs = { value = [0, 0, 0], type = "u32", size = 3 }
     assert_eq!(underfilled, arbitrary_literals);
     assert_ne!(underfilled, changed_topology);
     assert_ne!(underfilled, ordinary_values);
-}
 
-#[test]
-fn scalar_literal_ref_fingerprint_excludes_the_literal_address() {
     let null = fingerprint_of(&layout_with("pointer = { ref = 0, type = \"u32\" }"));
     let external = fingerprint_of(&layout_with(
         "pointer = { ref = 0x40001000, type = \"u32\" }",
     ));
     let ordinary = fingerprint_of(&layout_with("pointer = { value = 0, type = \"u32\" }"));
-
     assert_eq!(null, external);
     assert_ne!(null, ordinary);
 }
