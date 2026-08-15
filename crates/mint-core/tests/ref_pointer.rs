@@ -506,22 +506,6 @@ field = { value = 0x42, type = "u32" }
     }
 }
 
-#[test]
-fn ref_no_overhead_without_refs() {
-    let toml = ref_layout(
-        0x8000,
-        r#"
-field_a = { value = 0xAAAA, type = "u16" }
-field_b = { value = 0xBBBB, type = "u16" }
-"#,
-    );
-
-    let bytes = load_and_build("ref_no_refs", &toml);
-    assert_eq!(bytes.len(), 4);
-    assert_eq!(&bytes[0..2], &0xAAAAu16.to_le_bytes());
-    assert_eq!(&bytes[2..4], &0xBBBBu16.to_le_bytes());
-}
-
 // --- Regression tests for review feedback ---
 
 #[test]

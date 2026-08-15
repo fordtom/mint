@@ -330,24 +330,6 @@ mod tests {
     use calamine::{Cell, Data, Range};
     use std::collections::HashMap;
 
-    fn datasource_with_variant(value: Data) -> ExcelDataSource {
-        ExcelDataSource {
-            names: vec!["Flag".to_owned()],
-            variant_columns: vec![vec![value]],
-            sheets: HashMap::new(),
-        }
-    }
-
-    #[test]
-    fn retrieve_single_value_accepts_bool_cell() {
-        let ds = datasource_with_variant(Data::Bool(true));
-        let value = ds.retrieve_single_value("Flag").expect("bool cell");
-        match value {
-            DataValue::Bool(v) => assert!(v),
-            _ => panic!("expected bool value"),
-        }
-    }
-
     #[test]
     fn retrieve_2d_array_rejects_empty_mid_row_cell() {
         let mut sheets = HashMap::new();

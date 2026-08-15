@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use mint_core::build::{self, BlockSelector, BuildRequest};
-use mint_core::data::{DataSource, ExcelDataSource, ExcelDataSourceOptions};
+use mint_core::data::DataSource;
 
 static UNIQUE_FILE_ID: AtomicU64 = AtomicU64::new(0);
 
@@ -31,33 +31,6 @@ pub fn unique_out_path(stem: &str, ext: &str) -> PathBuf {
     ensure_out_dir();
     let unique_id = UNIQUE_FILE_ID.fetch_add(1, Ordering::Relaxed);
     test_out_dir().join(format!("{stem}-{unique_id}.{ext}"))
-}
-
-pub fn find_working_datasource() -> Box<dyn DataSource> {
-    let variant_candidates: [&str; 2] = ["Default", "VarA/Default"];
-    let mut failures = Vec::new();
-
-    for ver in &variant_candidates {
-        let variants = ver.split('/').map(str::to_owned).collect();
-        let options = ExcelDataSourceOptions::new(variants);
-        match ExcelDataSource::from_path("tests/data/data.xlsx", options) {
-            Ok(ds) => return Box::new(ds),
-            Err(error) => failures.push(format!("{ver}: {error}")),
-        }
-    }
-    panic!(
-        "expected checked-in Excel fixture at tests/data/data.xlsx to load with a known variant: {}",
-        failures.join("; ")
-    );
-}
-
-/// Assert that the output file exists at the given path
-pub fn assert_out_file_exists(out_path: &Path) {
-    assert!(
-        out_path.exists(),
-        "expected output file to exist: {}",
-        out_path.display()
-    );
 }
 
 /// Build a block's bytestream.

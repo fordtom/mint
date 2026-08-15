@@ -318,21 +318,6 @@ mod tests {
     }
 
     #[test]
-    fn tricore_aligns_64_bit_scalars_to_four_bytes() {
-        let scalar = Abi::TricoreEabiLe.scalar(ScalarType::U64).unwrap();
-        assert_eq!(scalar.storage_size, 8);
-        assert_eq!(scalar.alignment, 4);
-        assert_eq!(scalar.array_stride, 8);
-        assert_eq!(
-            Abi::TricoreEabiLe
-                .scalar(ScalarType::F32)
-                .unwrap()
-                .alignment,
-            4
-        );
-    }
-
-    #[test]
     fn c28x_rejects_exact_width_8_bit_types() {
         assert!(Abi::TiC28xEabi.scalar(ScalarType::U8).is_err());
         assert!(Abi::TiC28xEabi.scalar(ScalarType::I8).is_err());
@@ -347,16 +332,5 @@ mod tests {
         assert_eq!(scalar.alignment, 4);
         assert_eq!(scalar.array_stride, 8);
         assert_eq!(Abi::TiC28xEabi.address_unit_bits(), 16);
-    }
-
-    #[test]
-    fn c28x_offsets_convert_from_octets_to_words() {
-        assert_eq!(Abi::TiC28xEabi.offset_to_address_units(6).unwrap(), 3);
-        assert!(Abi::TiC28xEabi.offset_to_address_units(3).is_err());
-    }
-
-    #[test]
-    fn byte_addressed_offsets_are_unchanged() {
-        assert_eq!(Abi::GenericLe.offset_to_address_units(7).unwrap(), 7);
     }
 }

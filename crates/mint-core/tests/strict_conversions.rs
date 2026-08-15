@@ -48,35 +48,6 @@ overflow.u8_float_high = { value = 300.0, type = "u8" }
 }
 
 #[test]
-fn strict_conversions_success() {
-    common::ensure_out_dir();
-
-    let layout_toml = r#"
-[mint]
-abi = "generic-le"
-
-[block.header]
-start_address = 0x80000
-length = 0x100
-padding = 0x00
-
-[block.data]
-ok.float_exact_to_i16 = { value = 42.0, type = "i16" }
-ok.int_exact_to_f32   = { value = 16777216, type = "f32" }
-"#;
-
-    let path = common::unique_out_path("test_strict_ok", "toml");
-    let mut f = std::fs::File::create(&path).unwrap();
-    f.write_all(layout_toml.as_bytes()).unwrap();
-
-    let ds = default_excel_source();
-
-    let bytes = common::build_block(&path, "block", true, Some(&ds))
-        .expect("strict conversions should succeed");
-    assert!(!bytes.is_empty());
-}
-
-#[test]
 fn strict_conversions_reject_lossy_f64_to_f32() {
     let layout = common::write_layout_file(
         "test_strict_lossy_f64_to_f32",

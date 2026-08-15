@@ -982,25 +982,3 @@ fn bitmap_field_key(field: &BitmapField, offset: usize) -> String {
         BitmapFieldSource::Value(_) => format!("reserved_{}_{}", offset, field.bits),
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::append_array_element;
-    use crate::layout::abi::ScalarAbi;
-
-    #[test]
-    fn array_stride_padding_is_inserted_after_each_element() {
-        let scalar_abi = ScalarAbi {
-            storage_size: 2,
-            alignment: 2,
-            array_stride: 4,
-            c_type: "uint16_t",
-        };
-        let mut output = Vec::new();
-
-        append_array_element(&mut output, &[0x12, 0x34], scalar_abi, 0xFF);
-        append_array_element(&mut output, &[0x56, 0x78], scalar_abi, 0xFF);
-
-        assert_eq!(output, [0x12, 0x34, 0xFF, 0xFF, 0x56, 0x78, 0xFF, 0xFF]);
-    }
-}

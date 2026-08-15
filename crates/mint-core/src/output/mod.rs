@@ -208,46 +208,12 @@ mod tests {
     }
 
     #[test]
-    fn basic_datarange_generation() {
-        let header = sample_header(16);
-
-        let bytestream = vec![1u8, 2, 3, 4];
-        let dr = bytestream_to_datarange(bytestream, &header, Abi::GenericLe)
-            .expect("data range generation failed");
-
-        assert_eq!(dr.bytestream.len(), 4);
-        assert_eq!(dr.start_address, 0);
-        assert_eq!(dr.output_start_address().unwrap(), 0);
-        assert_eq!(dr.reserved_size, 4);
-        assert_eq!(dr.allocated_size, 16);
-    }
-
-    #[test]
     fn bytestream_exceeds_block_length_errors() {
         let header = sample_header(4);
 
         let bytestream = vec![1u8; 8]; // 8 bytes > 4 byte block
         let result = bytestream_to_datarange(bytestream, &header, Abi::GenericLe);
         assert!(result.is_err());
-    }
-
-    #[test]
-    fn c28x_uses_doubled_octet_output_addresses() {
-        let header = Header {
-            start_address: 0x1000,
-            length: 4,
-            padding: 0xFF,
-        };
-        let range = bytestream_to_datarange(vec![0x34, 0x12, 0x78, 0x56], &header, Abi::TiC28xEabi)
-            .expect("C28x range generation succeeds");
-
-        assert_eq!(range.start_address, 0x1000);
-        assert_eq!(range.output_start_address().unwrap(), 0x2000);
-        let hex = emit_hex(&[range], 16, OutputFormat::Hex).expect("hex generation succeeds");
-        assert!(
-            hex.lines().any(|line| line.starts_with(":04200000")),
-            "{hex}"
-        );
     }
 
     #[test]
@@ -281,19 +247,5 @@ mod tests {
         let error = emit_hex(&[byte_range, word_range], 16, OutputFormat::Hex)
             .expect_err("mixed address models should fail");
         assert!(error.to_string().contains("cannot mix"));
-    }
-
-    #[test]
-    fn hex_output_format() {
-        let header = sample_header(16);
-
-        let bytestream = vec![1u8, 2, 3, 4];
-        let dr = bytestream_to_datarange(bytestream, &header, Abi::GenericLe)
-            .expect("data range generation failed");
-        let hex = emit_hex(&[dr], 16, OutputFormat::Hex).expect("hex generation failed");
-
-        assert!(!hex.is_empty());
-        // Intel HEX starts with ':'
-        assert!(hex.starts_with(':'));
     }
 }

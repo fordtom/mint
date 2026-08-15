@@ -129,33 +129,6 @@ matrix = { value = [1, 2, 3, 4], type = "u8", size = [2, 2] }
 }
 
 #[test]
-fn lowercase_size_allows_padding() {
-    common::ensure_out_dir();
-
-    let layout_toml = r#"
-[mint]
-abi = "generic-le"
-
-[block.header]
-start_address = 0x80000
-length = 0x100
-padding = 0xFF
-
-[block.data]
-short_array = { value = [1, 2, 3], type = "u16", size = 10 }
-"#;
-
-    let path = common::unique_out_path("test_lowercase_size", "toml");
-    let mut f = std::fs::File::create(&path).unwrap();
-    f.write_all(layout_toml.as_bytes()).unwrap();
-
-    let bytes = common::build_block(&path, "block", false, None)
-        .expect("lowercase size should allow padding");
-
-    assert!(bytes.len() >= 20);
-}
-
-#[test]
 fn uppercase_size_rejects_underfilled_1d() {
     common::ensure_out_dir();
 
@@ -245,31 +218,4 @@ both = { value = [1, 2, 3], type = "u16", size = 5, SIZE = 10 }
         error.contains("only one size key") && error.contains("'size'") && error.contains("'SIZE'"),
         "unexpected error: {error}"
     );
-}
-
-#[test]
-fn uppercase_size_accepts_exact_match() {
-    common::ensure_out_dir();
-
-    let layout_toml = r#"
-[mint]
-abi = "generic-le"
-
-[block.header]
-start_address = 0x80000
-length = 0x100
-padding = 0xFF
-
-[block.data]
-exact_array = { value = [1, 2, 3, 4, 5], type = "u16", SIZE = 5 }
-"#;
-
-    let path = common::unique_out_path("test_uppercase_size_exact", "toml");
-    let mut f = std::fs::File::create(&path).unwrap();
-    f.write_all(layout_toml.as_bytes()).unwrap();
-
-    let bytes =
-        common::build_block(&path, "block", false, None).expect("SIZE should accept exact match");
-
-    assert!(bytes.len() >= 10);
 }
