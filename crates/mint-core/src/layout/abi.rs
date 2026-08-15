@@ -9,6 +9,7 @@ use super::scalar_type::ScalarType;
 /// Named ABI profile selected by a layout's `[mint].abi` setting.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
 #[serde(try_from = "String")]
+#[non_exhaustive]
 pub enum Abi {
     GenericLe,
     GenericBe,
@@ -20,6 +21,7 @@ pub enum Abi {
 
 /// Shared rule set used by one or more named ABI profiles.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum AbiFamily {
     GenericNatural,
     NaturalAlign4,
@@ -199,18 +201,6 @@ impl AbiFamily {
                 }
             }
         }
-    }
-}
-
-impl fmt::Display for Abi {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str(self.name())
-    }
-}
-
-impl fmt::Display for AbiFamily {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str(self.name())
     }
 }
 

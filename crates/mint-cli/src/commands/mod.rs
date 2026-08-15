@@ -38,7 +38,7 @@ pub fn abi(args: &AbiArgs) {
         }
         AbiCommand::Show { abi } => {
             println!("name: {}", abi.name());
-            println!("family: {}", abi.family());
+            println!("family: {}", abi.family().name());
             println!("description: {}", abi.description());
             println!("byte order: {}", abi.endianness());
             println!("target addressable unit: {} bits", abi.address_unit_bits());
