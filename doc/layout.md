@@ -60,7 +60,18 @@ The required `abi` setting selects the layout rules used for every block in the 
 | `riscv-ilp32-le` | little-endian | 8 bits | Continuously checked with GCC 15.2.0 (`riscv32-none-elf`), RV32IMAC ILP32, on Linux/Nix |
 | `ti-c28x-eabi` | little-endian | 16 bits | Continuously checked with TI C2000 CGT 25.11.0.LTS EABI on Linux/Nix |
 
-“Continuously checked” means CI compiles a representative generated header and checks scalar storage and alignment, array stride, nested aggregates, field offsets, final size, byte order and `CHAR_BIT`. “Unverified” means that Mint models the named ABI, but no compiler result is recorded yet. A manual compiler result must be labelled “Manually validated” with its compiler version and flags; it is not a recurring CI result.
+“Continuously checked” means CI compiles generated headers for the example layout and `tests/abi/pack.toml` and checks scalar storage and alignment, array stride, nested aggregates (including `u32` then nested `u64` packing), field offsets, final size, byte order and `CHAR_BIT`. “Unverified” means that Mint models the named ABI, but no compiler result is recorded yet. A manual compiler result must be labelled “Manually validated” with its compiler version and flags; it is not a recurring CI result.
+
+TriCore has no public CI compiler. Mint still checks the generated packing assertions in `cargo test`. To compile the same probe locally, set `abi = "tricore-eabi-le"` in `doc/examples/block.toml` and `tests/abi/pack.toml`, then:
+
+```bash
+mint header doc/examples/block.toml -o mint_abi.h
+mint header tests/abi/pack.toml -o mint_pack.h
+"$TRICORE_CC" -std=c11 -ffreestanding -Wall -Wextra -Werror -pedantic \
+  -DMINT_TRICORE -I. -c tests/abi/compiler-probe.c -o probe.o
+```
+
+Record the compiler name, version and flags with a “Manually validated” table entry when that compile succeeds. Do not add a CI job that skips and still passes.
 
 `generic-le`, `generic-be`, `arm-aapcs32-le` and `riscv-ilp32-le` share the same natural-width scalar and aggregate rules. TriCore and C28x align 64-bit scalars to 4 octets while retaining their 8-octet storage size and array stride. C28x rejects `u8`, `i8` and 8-bit fixed-point fields because its C library has 16-bit `char` and no exact-width 8-bit integer types. Strings can use `u8` or `u16` storage; C28x strings use `type = "u16"`, with one UTF-8 byte zero-extended into each 16-bit word. Run `mint abi list` for accepted names or `mint abi show ABI` for the effective scalar table.
 

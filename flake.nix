@@ -36,6 +36,15 @@
           buildType = "release";
         };
 
+        generateAbiHeaders = abi: extraExampleReplaces: ''
+          substitute ${./doc/examples/block.toml} layout.toml \
+            --replace-fail 'abi = "generic-le"' 'abi = "${abi}"' ${extraExampleReplaces}
+          substitute ${./tests/abi/pack.toml} pack.toml \
+            --replace-fail 'abi = "generic-le"' 'abi = "${abi}"'
+          ${mintPkg}/bin/mint header layout.toml -o mint_abi.h
+          ${mintPkg}/bin/mint header pack.toml -o mint_pack.h
+        '';
+
         mkGccAbiProbe = {
           name,
           abi,
@@ -43,9 +52,7 @@
           flags,
         }:
           pkgs.runCommand name {} ''
-            substitute ${./doc/examples/block.toml} layout.toml \
-              --replace-fail 'abi = "generic-le"' 'abi = "${abi}"'
-            ${mintPkg}/bin/mint header layout.toml -o mint_abi.h
+            ${generateAbiHeaders abi ""}
             ${compiler} ${nixpkgs.lib.escapeShellArgs flags} \
               -I. -c ${./tests/abi/compiler-probe.c} -o probe.o
             touch $out
@@ -86,10 +93,7 @@
             flags = commonFlags ++ ["-mcpu=cortex-m3" "-mthumb" "-mabi=aapcs" "-mfloat-abi=soft" "-mbig-endian" "-DMINT_ARM" "-DMINT_EXPECT_BIG_ENDIAN"];
           };
           abi-ti-c28x-eabi = pkgs.runCommand "mint-abi-ti-c28x-eabi" {} ''
-            substitute ${./doc/examples/block.toml} layout.toml \
-              --replace-fail 'abi = "generic-le"' 'abi = "ti-c28x-eabi"' \
-              --replace-fail 'type = "u8"' 'type = "u16"'
-            ${mintPkg}/bin/mint header layout.toml -o mint_abi.h
+            ${generateAbiHeaders "ti-c28x-eabi" "--replace-fail 'type = \"u8\"' 'type = \"u16\"'"}
             ${pkgs.c2000-cgt}/bin/cl2000 --abi=eabi --c11 --compile_only --quiet \
               --define=MINT_TI_C28X --include_path=${pkgs.c2000-cgt}/include --include_path=. --output_file=probe.obj \
               ${./tests/abi/compiler-probe.c}
