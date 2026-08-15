@@ -9,12 +9,19 @@
     )
 )]
 
+mod args;
+mod commands;
+mod data;
+mod data_args;
+mod layout_args;
+mod output_args;
+mod visuals;
+
 use std::error::Error;
 use std::process::ExitCode;
 
+use args::{Args, Cli, Command, SKILL_TEXT};
 use clap::Parser;
-use mint_cli::args::{Args, Cli, Command, SKILL_TEXT};
-use mint_cli::{commands, data, visuals};
 use mint_core::error::MintError;
 
 fn main() -> ExitCode {
