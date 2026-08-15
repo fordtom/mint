@@ -185,8 +185,9 @@ impl Block {
             };
             let bytes = (|| -> Result<Vec<u8>, LayoutError> {
                 match &leaf.source {
-                    EntrySource::Ref(_) => Self::emit_ref(
+                    EntrySource::Ref(source) => Self::emit_ref(
                         leaf,
+                        source,
                         &resolved,
                         &self.header,
                         &config,
@@ -288,6 +289,7 @@ impl Block {
 
     fn emit_ref(
         leaf: &LeafEntry,
+        source: &RefSource,
         resolved: &ResolvedLayout<'_>,
         header: &Header,
         config: &BuildConfig<'_>,
@@ -295,11 +297,6 @@ impl Block {
         value_sink: &mut dyn ValueSink,
         field_path: &[String],
     ) -> Result<Vec<u8>, LayoutError> {
-        let EntrySource::Ref(source) = &leaf.source else {
-            return Err(LayoutError::DataValueExportFailed(
-                "emit_ref requires a ref leaf".to_owned(),
-            ));
-        };
         let addresses = source
             .targets()
             .iter()
