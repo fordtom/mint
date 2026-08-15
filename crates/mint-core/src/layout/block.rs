@@ -310,7 +310,7 @@ impl Block {
                         "scalar ref lost its address after resolution".to_owned(),
                     )
                 })?;
-                let bytes = Self::encode_ref_address(address, leaf, config)?;
+                let bytes = encode_ref_address(address, leaf, config)?;
                 value_sink.record_value(
                     field_path,
                     serde_json::Value::Number(serde_json::Number::from(address)),
@@ -336,12 +336,12 @@ impl Block {
                 for address in &addresses {
                     append_array_element(
                         &mut bytes,
-                        &Self::encode_ref_address(*address, leaf, config)?,
+                        &encode_ref_address(*address, leaf, config)?,
                         scalar_abi,
                         config.padding,
                     );
                 }
-                let zero = Self::encode_ref_address(0, leaf, config)?;
+                let zero = encode_ref_address(0, leaf, config)?;
                 for _ in addresses.len()..capacity {
                     append_array_element(&mut bytes, &zero, scalar_abi, config.padding);
                 }
