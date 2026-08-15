@@ -154,11 +154,12 @@ table.count = { name = "TableCount", type = "u16" }
 table_ptr = { ref = "table", type = "u32" }
 count_ptr = { ref = "table.count", type = "u32" }
 none = { ref = 0, type = "u32" }
+named_null = { ref = "NULL", type = "u32" }
 external = { ref = 0x40001000, type = "u32" }
-ptrs = { ref = ["table", 0, "table.count", 0x40001000], type = "u32", size = 8 }
+ptrs = { ref = ["table", "NULL", "table.count", 0x40001000], type = "u32", size = 8 }
 ```
 
-A path target is rooted at the block's data section and is validated before field values are emitted. It resolves to `start_address + field_offset_octets / address_unit_octets`. An unsigned integer target is already an absolute address in target address units, so mint does not rebase or convert it; zero is an intentional zero/null address. Nonzero literals can address targets outside the layout, but mint cannot validate or rebase them.
+A path target is rooted at the block's data section and is validated before field values are emitted. It resolves to `start_address + field_offset_octets / address_unit_octets`. An unsigned integer target is already an absolute address in target address units, so mint does not rebase or convert it. `0` and `"NULL"` are intentional zero/null addresses; `"NULL"` is reserved and is not a field path. Nonzero literals can address targets outside the layout, but mint cannot validate or rebase them.
 
 The `type` must be `u16`, `u32` or `u64`, and every address must fit it. A scalar ref cannot use `size`/`SIZE`. A reflist can mix paths and literals and requires a one-dimensional capacity. Lowercase `size` zero-fills missing address slots; uppercase `SIZE` requires the exact number of entries. Both reject overfill. Refs to paths can point forward or backward within the same block; cross-block path refs are not supported. Generated headers keep refs as integer address storage rather than C pointer objects.
 

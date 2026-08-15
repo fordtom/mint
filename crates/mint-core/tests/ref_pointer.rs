@@ -280,19 +280,22 @@ ptr = { ref = "target", type = "u32" }
 }
 
 #[test]
-fn scalar_ref_accepts_zero_and_arbitrary_literal_addresses() {
+fn scalar_ref_accepts_zero_null_and_arbitrary_literal_addresses() {
     let toml = ref_layout(
         0x1000,
         r#"
 null_ptr = { ref = 0, type = "u32" }
+named_null = { ref = "NULL", type = "u32" }
 external_ptr = { ref = 0x40001000, type = "u32" }
 "#,
     );
 
     let (bytes, values) = load_and_build_with_values("ref_scalar_literals", &toml);
     assert_eq!(&bytes[0..4], &0u32.to_le_bytes());
-    assert_eq!(&bytes[4..8], &0x40001000u32.to_le_bytes());
+    assert_eq!(&bytes[4..8], &0u32.to_le_bytes());
+    assert_eq!(&bytes[8..12], &0x40001000u32.to_le_bytes());
     assert_eq!(&values["null_ptr"], &serde_json::json!(0));
+    assert_eq!(&values["named_null"], &serde_json::json!(0));
     assert_eq!(&values["external_ptr"], &serde_json::json!(0x40001000u64));
 }
 
@@ -302,7 +305,7 @@ fn reflist_resolves_mixed_targets_and_zero_fills_lowercase_size() {
         0x1000,
         r#"
 target = { value = 0x42, type = "u16" }
-ptrs = { ref = ["target", 0, 0x40001000], type = "u32", size = 5 }
+ptrs = { ref = ["target", "NULL", 0x40001000], type = "u32", size = 5 }
 "#,
     );
 
@@ -461,12 +464,17 @@ fn ref_rejects_negative_and_non_integer_literal_targets() {
         (
             "ref_float_literal",
             r#"ptr = { ref = 1.5, type = "u32" }"#,
-            "ref target must be a path string or unsigned integer address; got float",
+            "ref target must be a path string, unsigned integer address, or \"NULL\"; got float",
         ),
         (
             "reflist_bool_literal",
             r#"ptrs = { ref = [0, true], type = "u32", SIZE = 2 }"#,
-            "invalid ref target at index 1: ref target must be a path string or unsigned integer address; got boolean",
+            "invalid ref target at index 1: ref target must be a path string, unsigned integer address, or \"NULL\"; got boolean",
+        ),
+        (
+            "ref_lowercase_null_is_a_path",
+            r#"ptr = { ref = "null", type = "u32" }"#,
+            "not found",
         ),
     ];
 
