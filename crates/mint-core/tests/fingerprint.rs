@@ -158,13 +158,11 @@ ptrs = { value = [0, 0, 0], type = "u32", size = 3 }
 #[test]
 fn scalar_literal_ref_fingerprint_excludes_the_literal_address() {
     let null = fingerprint_of(&layout_with("pointer = { ref = 0, type = \"u32\" }"));
-    let named_null = fingerprint_of(&layout_with("pointer = { ref = \"NULL\", type = \"u32\" }"));
     let external = fingerprint_of(&layout_with(
         "pointer = { ref = 0x40001000, type = \"u32\" }",
     ));
     let ordinary = fingerprint_of(&layout_with("pointer = { value = 0, type = \"u32\" }"));
 
-    assert_eq!(null, named_null);
     assert_eq!(null, external);
     assert_ne!(null, ordinary);
 }

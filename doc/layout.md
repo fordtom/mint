@@ -239,7 +239,7 @@ Fixed-point types are not valid with `bitmap`.
 
 ### Refs (addresses)
 
-A scalar `ref` stores one absolute target address. A string target is a dotted path rooted at `block.data` — for example, `device.info.version` refers to `[block.data] device.info.version`. Path refs can point to leaf fields or branch nodes (nested structs); a branch ref resolves to the branch's aligned aggregate start. An unsigned integer target is already an absolute address in the selected ABI's addressable units. It is stored without adding the block start or converting from octets. Use `0` or `"NULL"` for an intentional zero or null address. `"NULL"` is reserved and is not a field path.
+A scalar `ref` stores one absolute target address. A string target is a dotted path rooted at `block.data` — for example, `device.info.version` refers to `[block.data] device.info.version`. Path refs can point to leaf fields or branch nodes (nested structs); a branch ref resolves to the branch's aligned aggregate start. An unsigned integer target is already an absolute address in the selected ABI's addressable units. It is stored without adding the block start or converting from octets. Use `0` for an intentional zero or null address.
 
 ```toml
 [block.data]
@@ -255,12 +255,11 @@ count_ptr = { ref = "table.count", type = "u32" }
 
 # Intentional zero address and an external absolute target address
 none = { ref = 0, type = "u32" }
-named_null = { ref = "NULL", type = "u32" }
 peripheral = { ref = 0x40001000, type = "u32" }
 
 # Fixed-capacity list mixing resolved paths and absolute addresses
 # Missing slots from lowercase size are encoded as zero addresses.
-table_ptrs = { ref = ["table", "NULL", "table.count", 0x40001000], type = "u32", size = 8 }
+table_ptrs = { ref = ["table", 0, "table.count", 0x40001000], type = "u32", size = 8 }
 
 # Uppercase SIZE requires exactly four supplied entries.
 strict_ptrs = { ref = ["table", 0, "table.count", 0x40001000], type = "u32", SIZE = 4 }
@@ -271,8 +270,8 @@ strict_ptrs = { ref = ["table", 0, "table.count", 0x40001000], type = "u32", SIZ
 - `ref` is mutually exclusive with every other source
 - `type` must be an unsigned integer type (`u16`, `u32`, `u64`)
 - fixed-point types are not valid with `ref`
-- A scalar ref accepts one non-empty path string, `"NULL"`, or one unsigned integer literal and cannot use `size`/`SIZE`
-- A ref list accepts any mix of path strings, `"NULL"`, and unsigned integer literals. It requires a one-dimensional `size` or `SIZE` with a minimum capacity of 1; two-dimensional reflists are not supported
+- A scalar ref accepts one non-empty path string or one unsigned integer literal and cannot use `size`/`SIZE`
+- A ref list accepts any mix of path strings and unsigned integer literals. It requires a one-dimensional `size` or `SIZE` with a minimum capacity of 1; two-dimensional reflists are not supported
 - Both size forms reject more entries than the declared capacity. Lowercase `size` encodes missing entries as zero addresses; uppercase `SIZE` rejects missing entries. Ref underfill does not use the block padding byte
 - A target path must exist within the same block — cross-block path refs are not supported. Path refs can reference fields defined before or after the ref
 - A resolved path address is `start_address + target_offset_octets / address_unit_octets`

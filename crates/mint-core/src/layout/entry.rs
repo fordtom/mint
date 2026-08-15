@@ -168,13 +168,13 @@ impl<'de> Deserialize<'de> for RefSource {
 
 fn ref_target(value: toml::Value) -> Result<RefTarget, String> {
     match value {
-        toml::Value::String(path) if path == "NULL" => Ok(RefTarget::Address(0)),
         toml::Value::String(path) => Ok(RefTarget::Path(path)),
-        toml::Value::Integer(address) => u64::try_from(address)
-            .map(RefTarget::Address)
-            .map_err(|_| format!("ref address must be an unsigned integer; got {address}")),
+        toml::Value::Integer(address) if address >= 0 => Ok(RefTarget::Address(address as u64)),
+        toml::Value::Integer(address) => Err(format!(
+            "ref address must be an unsigned integer; got {address}"
+        )),
         value => Err(format!(
-            "ref target must be a path string, unsigned integer address, or \"NULL\"; got {}",
+            "ref target must be a path string or unsigned integer address; got {}",
             value.type_str()
         )),
     }

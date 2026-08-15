@@ -185,9 +185,8 @@ impl Block {
             };
             let bytes = (|| -> Result<Vec<u8>, LayoutError> {
                 match &leaf.source {
-                    EntrySource::Ref(source) => Self::emit_ref(
+                    EntrySource::Ref(_) => Self::emit_ref(
                         leaf,
-                        source,
                         &resolved,
                         &self.header,
                         &config,
@@ -289,7 +288,6 @@ impl Block {
 
     fn emit_ref(
         leaf: &LeafEntry,
-        source: &RefSource,
         resolved: &ResolvedLayout<'_>,
         header: &Header,
         config: &BuildConfig<'_>,
@@ -297,20 +295,22 @@ impl Block {
         value_sink: &mut dyn ValueSink,
         field_path: &[String],
     ) -> Result<Vec<u8>, LayoutError> {
-        let addresses = source
-            .targets()
-            .iter()
-            .map(|target| resolved.ref_address(target, header.start_address))
-            .collect::<Result<Vec<_>, _>>()?;
+        let EntrySource::Ref(source) = &leaf.source else {
+            unreachable!("emit_ref requires a ref leaf");
+        };
+        let mut addresses = Vec::with_capacity(source.targets().len());
+        for target in source.targets() {
+            addresses.push(resolved.ref_address(target, header.start_address)?);
+        }
 
         match source {
             RefSource::Scalar(_) => {
-                let address = addresses.first().copied().ok_or_else(|| {
-                    LayoutError::DataValueExportFailed(
-                        "scalar ref lost its address after resolution".to_owned(),
-                    )
-                })?;
-                let bytes = encode_ref_address(address, leaf, config)?;
+                let address = addresses[0];
+                let bytes = DataValue::U64(address).to_bytes(
+                    leaf.scalar_type,
+                    config.abi.endianness(),
+                    true,
+                )?;
                 value_sink.record_value(
                     field_path,
                     serde_json::Value::Number(serde_json::Number::from(address)),
@@ -319,9 +319,7 @@ impl Block {
             }
             RefSource::List(_) => {
                 let Some(SizeSource::OneD(capacity)) = leaf.size()? else {
-                    return Err(LayoutError::DataValueExportFailed(
-                        "ref list dimensions disappeared after resolution".to_owned(),
-                    ));
+                    unreachable!("ref list shape was validated during resolution");
                 };
                 let total_bytes = capacity.checked_mul(scalar_abi.array_stride).ok_or(
                     LayoutError::DataValueExportFailed("Ref list size overflow.".to_owned()),
@@ -334,14 +332,15 @@ impl Block {
                 })?;
 
                 for address in &addresses {
-                    append_array_element(
-                        &mut bytes,
-                        &encode_ref_address(*address, leaf, config)?,
-                        scalar_abi,
-                        config.padding,
-                    );
+                    let encoded = DataValue::U64(*address).to_bytes(
+                        leaf.scalar_type,
+                        config.abi.endianness(),
+                        true,
+                    )?;
+                    append_array_element(&mut bytes, &encoded, scalar_abi, config.padding);
                 }
-                let zero = encode_ref_address(0, leaf, config)?;
+                let zero =
+                    DataValue::U64(0).to_bytes(leaf.scalar_type, config.abi.endianness(), true)?;
                 for _ in addresses.len()..capacity {
                     append_array_element(&mut bytes, &zero, scalar_abi, config.padding);
                 }
@@ -360,14 +359,6 @@ impl Block {
                 Ok(bytes)
             }
         }
-    }
-
-    fn encode_ref_address(
-        address: u64,
-        leaf: &LeafEntry,
-        config: &BuildConfig<'_>,
-    ) -> Result<Vec<u8>, LayoutError> {
-        DataValue::U64(address).to_bytes(leaf.scalar_type, config.abi.endianness(), true)
     }
 
     fn resolve_checksums(
