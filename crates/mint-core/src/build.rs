@@ -155,10 +155,6 @@ struct BlockBuildResult {
 pub fn build(request: BuildRequest<'_>) -> Result<BuildArtifact, MintError> {
     let start_time = Instant::now();
 
-    if request.blocks.is_empty() {
-        return Err(LayoutError::NoBlocksProvided.into());
-    }
-
     let (resolved_blocks, layouts) = resolve_blocks(&request.blocks)?;
     let mut artifact = build_resolved(
         resolved_blocks,
@@ -175,10 +171,6 @@ pub fn build_from_layouts(
     request: BuildFromLayoutsRequest<'_>,
 ) -> Result<BuildArtifact, MintError> {
     let start_time = Instant::now();
-
-    if request.blocks.is_empty() {
-        return Err(LayoutError::NoBlocksProvided.into());
-    }
 
     let layouts = collect_named_layouts(request.layouts)?;
     let resolved_blocks = resolve_blocks_from_layouts(&request.blocks, &layouts)?;
@@ -302,10 +294,10 @@ fn resolve_blocks_from_layouts(
     }
 
     let mut seen = HashSet::new();
-    Ok(resolved
-        .into_iter()
-        .filter(|b| seen.insert((b.layout.clone(), b.name.clone())))
-        .collect())
+    resolved.retain(|b| seen.insert((b.layout.clone(), b.name.clone())));
+    (!resolved.is_empty())
+        .then_some(resolved)
+        .ok_or(LayoutError::NoBlocksProvided)
 }
 
 pub(crate) fn resolve_blocks(

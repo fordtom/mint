@@ -32,30 +32,28 @@ fn generated_example_header_is_checked_in() {
 }
 
 #[test]
-fn validation_failure_does_not_touch_output() {
+fn empty_layout_does_not_touch_build_or_header_output() {
     let layout = common::write_layout_file(
-        "invalid-header",
+        "empty-layout",
         r#"
 [mint]
 abi = "generic-le"
-[block.header]
-start_address = 0
-length = 16
-[block.data]
-for = { value = 1, type = "u8" }
 "#,
     );
     let output_path = common::unique_out_path("preserved-header", "h");
     fs::write(&output_path, "preserve me\n").expect("sentinel header writes");
 
-    let output = mint_command()
-        .args(["header", &layout, "-o"])
-        .arg(&output_path)
-        .output()
-        .expect("mint header should run");
-    assert!(!output.status.success());
-    assert_eq!(
-        fs::read_to_string(output_path).expect("sentinel header remains readable"),
-        "preserve me\n"
-    );
+    for command in ["build", "header"] {
+        let output = mint_command()
+            .args([command, &layout, "-o"])
+            .arg(&output_path)
+            .output()
+            .expect("mint command should run");
+        assert!(!output.status.success());
+        assert!(String::from_utf8_lossy(&output.stderr).contains("no blocks provided"));
+        assert_eq!(
+            fs::read_to_string(&output_path).expect("sentinel header remains readable"),
+            "preserve me\n"
+        );
+    }
 }
