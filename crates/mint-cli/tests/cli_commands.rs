@@ -318,6 +318,46 @@ value = { value = 1, type = "u16" }
 }
 
 #[test]
+fn equivalent_output_and_report_paths_are_rejected_without_writing() {
+    let raw_path = common::unique_out_path("output-report-collision", "hex");
+    #[cfg(windows)]
+    let path = raw_path;
+    #[cfg(not(windows))]
+    let path = raw_path
+        .parent()
+        .expect("output parent")
+        .canonicalize()
+        .expect("canonical output parent")
+        .join(raw_path.file_name().expect("output file name"));
+    let relative = path.file_name().expect("output file name");
+    let block = format!(
+        "{}/../mint-core/tests/data/blocks.toml#simple_block",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    for existing in [false, true] {
+        if existing {
+            std::fs::write(&path, "keep me").expect("write sentinel");
+        }
+        let output = mint_command()
+            .current_dir(path.parent().expect("output parent"))
+            .args(["build", &block])
+            .arg("--out")
+            .arg(relative)
+            .arg("--export-json")
+            .arg(&path)
+            .output()
+            .expect("mint build should run");
+        assert!(!output.status.success());
+        assert!(
+            String::from_utf8_lossy(&output.stderr)
+                .contains("--out and --export-json resolve to the same destination")
+        );
+        let contents = std::fs::read_to_string(&path).ok();
+        assert_eq!(contents.as_deref(), existing.then_some("keep me"));
+    }
+}
+
+#[test]
 fn format_extension_mismatch_warning_respects_quiet() {
     let warning = "warning: output extension '.hex' does not match Motorola S-Record format";
     for (stem, quiet) in [("format-mismatch", false), ("quiet-format-mismatch", true)] {

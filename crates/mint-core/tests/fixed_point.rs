@@ -1,6 +1,5 @@
 use mint_core::build::{self, BlockSelector, BuildRequest};
 use mint_core::data::JsonDataSource;
-use mint_core::output::OutputFormat;
 
 #[path = "common/mod.rs"]
 mod common;
@@ -212,7 +211,6 @@ phase = { name = "Phase", type = "uq0.16" }
     let ds = JsonDataSource::from_str(r#"{"Default":{"Phase":0.25}}"#, &variants)
         .expect("datasource loads");
 
-    let json_out = common::unique_out_path("fixed-point-export", "json");
     let artifact = build::build(BuildRequest {
         blocks: vec![BlockSelector::all(layout_path)],
         data_source: Some(&ds),
@@ -220,16 +218,10 @@ phase = { name = "Phase", type = "uq0.16" }
         capture_values: true,
     })
     .expect("build should succeed");
-    let hex = artifact.render(OutputFormat::Hex, 16).expect("render hex");
-    std::fs::write(common::unique_out_path("fixed-point-export", "hex"), hex)
-        .expect("write hex output");
-    mint_core::output::report::write_used_values_json(
-        &json_out,
-        artifact.used_values.as_ref().expect("used values"),
+    let report = mint_core::output::report::render_used_values_json(
+        &artifact.used_values.expect("used values"),
     )
-    .expect("write json report");
-
-    let report = std::fs::read_to_string(&json_out).expect("read json report");
+    .expect("render json report");
     let json: serde_json::Value = serde_json::from_str(&report).expect("parse json report");
     assert_eq!(json[&layout_key]["config"]["ratio"].as_f64(), Some(1.5));
     assert_eq!(json[&layout_key]["config"]["phase"].as_f64(), Some(0.25));
