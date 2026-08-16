@@ -1,42 +1,27 @@
 use mint_core::output::error::OutputError;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 
 pub(super) fn same_destination(left: &Path, right: &Path) -> Result<bool, OutputError> {
-    Ok(normalize_destination(left)? == normalize_destination(right)?)
+    let left = absolute_destination(left)?;
+    let right = absolute_destination(right)?;
+    if left == right {
+        return Ok(true);
+    }
+
+    Ok(matches!(
+        (left.canonicalize(), right.canonicalize()),
+        (Ok(left), Ok(right)) if left == right
+    ))
 }
 
-fn normalize_destination(path: &Path) -> Result<PathBuf, OutputError> {
-    let absolute = std::path::absolute(path).map_err(|e| {
+fn absolute_destination(path: &Path) -> Result<PathBuf, OutputError> {
+    std::path::absolute(path).map_err(|e| {
         OutputError::FileError(format!(
             "failed to resolve output path {}: {}",
             path.display(),
             e
         ))
-    })?;
-
-    let resolved = resolve_existing_ancestor(&absolute);
-    Ok(resolve_existing_ancestor(&resolved))
-}
-
-fn resolve_existing_ancestor(path: &Path) -> PathBuf {
-    for ancestor in path.ancestors() {
-        if let Ok(resolved) = ancestor.canonicalize()
-            && let Ok(suffix) = path.strip_prefix(ancestor)
-        {
-            return suffix.components().fold(resolved, |mut path, component| {
-                match component {
-                    Component::ParentDir => {
-                        path.pop();
-                    }
-                    Component::Normal(part) => path.push(part),
-                    _ => {}
-                }
-                path
-            });
-        }
-    }
-
-    path.to_owned()
+    })
 }
 
 pub fn write_text(path: &Path, contents: &str) -> Result<(), OutputError> {
