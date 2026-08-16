@@ -1,5 +1,5 @@
 use mint_core::output::error::OutputError;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 pub(super) fn same_destination(left: &Path, right: &Path) -> Result<bool, OutputError> {
     Ok(normalize_destination(left)? == normalize_destination(right)?)
@@ -14,16 +14,29 @@ fn normalize_destination(path: &Path) -> Result<PathBuf, OutputError> {
         ))
     })?;
 
-    // Resolve the deepest existing ancestor while preserving any missing suffix.
-    for ancestor in absolute.ancestors() {
+    let resolved = resolve_existing_ancestor(&absolute);
+    Ok(resolve_existing_ancestor(&resolved))
+}
+
+fn resolve_existing_ancestor(path: &Path) -> PathBuf {
+    for ancestor in path.ancestors() {
         if let Ok(resolved) = ancestor.canonicalize()
-            && let Ok(suffix) = absolute.strip_prefix(ancestor)
+            && let Ok(suffix) = path.strip_prefix(ancestor)
         {
-            return Ok(resolved.join(suffix));
+            return suffix.components().fold(resolved, |mut path, component| {
+                match component {
+                    Component::ParentDir => {
+                        path.pop();
+                    }
+                    Component::Normal(part) => path.push(part),
+                    _ => {}
+                }
+                path
+            });
         }
     }
 
-    Ok(absolute)
+    path.to_owned()
 }
 
 pub fn write_text(path: &Path, contents: &str) -> Result<(), OutputError> {

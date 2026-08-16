@@ -320,7 +320,10 @@ value = { value = 1, type = "u16" }
 #[test]
 fn equivalent_output_and_report_paths_are_rejected_without_writing() {
     let path = common::unique_out_path("output-report-collision", "hex");
-    let relative = path.file_name().expect("output file name");
+    let missing = path.with_extension("missing");
+    let relative = std::path::Path::new(missing.file_name().expect("missing directory name"))
+        .join("..")
+        .join(path.file_name().expect("output file name"));
     let block = format!(
         "{}/../mint-core/tests/data/blocks.toml#simple_block",
         env!("CARGO_MANIFEST_DIR")
@@ -333,7 +336,7 @@ fn equivalent_output_and_report_paths_are_rejected_without_writing() {
             .current_dir(path.parent().expect("output parent"))
             .args(["build", &block])
             .arg("--out")
-            .arg(relative)
+            .arg(&relative)
             .arg("--export-json")
             .arg(&path)
             .output()
@@ -345,6 +348,7 @@ fn equivalent_output_and_report_paths_are_rejected_without_writing() {
         );
         let contents = std::fs::read_to_string(&path).ok();
         assert_eq!(contents.as_deref(), existing.then_some("keep me"));
+        assert!(!missing.exists(), "path conflict created a directory");
     }
 }
 
