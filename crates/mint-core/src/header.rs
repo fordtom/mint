@@ -12,10 +12,6 @@ use std::collections::{HashMap, HashSet};
 
 /// Generate a complete C11 header for the selected layout blocks.
 pub fn generate(blocks: &[BlockSelector]) -> Result<String, MintError> {
-    if blocks.is_empty() {
-        return Err(LayoutError::NoBlocksProvided.into());
-    }
-
     let (resolved, layouts) = resolve_blocks(blocks)?;
     let fingerprints = layouts
         .iter()
