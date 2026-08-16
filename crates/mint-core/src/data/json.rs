@@ -98,7 +98,7 @@ impl JsonDataSource {
 
 impl DataSource for JsonDataSource {
     fn retrieve_single_value(&self, name: &str) -> Result<DataValue, DataError> {
-        let result = (|| {
+        DataError::while_retrieving(name, || {
             let value = self
                 .lookup(name)
                 .ok_or_else(|| DataError::RetrievalError("key not found in any variant".into()))?;
@@ -110,16 +110,11 @@ impl DataSource for JsonDataSource {
                 )),
                 _ => Ok(dv),
             }
-        })();
-
-        result.map_err(|e| DataError::WhileRetrieving {
-            name: name.to_owned(),
-            source: Box::new(e),
         })
     }
 
     fn retrieve_1d_array_or_string(&self, name: &str) -> Result<ValueSource, DataError> {
-        let result = (|| {
+        DataError::while_retrieving(name, || {
             let value = self
                 .lookup(name)
                 .ok_or_else(|| DataError::RetrievalError("key not found in any variant".into()))?;
@@ -135,16 +130,11 @@ impl DataSource for JsonDataSource {
                     "expected array or string for 1D array".to_owned(),
                 )),
             }
-        })();
-
-        result.map_err(|e| DataError::WhileRetrieving {
-            name: name.to_owned(),
-            source: Box::new(e),
         })
     }
 
     fn retrieve_2d_array(&self, name: &str) -> Result<Vec<Vec<DataValue>>, DataError> {
-        let result = (|| {
+        DataError::while_retrieving(name, || {
             let value = self
                 .lookup(name)
                 .ok_or_else(|| DataError::RetrievalError("key not found in any variant".into()))?;
@@ -166,11 +156,6 @@ impl DataSource for JsonDataSource {
                     inner.iter().map(Self::value_to_data_value).collect()
                 })
                 .collect()
-        })();
-
-        result.map_err(|e| DataError::WhileRetrieving {
-            name: name.to_owned(),
-            source: Box::new(e),
         })
     }
 }

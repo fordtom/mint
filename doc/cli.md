@@ -190,7 +190,7 @@ See [Data Sources](sources.md#json---json) for format details.
 
 ### `-v, --variants <NAME[/NAME...]>`
 
-Variant columns to query, in priority order. The first non-empty value found wins.
+Variants to query, in priority order. JSON skips missing and `null` values. Excel skips empty and whitespace-only cells.
 
 ```bash
 # Single variant

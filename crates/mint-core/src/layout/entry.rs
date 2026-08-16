@@ -786,90 +786,74 @@ impl LeafEntry {
         field_path: &[String],
     ) -> Result<Vec<u8>, LayoutError> {
         let scalar_abi = encoding.scalar_abi;
-        match &self.source {
-            EntrySource::Name(name) => {
-                let Some(ds) = data_source else {
-                    return Err(LayoutError::MissingDataSheet(format!(
-                        "Field '{}' requires a value from a data source, but none was provided.",
-                        name
-                    )));
-                };
-                let data = ds.retrieve_2d_array(name)?;
+        let EntrySource::Name(name) = &self.source else {
+            unreachable!("2D source validated before block emission")
+        };
+        let Some(ds) = data_source else {
+            return Err(LayoutError::MissingDataSheet(format!(
+                "Field '{}' requires a value from a data source, but none was provided.",
+                name
+            )));
+        };
+        let data = ds.retrieve_2d_array(name)?;
 
-                let rows = size[0];
-                let cols = size[1];
+        let rows = size[0];
+        let cols = size[1];
 
-                let elem = scalar_abi.array_stride;
-                let total_elems =
-                    rows.checked_mul(cols)
-                        .ok_or(LayoutError::DataValueExportFailed(
-                            "2D size overflow".into(),
-                        ))?;
-                let total_bytes =
-                    total_elems
-                        .checked_mul(elem)
-                        .ok_or(LayoutError::DataValueExportFailed(
-                            "2D byte count overflow".into(),
-                        ))?;
+        let elem = scalar_abi.array_stride;
+        let total_elems = rows
+            .checked_mul(cols)
+            .ok_or(LayoutError::DataValueExportFailed(
+                "2D size overflow".into(),
+            ))?;
+        let total_bytes =
+            total_elems
+                .checked_mul(elem)
+                .ok_or(LayoutError::DataValueExportFailed(
+                    "2D byte count overflow".into(),
+                ))?;
 
-                if data.iter().any(|row| row.len() != cols) {
-                    return Err(LayoutError::DataValueExportFailed(
-                        "2D array column count mismatch.".to_owned(),
-                    ));
-                }
+        if data.iter().any(|row| row.len() != cols) {
+            return Err(LayoutError::DataValueExportFailed(
+                "2D array column count mismatch.".to_owned(),
+            ));
+        }
 
-                if data.len() > rows {
-                    return Err(LayoutError::DataValueExportFailed(
-                        "2D array row count greater than defined size.".to_owned(),
-                    ));
-                }
+        if data.len() > rows {
+            return Err(LayoutError::DataValueExportFailed(
+                "2D array row count greater than defined size.".to_owned(),
+            ));
+        }
 
-                if encoding.strict_len && data.len() < rows {
-                    return Err(LayoutError::DataValueExportFailed(
-                        "2D array row count smaller than defined size (strict SIZE).".to_owned(),
-                    ));
-                }
+        if encoding.strict_len && data.len() < rows {
+            return Err(LayoutError::DataValueExportFailed(
+                "2D array row count smaller than defined size (strict SIZE).".to_owned(),
+            ));
+        }
 
-                let mut out = Vec::new();
-                out.try_reserve_exact(total_bytes).map_err(|error| {
-                    LayoutError::DataValueExportFailed(format!(
-                        "failed to allocate {total_bytes}-byte field buffer: {error}"
-                    ))
-                })?;
-                for row in &data {
-                    for v in row {
-                        append_array_element(
-                            &mut out,
-                            &v.to_bytes(self.scalar_type, config.abi.endianness(), config.strict)?,
-                            scalar_abi,
-                            config.padding,
-                        );
-                    }
-                }
-                value_sink.record_value(field_path, array_2d_to_json(&data)?)?;
-
-                while out.len() < total_bytes {
-                    out.push(config.padding);
-                }
-
-                Ok(out)
-            }
-            EntrySource::Value(_) => Err(LayoutError::InvalidLayout(
-                "2D arrays within the layout file are not supported.".to_owned(),
-            )),
-            EntrySource::Const(name) => {
-                self.validate_const(name, config.consts, Some(&SizeSource::TwoD(size)))?;
-                Err(LayoutError::InvalidLayout(
-                    "2D arrays within the layout file are not supported.".to_owned(),
-                ))
-            }
-            EntrySource::Bitmap(_) => unreachable!("bitmap handled in emit_bytes"),
-            EntrySource::Ref(_) => unreachable!("ref handled by block emitter"),
-            EntrySource::Checksum(_) => unreachable!("checksum handled by block emitter"),
-            EntrySource::Fingerprint(_) => {
-                unreachable!("fingerprint handled by block emitter")
+        let mut out = Vec::new();
+        out.try_reserve_exact(total_bytes).map_err(|error| {
+            LayoutError::DataValueExportFailed(format!(
+                "failed to allocate {total_bytes}-byte field buffer: {error}"
+            ))
+        })?;
+        for row in &data {
+            for v in row {
+                append_array_element(
+                    &mut out,
+                    &v.to_bytes(self.scalar_type, config.abi.endianness(), config.strict)?,
+                    scalar_abi,
+                    config.padding,
+                );
             }
         }
+        value_sink.record_value(field_path, array_2d_to_json(&data)?)?;
+
+        while out.len() < total_bytes {
+            out.push(config.padding);
+        }
+
+        Ok(out)
     }
 }
 

@@ -22,3 +22,15 @@ pub enum DataError {
         source: Box<DataError>,
     },
 }
+
+impl DataError {
+    pub(super) fn while_retrieving<T>(
+        name: &str,
+        retrieve: impl FnOnce() -> Result<T, Self>,
+    ) -> Result<T, Self> {
+        retrieve().map_err(|source| Self::WhileRetrieving {
+            name: name.to_owned(),
+            source: Box::new(source),
+        })
+    }
+}

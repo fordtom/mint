@@ -222,7 +222,7 @@ The workbook has a **Main sheet** (or specify `--main-sheet`) with this structur
 | Matrix       | #CalibrationMatrix   | #CalibrationMatrix |            |
 
 - **Name column**: lookup keys matching layout `name` fields
-- **Variant columns**: one per build variant. First non-empty value in the `--variants` priority chain wins.
+- **Variant columns**: one per build variant. Empty and whitespace-only cells fall through in `--variants` order.
 - **Array sheet refs**: A cell value like `#DefaultCoefficients` points to a separate sheet containing array data. First row is headers (ignored), values read row-by-row until an empty cell.
 
 ### JSON (`--json`)
@@ -250,7 +250,7 @@ Top-level keys are variant names. Each contains an object of name:value pairs. A
 
 ### Variant priority (`--variants`)
 
-`--variants Debug/Default` means: look in Debug first, fall back to Default if the key is missing or null. The first non-empty value wins.
+`--variants Debug/Default` checks Debug first. Missing keys and `null` values fall through to Default.
 
 **Name matching**: The `name` field in the layout must exactly match a key in the data source. These are case-sensitive. When setting up a new data source, collect all `name = "..."` values from the layout and ensure each one exists in the source.
 

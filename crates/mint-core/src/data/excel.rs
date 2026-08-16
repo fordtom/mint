@@ -171,23 +171,18 @@ impl ExcelDataSource {
 
 impl DataSource for ExcelDataSource {
     fn retrieve_single_value(&self, name: &str) -> Result<DataValue, DataError> {
-        let result = (|| match self.retrieve_cell(name)? {
+        DataError::while_retrieving(name, || match self.retrieve_cell(name)? {
             Data::Int(i) => Ok(DataValue::I64(*i)),
             Data::Float(f) => Ok(DataValue::F64(*f)),
             Data::Bool(b) => Ok(DataValue::Bool(*b)),
             _ => Err(DataError::RetrievalError(
                 "Found non-numeric single value".to_owned(),
             )),
-        })();
-
-        result.map_err(|e| DataError::WhileRetrieving {
-            name: name.to_owned(),
-            source: Box::new(e),
         })
     }
 
     fn retrieve_1d_array_or_string(&self, name: &str) -> Result<ValueSource, DataError> {
-        let result = (|| {
+        DataError::while_retrieving(name, || {
             let Data::String(cell_string) = self.retrieve_cell(name)? else {
                 return Err(DataError::RetrievalError(
                     "Expected string value for 1D array or string".to_owned(),
@@ -231,16 +226,11 @@ impl DataSource for ExcelDataSource {
 
             // No '#' prefix, treat as a literal string
             Ok(ValueSource::Single(DataValue::Str(cell_string.to_owned())))
-        })();
-
-        result.map_err(|e| DataError::WhileRetrieving {
-            name: name.to_owned(),
-            source: Box::new(e),
         })
     }
 
     fn retrieve_2d_array(&self, name: &str) -> Result<Vec<Vec<DataValue>>, DataError> {
-        let result = (|| {
+        DataError::while_retrieving(name, || {
             let Data::String(cell_string) = self.retrieve_cell(name)? else {
                 return Err(DataError::RetrievalError(
                     "Expected string value for 2D array".to_owned(),
@@ -314,11 +304,6 @@ impl DataSource for ExcelDataSource {
             }
 
             Ok(out)
-        })();
-
-        result.map_err(|e| DataError::WhileRetrieving {
-            name: name.to_owned(),
-            source: Box::new(e),
         })
     }
 }
