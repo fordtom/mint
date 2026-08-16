@@ -7,7 +7,7 @@ use mint_core::error::MintError;
 use mint_core::layout::abi::Abi;
 use mint_core::layout::scalar_type::ScalarType;
 use mint_core::output::{self, error::OutputError};
-use writer::write_text;
+use writer::{same_destination, write_text};
 
 pub fn header(args: &HeaderArgs) -> Result<(), MintError> {
     let contents = mint_core::header::generate(&args.blocks)?;
@@ -77,9 +77,11 @@ pub fn abi(args: &AbiArgs) {
 }
 
 pub fn build(args: &Args, data_source: Option<&dyn DataSource>) -> Result<BuildStats, MintError> {
-    if args.output.export_json.as_ref() == Some(&args.output.out) {
+    if let Some(report_path) = &args.output.export_json
+        && same_destination(&args.output.out, report_path)?
+    {
         return Err(OutputError::FileError(
-            "--out and --export-json must use different paths".to_owned(),
+            "--out and --export-json resolve to the same destination".to_owned(),
         )
         .into());
     }
