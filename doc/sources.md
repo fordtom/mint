@@ -24,7 +24,7 @@ The `Main` sheet (or one specified via `--main-sheet`) contains variant data:
 
 - **Name column**: lookup key used by layout files
 - **Variant columns**: values for each variant (e.g., `Default`, `Debug`)
-- **Precedence**: follows the explicit `--variants` order; first non-empty value wins
+- **Precedence**: follows `--variants`; empty and whitespace-only cells fall through
 - **Sheet references**: cells starting with `#` reference array sheets (e.g., `#DefaultCoefficients`)
 
 ### Array Sheets
@@ -91,4 +91,4 @@ Use this when your build pipeline already fetches or transforms data before invo
 
 ### Variant Priority
 
-Values are resolved using the variant priority order specified by `--variants`. The first non-empty value found wins.
+Values follow `--variants`; missing keys and `null` values fall through.

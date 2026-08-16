@@ -45,7 +45,7 @@ impl BlockStat {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct BuildStats {
     pub blocks_processed: usize,
     pub total_allocated: u64,
@@ -54,21 +54,9 @@ pub struct BuildStats {
     pub block_stats: Vec<BlockStat>,
 }
 
-impl Default for BuildStats {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl BuildStats {
     pub fn new() -> Self {
-        Self {
-            blocks_processed: 0,
-            total_allocated: 0,
-            total_reserved: 0,
-            total_duration: Duration::from_secs(0),
-            block_stats: Vec::new(),
-        }
+        Self::default()
     }
 
     pub fn add_block(&mut self, stat: BlockStat) {

@@ -8,7 +8,7 @@ use crate::layout::fingerprint;
 use crate::layout::resolved::{ResolvedNode, validate_static};
 use crate::layout::settings::MintConfig;
 use indexmap::IndexMap;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 /// Generate a complete C11 header for the selected layout blocks.
 pub fn generate(blocks: &[BlockSelector]) -> Result<String, MintError> {
@@ -116,21 +116,11 @@ struct MacroDefinition {
 
 #[derive(Default)]
 struct NameRegistry {
-    typedefs: HashSet<String>,
     block_prefixes: HashMap<String, String>,
     macros: HashMap<String, String>,
 }
 
 impl NameRegistry {
-    fn add_typedef(&mut self, name: String) -> Result<(), LayoutError> {
-        if !self.typedefs.insert(name.clone()) {
-            return Err(header_error(format!(
-                "generated typedef '{name}' is duplicated"
-            )));
-        }
-        Ok(())
-    }
-
     fn add_block_prefix(&mut self, prefix: &str, block: &str) -> Result<(), LayoutError> {
         if let Some(existing) = self
             .block_prefixes
@@ -161,8 +151,6 @@ fn render_block(
     names: &mut NameRegistry,
 ) -> Result<RenderedBlock, LayoutError> {
     let typedef_name = format!("{block_name}_t");
-    names.add_typedef(typedef_name.clone())?;
-
     let macro_prefix = to_upper_snake(block_name, "block name")?;
     names.add_block_prefix(&macro_prefix, block_name)?;
 
