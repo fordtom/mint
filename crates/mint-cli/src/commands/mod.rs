@@ -6,7 +6,7 @@ use mint_core::data::DataSource;
 use mint_core::error::MintError;
 use mint_core::layout::abi::Abi;
 use mint_core::layout::scalar_type::ScalarType;
-use mint_core::output;
+use mint_core::output::{self, error::OutputError};
 use writer::write_text;
 
 pub fn header(args: &HeaderArgs) -> Result<(), MintError> {
@@ -77,6 +77,12 @@ pub fn abi(args: &AbiArgs) {
 }
 
 pub fn build(args: &Args, data_source: Option<&dyn DataSource>) -> Result<BuildStats, MintError> {
+    if args.output.export_json.as_ref() == Some(&args.output.out) {
+        return Err(OutputError::FileError(
+            "--out and --export-json must use different paths".to_owned(),
+        )
+        .into());
+    }
     let artifact = build::build(BuildRequest {
         blocks: args.layout.blocks.clone(),
         data_source,
@@ -87,7 +93,7 @@ pub fn build(args: &Args, data_source: Option<&dyn DataSource>) -> Result<BuildS
     let contents = artifact.render(args.output.format, args.output.record_width as usize)?;
 
     if let (Some(path), Some(report)) = (&args.output.export_json, &artifact.used_values) {
-        output::report::write_used_values_json(path, report)?;
+        write_text(path, &output::report::render_used_values_json(report)?)?;
     }
     write_text(&args.output.out, &contents)?;
 

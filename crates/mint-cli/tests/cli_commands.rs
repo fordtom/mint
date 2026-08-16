@@ -318,6 +318,31 @@ value = { value = 1, type = "u16" }
 }
 
 #[test]
+fn equal_output_and_report_paths_are_rejected_without_writing() {
+    let path = common::unique_out_path("output-report-collision", "hex");
+    for existing in [false, true] {
+        if existing {
+            std::fs::write(&path, "keep me").expect("write sentinel");
+        }
+        let output = mint_command()
+            .args(["build", "../mint-core/tests/data/blocks.toml#simple_block"])
+            .arg("--out")
+            .arg(&path)
+            .arg("--export-json")
+            .arg(&path)
+            .output()
+            .expect("mint build should run");
+        assert!(!output.status.success());
+        assert!(
+            String::from_utf8_lossy(&output.stderr)
+                .contains("--out and --export-json must use different paths")
+        );
+        let contents = std::fs::read_to_string(&path).ok();
+        assert_eq!(contents.as_deref(), existing.then_some("keep me"));
+    }
+}
+
+#[test]
 fn format_extension_mismatch_warning_respects_quiet() {
     let warning = "warning: output extension '.hex' does not match Motorola S-Record format";
     for (stem, quiet) in [("format-mismatch", false), ("quiet-format-mismatch", true)] {
