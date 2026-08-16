@@ -320,6 +320,9 @@ value = { value = 1, type = "u16" }
 #[test]
 fn equivalent_output_and_report_paths_are_rejected_without_writing() {
     let raw_path = common::unique_out_path("output-report-collision", "hex");
+    #[cfg(windows)]
+    let path = raw_path;
+    #[cfg(not(windows))]
     let path = raw_path
         .parent()
         .expect("output parent")
