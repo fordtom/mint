@@ -184,9 +184,20 @@ impl AbiFamily {
     /// Human-readable aggregate alignment and tail-padding rules.
     pub const fn aggregate_rules(self) -> &'static str {
         match self {
-            Self::GenericNatural | Self::NaturalAlign4 => {
+            Self::GenericNatural => {
                 "aggregates align to their maximum member alignment and pad tails to that alignment"
             }
+            Self::NaturalAlign4 => {
+                "aggregates align to their maximum member alignment, raised to 2 octets when larger than one octet, and pad tails to that alignment"
+            }
+        }
+    }
+
+    /// Minimum alignment for aggregates larger than one octet.
+    pub const fn min_aggregate_alignment(self) -> usize {
+        match self {
+            Self::GenericNatural => 1,
+            Self::NaturalAlign4 => 2,
         }
     }
 

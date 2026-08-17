@@ -134,6 +134,26 @@ tail = { value = 0xAA55, type = "u16" }
 }
 
 #[test]
+fn tricore_aligns_multi_octet_byte_aggregates_to_two_octets() {
+    let output = build_output_for_abi(
+        "tricore-eabi-le",
+        r#"
+first = { value = 0x11, type = "u8" }
+single.only = { value = 0x22, type = "u8" }
+group.a = { value = 0x33, type = "u8" }
+group.b = { value = 0x44, type = "u8" }
+group.c = { value = 0x55, type = "u8" }
+last = { value = 0x66, type = "u8" }
+"#,
+    );
+
+    assert_eq!(
+        output.bytestream,
+        vec![0x11, 0x22, 0x33, 0x44, 0x55, 0xEE, 0x66, 0xEE]
+    );
+}
+
+#[test]
 fn c28x_matches_compiler_probed_aggregate_shapes() {
     let u16_u64 = build_output_for_abi(
         "ti-c28x-eabi",
