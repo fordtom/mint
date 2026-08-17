@@ -7,8 +7,6 @@ description: "Guide for working with mint, an embedded development tool that ass
 
 mint builds binary flash images (Intel HEX or Motorola S-Record) from a declarative TOML layout file and an optional data source (Excel workbook or JSON). Each layout describes one or more memory blocks — contiguous regions that map to C structs stored at known flash addresses. mint resolves data values, enforces types, computes CRCs, pads to size, and emits the output file. It can also generate matching C headers and ABI fingerprints without a data source.
 
-Install: `cargo install mint-cli` or via nix flake.
-
 ## Layout file anatomy
 
 A layout file has three levels: global config, per-block headers, and per-block data fields.
@@ -28,28 +26,136 @@ ref_out = true
 default_voltage = 3.3
 fw_name = "BootloaderV2"
 
-[myblock.header]          # Per-block memory region
+# --- config_t at 0x8000 ---
+[config.header]
 start_address = 0x8000    # Required — base address in target address units
-length = 0x1000           # Required — allocated octets; resolved data must fit
+length = 0x100            # Required — allocated octets; resolved data must fit
 padding = 0xFF            # Array, alignment, and tail fill byte (default: 0xFF)
 
-[myblock.data]            # Field definitions (dotted paths = nested structs)
+[config.data]
 schema = { fingerprint = true, type = "u64" }
 device.id = { value = 0x1234, type = "u32" }
 device.name = { name = "DeviceName", type = "u8", size = 16 }
+version = { name = "Version", type = "u16" }
+gain_q8_8 = { value = 1.5, type = "uq8.8" }
+flags = { type = "u16", bitmap = [
+    { bits = 1, name = "EnableDebug" },
+    { bits = 3, value = 0 },
+    { bits = 4, name = "RegionCode" },
+    { bits = 8, value = 0 },
+] }
+coefficients = { name = "Coefficients", type = "f32", size = 4 }
+matrix = { name = "Matrix", type = "i16", size = [2, 2] }
 voltage = { const = "default_voltage", type = "f32" }
+checksum = { checksum = "crc32", type = "u32" }
+
+# --- data_t at 0x8100 ---
+[data.header]
+start_address = 0x8100
+length = 0x100
+
+[data.data]
+schema = { fingerprint = true, type = "u64" }
+config_schema = { fingerprint = "config", type = "u64" }
+counter = { name = "Counter", type = "u64" }
+message = { const = "fw_name", type = "u8", size = 16 }
+ip = { value = [192, 168, 1, 1], type = "u8", size = 4 }
 checksum = { checksum = "crc32", type = "u32" }
 ```
 
+`mint header layout.toml -o layout.h` generates the matching C typedefs, array extent macros, named bitmap shift/mask macros, and fingerprint macros. `mint fingerprint layout.toml` prints each block's ABI fingerprint.
+
+Key observations:
+
+- Dotted paths (`device.id`, `device.name`) reproduce the struct nesting.
+- `type = "u8", size = 16` generates a `uint8_t` array using a reusable `_LEN` macro.
+- The bitmap's total bits (1+3+4+8 = 16) match the `u16` type width.
+- `gain_q8_8` stores `1.5` as a Q8.8 fixed-point value in a `uint16_t`-sized slot.
+- `device.id` uses `value`, `voltage` uses `const`, and `device.name` uses `name`.
+- Checksum is the last field — it covers everything above it in the block.
+
 Block names and every `[myblock.data]` path segment must be valid, non-keyword C identifiers matching `[_a-zA-Z][_a-zA-Z0-9]*` and must avoid C-reserved underscore forms. Block names cannot start with `_`; fields cannot start with `__` or an underscore followed by an uppercase letter. Use unquoted dotted keys or nested tables for nested structs; quoted dotted keys are rejected as flat fields.
 
-Multiple blocks can live in one file. Build specific blocks with `layout.toml#blockname`.
-
-Generate C typedefs from the same selectors with `mint header layout.toml -o layout.h` or `mint header layout.toml#blockname -o block.h`. The layout remains the source of truth for nested structs, storage types, arrays, and bitmap macros.
+Multiple blocks can live in one file. Build specific blocks with `layout.toml#blockname`. The layout remains the source of truth for nested structs, storage types, arrays, and bitmap macros.
 
 ### Dotted paths mirror C struct nesting
 
 The key `device.info.version.major` maps to `block.device.info.version.major` in the output — the same hierarchy as nested C structs. This is how mint knows field ordering and grouping.
+
+## Layout schema
+
+Every accepted key in a mint layout file, with types, defaults, and constraints.
+
+### `[mint]` — global configuration (required)
+
+| Key   | Type          | Default      | Description                                      |
+| ----- | ------------- | ------------ | ------------------------------------------------ |
+| `abi` | Named profile | — (required) | Target layout profile; discover names with `mint abi list` |
+
+### `[mint.checksum.<name>]` — named CRC configurations (optional, repeatable)
+
+Define as many as needed (e.g., `[mint.checksum.crc32]`, `[mint.checksum.crc32c]`). Referenced by name in checksum fields. All fields are required — no inheritance or partial configs.
+
+| Key          | Type   | Default      | Description                  |
+| ------------ | ------ | ------------ | ---------------------------- |
+| `polynomial` | `u32`  | — (required) | CRC polynomial               |
+| `start`      | `u32`  | — (required) | Initial CRC value            |
+| `xor_out`    | `u32`  | — (required) | XOR applied to final CRC     |
+| `ref_in`     | `bool` | — (required) | Reflect each input byte      |
+| `ref_out`    | `bool` | — (required) | Reflect final CRC before XOR |
+
+### `[blockname.header]` — per-block memory region (required per block)
+
+| Key             | Type           | Default      | Description                                   |
+| --------------- | -------------- | ------------ | --------------------------------------------- |
+| `start_address` | `u32` (hex ok) | — (required) | Base address in target address units          |
+| `length`        | `u32` (hex ok) | — (required) | Allocated octets; resolved data must fit      |
+| `padding`       | `u8` (hex ok)  | `0xFF`       | Array, alignment, and tail fill byte          |
+
+### `[blockname.data]` — field definitions
+
+Each key is a dotted path representing struct nesting. The value is an inline table with a required `type` and exactly one source.
+
+| Attribute     | Type                              | Description |
+| ------------- | --------------------------------- | ----------- |
+| `type`        | string                            | Required. `u8`/`u16`/`u32`/`u64`, `i8`/`i16`/`i32`/`i64`, `f32`/`f64`, or fixed-point `qI.F` / `uqI.F` with total width 8/16/32/64 |
+| `value`       | scalar, string, or array          | Literal value. Mutually exclusive with other sources. |
+| `name`        | string                            | Data source lookup key. Mutually exclusive with other sources. |
+| `const`       | string                            | Const lookup from `[mint.const]` or an auto-promoted block header const. Mutually exclusive with other sources. |
+| `bitmap`      | array of bitmap fields            | Bitfield packing. Mutually exclusive with other sources. |
+| `ref`         | string, unsigned integer or array | Same-block target path or absolute target address; arrays form reflists. Mutually exclusive with other sources. |
+| `checksum`    | string                            | Name of a `[mint.checksum.<name>]` config. Mutually exclusive with other sources. |
+| `fingerprint` | `true` or string                  | This block's ABI fingerprint, or another block's fingerprint from the same layout. Mutually exclusive with other sources. |
+| `size`        | integer or `[rows, cols]`         | Array/string dimensions. Pads if data is shorter. A one-dimensional reflist capacity zero-fills missing addresses. Cannot combine with `SIZE`, scalar `ref`, `checksum`, `fingerprint`, or `bitmap`. |
+| `SIZE`        | integer or `[rows, cols]`         | Strict array dimensions. Errors if data is shorter. A reflist uses only a one-dimensional exact capacity. Cannot combine with `size`, scalar `ref`, `checksum`, `fingerprint`, or `bitmap`. |
+
+| Source             | Allowed types       | `size`/`SIZE`              | Notes |
+| ------------------ | ------------------- | -------------------------- | ----- |
+| `value` (scalar)   | any                 | no                         | Numeric or boolean literal |
+| `value` (string)   | `u8`, `u16`         | required                   | One zero-extended UTF-8 byte per scalar element |
+| `value` (1D array) | any                 | required                   | Inline array of values |
+| `value` (2D array) | —                   | —                          | **Not supported.** 2D arrays must come from a data source. |
+| `const` (scalar)   | any                 | no                         | Reusable literal from `[mint.const]` |
+| `const` (string)   | `u8`, `u16`         | required                   | Reusable string with one UTF-8 byte per scalar element |
+| `const` (1D array) | any                 | required                   | Reusable inline array from `[mint.const]` |
+| `name` (scalar)    | any                 | no                         | Single value from data source |
+| `name` (1D array)  | any                 | required (`size = N`)      | 1D array from data source |
+| `name` (2D array)  | any                 | required (`size = [R, C]`) | 2D array from data source |
+| `bitmap`           | integer types only  | no                         | Sum of `bits` must equal type width; fixed-point not allowed |
+| scalar `ref`       | `u16`, `u32`, `u64` | no                         | Same-block path or absolute unsigned literal; fixed-point not allowed |
+| reflist            | `u16`, `u32`, `u64` | required (`size = N`)      | Mixed path/literal address array; lowercase underfill is zero |
+| `checksum`         | `u32` only          | no                         | CRC over all preceding bytes in block; fixed-point not allowed |
+| `fingerprint`      | `u64` only          | no                         | Injects a nameless ABI fingerprint for this or another same-file block |
+
+Each `bitmap` element:
+
+| Key     | Type         | Description                                              |
+| ------- | ------------ | -------------------------------------------------------- |
+| `bits`  | integer (>0) | Number of bits this sub-field occupies                   |
+| `name`  | string       | Data source lookup key (mutually exclusive with `value`) |
+| `value` | scalar       | Literal value (mutually exclusive with `name`)           |
+
+Fields pack LSB-first. Signed parent types use two's complement for negative sub-field values.
 
 ## Information to gather before writing a layout
 
@@ -68,6 +174,8 @@ When setting up mint for a project, these parameters need to be established. If 
 - **Which values are constants vs. configurable** — one-off constants go as `value = ...`; reusable constants go in `[mint.const]` and fields use `const = "..."`; configurable values use `name = "..."` to pull from a data source.
 - **Data source format** — Excel workbook (typical for manufacturing/calibration workflows) or JSON (typical for CI pipelines that fetch or generate data).
 - **Variant names** — the columns/keys that represent build variants (e.g., Default, Debug, Production). The `--variants` flag controls fallback priority.
+
+After the layout exists, generate the header with `mint header layout.toml -o layout.h` so firmware consumes the layout-owned struct shape. Build with `--stats` to confirm sizes and checksums, and `--strict` to catch lossy conversions early.
 
 ## Scalar types
 
@@ -148,6 +256,20 @@ Fixed-point types are not valid with `bitmap`.
 
 Store resolved or literal absolute target addresses.
 
+```c
+typedef struct {
+  struct {
+    uint16_t entries[32];
+    uint16_t count;
+  } table;
+  uint32_t table_ptr;   /* address of table */
+  uint32_t count_ptr;   /* address of table.count */
+  uint32_t none;
+  uint32_t external;
+  uint32_t ptrs[8];
+} lookup_t;
+```
+
 ```toml
 table.entries = { name = "TableEntries", type = "u16", size = 32 }
 table.count = { name = "TableCount", type = "u16" }
@@ -213,17 +335,35 @@ A data source is optional — layouts with only `value` fields build without one
 
 The workbook has a **Main sheet** (or specify `--main-sheet`) with this structure:
 
-| Name         | Default              | Debug              | Production |
-| ------------ | -------------------- | ------------------ | ---------- |
-| DeviceName   | MyDevice             | DebugDev           |            |
-| Version      | 1                    | 2                  | 1          |
-| Counter      | 1000                 | 0                  | 50000      |
-| Coefficients | #DefaultCoefficients | #DebugCoefficients |            |
-| Matrix       | #CalibrationMatrix   | #CalibrationMatrix |            |
+| Name         | Default        | Debug              | Production |
+| ------------ | -------------- | ------------------ | ---------- |
+| DeviceName   | MyDevice       | DebugDev           |            |
+| Version      | 1              | 2                  | 1          |
+| EnableDebug  | 0              | 1                  | 0          |
+| RegionCode   | 5              | 5                  | 12         |
+| Counter      | 1000           | 0                  | 50000      |
+| Coefficients | #Coefficients  | #DebugCoefficients |            |
+| Matrix       | #Matrix        | #Matrix            |            |
 
 - **Name column**: lookup keys matching layout `name` fields
 - **Variant columns**: one per build variant. Empty and whitespace-only cells fall through in `--variants` order.
-- **Array sheet refs**: A cell value like `#DefaultCoefficients` points to a separate sheet containing array data. First row is headers (ignored), values read row-by-row until an empty cell.
+- **Array sheet refs**: A cell value like `#Coefficients` points to a separate sheet containing array data. First row is headers (ignored). Header column count defines 2D width. Values are read row-by-row until an empty cell.
+
+A `Coefficients` sheet for a 1D `f32` array:
+
+| C1  |
+| --- |
+| 1.0 |
+| 2.5 |
+| 3.7 |
+| 4.2 |
+
+A `Matrix` sheet for a 2D `i16` array (2x2):
+
+| C1  | C2  |
+| --- | --- |
+| 10  | 20  |
+| 30  | 40  |
 
 ### JSON (`--json`)
 
@@ -232,8 +372,10 @@ The workbook has a **Main sheet** (or specify `--main-sheet`) with this structur
   "Default": {
     "DeviceName": "MyDevice",
     "Version": 1,
+    "EnableDebug": 0,
+    "RegionCode": 5,
     "Counter": 1000,
-    "Coefficients": [1.0, 2.0, 3.0, 4.0],
+    "Coefficients": [1.0, 2.5, 3.7, 4.2],
     "Matrix": [
       [10, 20],
       [30, 40]
@@ -241,7 +383,12 @@ The workbook has a **Main sheet** (or specify `--main-sheet`) with this structur
   },
   "Debug": {
     "DeviceName": "DebugDev",
-    "Version": 2
+    "Version": 2,
+    "EnableDebug": 1
+  },
+  "Production": {
+    "RegionCode": 12,
+    "Counter": 50000
   }
 }
 ```
@@ -315,7 +462,5 @@ Run `mint --help` for the full argument list.
 - **Strict mode**: Without `--strict`, out-of-range integer values saturate and float-to-int casts truncate (e.g., 300 into `u8` becomes 255, 1.5 into `u8` becomes 1). Fixed-point values scale by `2^F`, round ties-to-even, then clamp. With `--strict`, mint errors instead.
 
 ## Further reference
-
-For full annotated examples (layout + C struct + data source), read `references/examples.md` if this skill is installed as a directory; if you only have `mint skill` output, fetch it from github.com/tomrford/mint at `crates/mint-cli/skill/mint/references/examples.md`.
 
 Online documentation: the mint repository's `doc/` directory contains `layout.md`, `sources.md`, and `cli.md` with exhaustive detail on every option (github.com/tomrford/mint).
