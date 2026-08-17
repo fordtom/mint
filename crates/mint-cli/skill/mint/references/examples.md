@@ -95,7 +95,7 @@ Leaves are naturally aligned to their storage width:
 - `u64`/`i64`/`f64`: 8-byte aligned
 - fixed-point aligns to its storage width (`uq8.8` = 2-byte aligned, `q15.16` = 4-byte aligned)
 
-Each dotted-path branch aligns to the maximum alignment of its children. Children retain their parsed order, each branch receives tail padding before its next sibling, and the root data struct is padded to its aggregate alignment. Gaps and tail padding use the block's `padding` byte. This alignment is always applied — mint does not support packed structs (`__attribute__((packed))`, `#pragma pack(1)`, etc.).
+Each dotted-path branch aligns to the maximum alignment of its children. TriCore and C28x raise branches larger than one octet to at least 2-octet alignment; a single-octet branch stays byte-aligned. Children retain their parsed order, each branch receives tail padding before its next sibling, and the root data struct is padded to its aggregate alignment. Gaps and tail padding use the block's `padding` byte. This alignment is always applied — mint does not support packed structs (`__attribute__((packed))`, `#pragma pack(1)`, etc.).
 
 Strings use `u8` or `u16` storage. Each UTF-8 byte occupies one scalar element and is zero-extended in ABI byte order, so `size = N` counts `N` elements rather than Unicode code points. C28x strings use `type = "u16"`, one byte per 16-bit word.
 

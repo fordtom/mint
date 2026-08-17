@@ -213,6 +213,18 @@ impl ResolvedNode<'_> {
         }
     }
 
+    fn is_larger_than_one_octet(&self) -> bool {
+        match self {
+            Self::Branch { children, .. } => {
+                children.len() > 1
+                    || children
+                        .iter()
+                        .any(|(_, child)| child.is_larger_than_one_octet())
+            }
+            Self::Leaf { coordinates, .. } => coordinates.size > 1,
+        }
+    }
+
     fn coordinates_mut(&mut self) -> &mut ResolvedCoordinates {
         match self {
             Self::Branch { coordinates, .. } | Self::Leaf { coordinates, .. } => coordinates,
@@ -316,11 +328,18 @@ fn collect_entry<'a>(
                 path.pop();
                 children.push((name.clone(), child));
             }
-            let alignment = children
+            let mut alignment = children
                 .iter()
                 .map(|(_, child)| child.coordinates().alignment)
                 .max()
                 .unwrap_or(1);
+            if children.len() > 1
+                || children
+                    .iter()
+                    .any(|(_, child)| child.is_larger_than_one_octet())
+            {
+                alignment = alignment.max(abi.family().min_aggregate_alignment());
+            }
             Ok(ResolvedNode::Branch {
                 coordinates: ResolvedCoordinates {
                     offset: 0,

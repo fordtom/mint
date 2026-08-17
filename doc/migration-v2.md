@@ -43,7 +43,7 @@ mint build config.toml --xlsx data.xlsx --variants Default
 
 ## Binary and fingerprint compatibility
 
-V2 aligns each nested aggregate to its strictest child and adds tail padding to nested and root aggregates. This can change field offsets, refs, checksum inputs, reserved sizes, and emitted bytes. Select the correct ABI, regenerate all binaries and headers, compile the generated header with the target compiler, and validate the result before flashing.
+V2 aligns each nested aggregate to its strictest child and adds tail padding to nested and root aggregates. TriCore and C28x also give every aggregate larger than one octet at least 2-octet alignment. These rules can change field offsets, refs, checksum inputs, reserved sizes, and emitted bytes. Select the correct ABI, regenerate all binaries and headers, compile the generated header with the target compiler, and validate the result before flashing.
 
 Current v2 uses the `mint block ABI fingerprint v2` hash domain and intentionally invalidates values made by the earlier v2 pre-release fingerprint v1 schema. Regenerate stored values and firmware constants together. A fingerprint field uses `type = "u64"` with `fingerprint = true` for its own block or a block name for another block in the same file; `mint fingerprint` prints values without a data source.
 
