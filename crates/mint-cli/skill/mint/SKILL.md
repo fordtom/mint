@@ -258,10 +258,15 @@ Store resolved or literal absolute target addresses.
 
 ```c
 typedef struct {
-  uint16_t entries[32];
-  uint16_t count;
-  uint32_t entries_ptr;  /* address of entries[] */
-  uint32_t count_ptr;    /* address of count */
+  struct {
+    uint16_t entries[32];
+    uint16_t count;
+  } table;
+  uint32_t table_ptr;   /* address of table */
+  uint32_t count_ptr;   /* address of table.count */
+  uint32_t none;
+  uint32_t external;
+  uint32_t ptrs[8];
 } lookup_t;
 ```
 
@@ -330,13 +335,15 @@ A data source is optional — layouts with only `value` fields build without one
 
 The workbook has a **Main sheet** (or specify `--main-sheet`) with this structure:
 
-| Name         | Default              | Debug              | Production |
-| ------------ | -------------------- | ------------------ | ---------- |
-| DeviceName   | MyDevice             | DebugDev           |            |
-| Version      | 1                    | 2                  | 1          |
-| Counter      | 1000                 | 0                  | 50000      |
-| Coefficients | #Coefficients | #DebugCoefficients |            |
-| Matrix       | #Matrix   | #Matrix |            |
+| Name         | Default        | Debug              | Production |
+| ------------ | -------------- | ------------------ | ---------- |
+| DeviceName   | MyDevice       | DebugDev           |            |
+| Version      | 1              | 2                  | 1          |
+| EnableDebug  | 0              | 1                  | 0          |
+| RegionCode   | 5              | 5                  | 12         |
+| Counter      | 1000           | 0                  | 50000      |
+| Coefficients | #Coefficients  | #DebugCoefficients |            |
+| Matrix       | #Matrix        | #Matrix            |            |
 
 - **Name column**: lookup keys matching layout `name` fields
 - **Variant columns**: one per build variant. Empty and whitespace-only cells fall through in `--variants` order.
@@ -365,8 +372,10 @@ A `Matrix` sheet for a 2D `i16` array (2x2):
   "Default": {
     "DeviceName": "MyDevice",
     "Version": 1,
+    "EnableDebug": 0,
+    "RegionCode": 5,
     "Counter": 1000,
-    "Coefficients": [1.0, 2.0, 3.0, 4.0],
+    "Coefficients": [1.0, 2.5, 3.7, 4.2],
     "Matrix": [
       [10, 20],
       [30, 40]
@@ -374,7 +383,12 @@ A `Matrix` sheet for a 2D `i16` array (2x2):
   },
   "Debug": {
     "DeviceName": "DebugDev",
-    "Version": 2
+    "Version": 2,
+    "EnableDebug": 1
+  },
+  "Production": {
+    "RegionCode": 12,
+    "Counter": 50000
   }
 }
 ```
