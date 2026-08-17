@@ -7,4 +7,14 @@ description: "Guide for working with mint, an embedded development tool that ass
 
 mint builds binary flash images (Intel HEX or Motorola S-Record) from a declarative TOML layout file and an optional Excel or JSON data source. Use it when a project needs flash configuration blocks, matching C headers, or ABI fingerprints from a layout instead of a hand-written hex generator.
 
-Install the CLI with `cargo install mint-cli` or the repository nix flake, then run `mint skill` to load the current documentation before you write or change a layout.
+If `mint` is not present, install it via:
+
+| Source | Install |
+| --- | --- |
+| GitHub releases | `mise use github:tomrford/mint` |
+| crates.io | `cargo install mint-cli` |
+| Nix flake | `nix profile install github:tomrford/mint` |
+
+Prebuilt archives: https://github.com/tomrford/mint/releases
+
+Then run `mint skill` to load the current documentation before you write or change a layout.
