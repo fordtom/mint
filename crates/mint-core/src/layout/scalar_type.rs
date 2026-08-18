@@ -172,7 +172,7 @@ fn parse_fixed_point_type(value: &str) -> Result<FixedPointType, String> {
             ));
         }
         let signed = value.starts_with('i');
-        let total_bits = match width {
+        let total_bits: u8 = match width {
             "8" => 8,
             "16" => 16,
             "32" => 32,
