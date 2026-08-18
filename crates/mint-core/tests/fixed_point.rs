@@ -25,8 +25,8 @@ offset = { value = -1.25, type = "q26.5" }
 
     let canonical_path = common::write_layout_file("fixed-point-qf", canonical);
     let aliased_path = common::write_layout_file("fixed-point-alias", &aliased);
-    let canonical_bytes =
-        common::build_block(&canonical_path, "block", true, None).expect("canonical build succeeds");
+    let canonical_bytes = common::build_block(&canonical_path, "block", true, None)
+        .expect("canonical build succeeds");
     let aliased_bytes =
         common::build_block(&aliased_path, "block", true, None).expect("alias build succeeds");
     assert_eq!(canonical_bytes, aliased_bytes);
