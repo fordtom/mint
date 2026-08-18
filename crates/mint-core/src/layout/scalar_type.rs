@@ -162,6 +162,10 @@ impl<'de> Deserialize<'de> for ScalarType {
 }
 
 fn parse_fixed_point_type(value: &str) -> Result<FixedPointType, String> {
+    if let Some(parsed) = try_parse_storage_width_fixed_point(value) {
+        return parsed;
+    }
+
     let (signed, body) = if let Some(rest) = value.strip_prefix("uq") {
         (false, rest)
     } else if let Some(rest) = value.strip_prefix('q') {
@@ -180,7 +184,7 @@ fn parse_fixed_point_type(value: &str) -> Result<FixedPointType, String> {
         || !fractional_bits.chars().all(|c| c.is_ascii_digit())
     {
         return Err(format!(
-            "invalid fixed-point type '{value}'; expected qI.F or uqI.F with non-negative integer bit counts"
+            "invalid fixed-point type '{value}'; expected qI.F, uqI.F, uNqF, or iNqF with non-negative integer bit counts"
         ));
     }
 
@@ -204,6 +208,69 @@ fn parse_fixed_point_type(value: &str) -> Result<FixedPointType, String> {
             "unsupported fixed-point width in type '{value}'; total width must be 8, 16, 32, or 64 bits"
         ));
     }
+
+    Ok(FixedPointType {
+        signed,
+        integer_bits,
+        fractional_bits,
+        total_bits,
+    })
+}
+
+fn try_parse_storage_width_fixed_point(value: &str) -> Option<Result<FixedPointType, String>> {
+    let (signed, rest) = if let Some(rest) = value.strip_prefix('i') {
+        (true, rest)
+    } else if let Some(rest) = value.strip_prefix('u') {
+        (false, rest)
+    } else {
+        return None;
+    };
+
+    let (total_bits, fractional) = if let Some(rest) = rest.strip_prefix("64q") {
+        (64_u8, rest)
+    } else if let Some(rest) = rest.strip_prefix("32q") {
+        (32, rest)
+    } else if let Some(rest) = rest.strip_prefix("16q") {
+        (16, rest)
+    } else if let Some(rest) = rest.strip_prefix("8q") {
+        (8, rest)
+    } else {
+        return None;
+    };
+
+    Some(fixed_point_from_storage_width(
+        value, signed, total_bits, fractional,
+    ))
+}
+
+fn fixed_point_from_storage_width(
+    value: &str,
+    signed: bool,
+    total_bits: u8,
+    fractional: &str,
+) -> Result<FixedPointType, String> {
+    if fractional.is_empty() || !fractional.chars().all(|c| c.is_ascii_digit()) {
+        return Err(format!(
+            "invalid fixed-point type '{value}'; expected uNqF or iNqF with a non-negative integer fractional bit count"
+        ));
+    }
+
+    let fractional_bits = fractional.parse::<u8>().map_err(|_| {
+        format!("invalid fixed-point type '{value}'; fractional bits must fit in u8")
+    })?;
+    let integer_bits = if signed {
+        total_bits
+            .checked_sub(1)
+            .and_then(|bits| bits.checked_sub(fractional_bits))
+    } else {
+        total_bits.checked_sub(fractional_bits)
+    }
+    .ok_or_else(|| {
+        format!(
+            "unsupported fixed-point width in type '{value}'; fractional bits must fit in the {total_bits}-bit {} storage",
+            if signed { "signed" } else { "unsigned" }
+        )
+    })?;
 
     Ok(FixedPointType {
         signed,
@@ -247,11 +314,42 @@ mod tests {
                     total_bits: 32,
                 }),
             ),
+            (
+                "u32q5",
+                ScalarType::Fixed(FixedPointType {
+                    signed: false,
+                    integer_bits: 27,
+                    fractional_bits: 5,
+                    total_bits: 32,
+                }),
+            ),
+            (
+                "i16q8",
+                ScalarType::Fixed(FixedPointType {
+                    signed: true,
+                    integer_bits: 7,
+                    fractional_bits: 8,
+                    total_bits: 16,
+                }),
+            ),
         ];
 
         for (value, expected) in cases {
             assert_eq!(value.parse::<ScalarType>().unwrap(), expected);
         }
+
+        assert_eq!(
+            "u32q5".parse::<ScalarType>().unwrap(),
+            "uq27.5".parse::<ScalarType>().unwrap()
+        );
+        assert_eq!(
+            "i16q8".parse::<ScalarType>().unwrap(),
+            "q7.8".parse::<ScalarType>().unwrap()
+        );
+        assert_eq!(
+            "u16q8".parse::<ScalarType>().unwrap(),
+            "uq8.8".parse::<ScalarType>().unwrap()
+        );
     }
 
     #[test]
@@ -263,6 +361,10 @@ mod tests {
             ("uq", "invalid fixed-point type"),
             ("uq8.", "invalid fixed-point type"),
             ("q3.10", "unsupported fixed-point width"),
+            ("u32q", "invalid fixed-point type"),
+            ("u32q5.0", "invalid fixed-point type"),
+            ("u32q33", "unsupported fixed-point width"),
+            ("i16q16", "unsupported fixed-point width"),
         ];
 
         for (value, expected) in cases {

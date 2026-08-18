@@ -118,7 +118,7 @@ Each key is a dotted path representing struct nesting. The value is an inline ta
 
 | Attribute     | Type                              | Description |
 | ------------- | --------------------------------- | ----------- |
-| `type`        | string                            | Required. `u8`/`u16`/`u32`/`u64`, `i8`/`i16`/`i32`/`i64`, `f32`/`f64`, or fixed-point `qI.F` / `uqI.F` with total width 8/16/32/64 |
+| `type`        | string                            | Required. `u8`/`u16`/`u32`/`u64`, `i8`/`i16`/`i32`/`i64`, `f32`/`f64`, or fixed-point `qI.F` / `uqI.F` (aliases `iNqF` / `uNqF`) with total width 8/16/32/64 |
 | `value`       | scalar, string, or array          | Literal value. Mutually exclusive with other sources. |
 | `name`        | string                            | Data source lookup key. Mutually exclusive with other sources. |
 | `const`       | string                            | Const lookup from `[mint.const]` or an auto-promoted block header const. Mutually exclusive with other sources. |
@@ -184,11 +184,11 @@ After the layout exists, generate the header with `mint header layout.toml -o la
 | `u8`, `u16`, `u32`, `u64` | 1–8 bytes  | Unsigned integers                  |
 | `i8`, `i16`, `i32`, `i64` | 1–8 bytes  | Signed integers (two's complement) |
 | `f32`, `f64`              | 4, 8 bytes | IEEE 754 floats                    |
-| `qI.F`, `uqI.F`           | 1–8 bytes  | Binary fixed-point, width must be 8/16/32/64 bits |
+| `qI.F`, `uqI.F`           | 1–8 bytes  | Binary fixed-point, width must be 8/16/32/64 bits. `iNqF` / `uNqF` are aliases (`u32q5` = `uq27.5`, `i16q8` = `q7.8`) |
 
 Booleans use integer types: `{ value = true, type = "u8" }` stores 1.
 
-Fixed-point examples: `uq8.8` (unsigned 16-bit), `uq0.16` (unsigned 16-bit pure fraction), `q7.8` (signed 16-bit), `q15.16` (signed 32-bit). mint encodes them as `round_ties_even(input * 2^F)`.
+Fixed-point examples: `uq8.8` (unsigned 16-bit), `uq0.16` (unsigned 16-bit pure fraction), `q7.8` (signed 16-bit), `q15.16` (signed 32-bit), `u32q5` (alias of `uq27.5`). mint encodes them as `round_ties_even(input * 2^F)`.
 
 ## Field sources
 

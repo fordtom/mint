@@ -154,8 +154,11 @@ mint also supports binary Q-format fixed-point storage directly in `type`:
 
 - `qI.F` = signed fixed-point, total width `1 + I + F`
 - `uqI.F` = unsigned fixed-point, total width `I + F`
-- total width must be exactly 8, 16, 32, or 64 bits
+- `iNqF` = signed alias of `qI.F` with storage width `N` and `I = N - 1 - F`
+- `uNqF` = unsigned alias of `uqI.F` with storage width `N` and `I = N - F`
+- total width `N` must be exactly 8, 16, 32, or 64 bits
 - alignment and byte order follow the implied storage width
+- headers, errors and fingerprints use the canonical `qI.F` / `uqI.F` spelling
 
 Examples:
 
@@ -163,6 +166,8 @@ Examples:
 - `uq0.16` = unsigned 16-bit pure-fraction format
 - `q15.16` = signed 32-bit fixed-point
 - `uq8.8` = unsigned 16-bit fixed-point
+- `u32q5` = `uq27.5`
+- `i16q8` = `q7.8`
 
 mint encodes fixed-point as `round_ties_even(input * 2^fractional_bits)`. In strict mode, overflow is an error. Without `--strict`, the rounded encoded value is clamped to the storage range.
 

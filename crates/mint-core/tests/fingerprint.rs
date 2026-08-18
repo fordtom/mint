@@ -109,6 +109,10 @@ pointer = { ref = "right", type = "u32" }
     assert_ne!(scalar, array);
     assert_ne!(scalar, big_endian);
     assert_ne!(left_ref, right_ref);
+
+    let q_format = fingerprint_of(&layout_with("value = { value = 1.5, type = \"uq27.5\" }"));
+    let storage_alias = fingerprint_of(&layout_with("value = { value = 1.5, type = \"u32q5\" }"));
+    assert_eq!(q_format, storage_alias);
 }
 
 #[test]

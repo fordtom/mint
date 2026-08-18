@@ -5,6 +5,34 @@ use mint_core::data::JsonDataSource;
 mod common;
 
 #[test]
+fn fixed_point_storage_width_alias_matches_qf_notation() {
+    let canonical = r#"
+[mint]
+abi = "generic-le"
+
+[block.header]
+start_address = 0x80000
+length = 0x100
+padding = 0x00
+
+[block.data]
+gain = { value = 1.5, type = "uq27.5" }
+offset = { value = -1.25, type = "q26.5" }
+"#;
+    let aliased = canonical
+        .replace(r#"type = "uq27.5""#, r#"type = "u32q5""#)
+        .replace(r#"type = "q26.5""#, r#"type = "i32q5""#);
+
+    let canonical_path = common::write_layout_file("fixed-point-qf", canonical);
+    let aliased_path = common::write_layout_file("fixed-point-alias", &aliased);
+    let canonical_bytes =
+        common::build_block(&canonical_path, "block", true, None).expect("canonical build succeeds");
+    let aliased_bytes =
+        common::build_block(&aliased_path, "block", true, None).expect("alias build succeeds");
+    assert_eq!(canonical_bytes, aliased_bytes);
+}
+
+#[test]
 fn fixed_point_literals_and_arrays_encode_little_endian() {
     let layout = r#"
 [mint]
