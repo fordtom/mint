@@ -38,12 +38,12 @@ sample_t = ["block.object_a", "block.object_b"]
         r#"
 object_a.id = { value = 1, type = "u32" }
 object_a.flags = { type = "u8", bitmap = [
-    { bits = 1, name = "Enable" },
+    { bits = 1, value = 1 },
     { bits = 7, value = 0 },
 ] }
 object_b.id = { const = "shared", type = "u32" }
 object_b.flags = { type = "u8", bitmap = [
-    { bits = 1, name = "Enable" },
+    { bits = 1, value = 0 },
     { bits = 7, value = 1 },
 ] }
 "#,

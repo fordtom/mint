@@ -330,18 +330,6 @@ fn shape_mismatch(left: &ResolvedNode<'_>, right: &ResolvedNode<'_>, rel: &str) 
                 children: right_children,
             },
         ) => {
-            if left_coords.size != right_coords.size
-                || left_coords.alignment != right_coords.alignment
-            {
-                return Some(format!(
-                    "{}: size/alignment {}/{} vs {}/{}",
-                    at(""),
-                    left_coords.size,
-                    left_coords.alignment,
-                    right_coords.size,
-                    right_coords.alignment
-                ));
-            }
             if left_children.len() != right_children.len()
                 || left_children
                     .iter()
@@ -372,6 +360,18 @@ fn shape_mismatch(left: &ResolvedNode<'_>, right: &ResolvedNode<'_>, rel: &str) 
                 if let Some(difference) = shape_mismatch(left_child, right_child, &child_rel) {
                     return Some(difference);
                 }
+            }
+            if left_coords.size != right_coords.size
+                || left_coords.alignment != right_coords.alignment
+            {
+                return Some(format!(
+                    "{}: size/alignment {}/{} vs {}/{}",
+                    at(""),
+                    left_coords.size,
+                    left_coords.alignment,
+                    right_coords.size,
+                    right_coords.alignment
+                ));
             }
             None
         }

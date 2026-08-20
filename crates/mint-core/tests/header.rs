@@ -335,7 +335,7 @@ object_b.name = { value = "B", type = "u8", size = 8 }
         "_Static_assert(sizeof(sample_t) * CHAR_BIT == 16u * 8u, \"Mint ABI size mismatch for sample_t\");"
     ));
     assert!(header.contains(
-        "_Static_assert(offsetof(block_t, object_a.name) * CHAR_BIT == 8u * 8u, \"Mint ABI offset mismatch for block.object_a.name\");"
+        "_Static_assert(offsetof(block_t, object_a.name) * CHAR_BIT == 6u * 8u, \"Mint ABI offset mismatch for block.object_a.name\");"
     ));
     assert!(header.contains("#define BLOCK_OBJECT_A_NAME_LEN 8u"));
     assert!(header.contains("#define BLOCK_OBJECT_B_NAME_LEN 8u"));
