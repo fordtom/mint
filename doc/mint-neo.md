@@ -25,7 +25,7 @@ Mint Neo is the narrow tool. It follows one C aggregate, requires exact input
 data and delegates preparation and post-processing to other tools. It should
 be easier to understand because it offers fewer policies:
 
-- Python, `jq` or another upstream tool prepares one final JSON object.
+- An upstream script, `jq` or another data tool prepares one final JSON object.
 - Mint Neo encodes that object according to one header and one named ABI.
 - Hexy, hexview or another downstream tool pads, combines, checksums, signs or
   converts the image.
@@ -40,8 +40,6 @@ be easier to understand because it offers fewer policies:
 - Require the JSON shape and every array extent to match the C shape exactly.
 - Preserve deterministic, nameless ABI fingerprints.
 - Produce one standard, octet-addressed Intel HEX range.
-- Expose the same parse, inspect, fingerprint and encode operations through
-  Rust and Python APIs.
 - Produce precise source diagnostics for both the header and JSON.
 
 ## Non-goals
@@ -59,6 +57,7 @@ be easier to understand because it offers fewer policies:
 - Multiple blocks or multiple output ranges in one invocation.
 - Motorola S-record, raw binary or vendor-specific HEX output.
 - Generating, rewriting or emitting C code of any kind.
+- Providing a stable library API or language binding in the first version.
 - Maintaining command-line compatibility with Mint v2.
 
 ## Transformation from Mint v2
@@ -73,7 +72,7 @@ be easier to understand because it offers fewer policies:
 | Configurable alignment-padding byte | Optional `@mint padding`; default `0xFF` |
 | Block start address | Required `@mint start-address` |
 | Strict integer conversion | The only integer conversion mode |
-| ABI fingerprint calculation | New Neo fingerprint domain and CLI/API operations |
+| ABI fingerprint calculation | New Neo fingerprint domain and CLI operation |
 | Optional stored fingerprint field | `@mint fingerprint` on one `uint64_t` field |
 | Intel HEX rendering | The only output format, with fixed record policy |
 | ABI discovery | `abi list` and `abi show` remain available |
@@ -123,8 +122,28 @@ be easier to understand because it offers fewer policies:
   names.
 - All missing, extra, mistyped and incorrectly sized JSON values are errors.
 - Header diagnostics identify exact source spans and related declarations.
-- A Python mapping can be encoded directly without writing an intermediate
-  JSON file.
+
+## Settings scope
+
+Mint v2 has three file-level layout settings:
+
+| Mint v2 file-level setting | Mint Neo decision |
+| --- | --- |
+| `abi` | Retained on the one root block |
+| Named checksum configurations | Removed with checksums |
+| `[mint.const]` | Removed with layout-supplied payload values |
+
+Neo therefore has no file-level metadata comment. Its complete configuration
+belongs to the root block annotation:
+
+- `abi` defines scalar, aggregate and address-unit behaviour;
+- `start-address` defines placement; and
+- `padding` defines bytes used only for ABI-required alignment gaps.
+
+With exactly one block per header, separating ABI into a file comment would
+create a second annotation location without adding scope. If multiple blocks
+are ever supported, each block should repeat its own complete settings rather
+than introduce implicit global inheritance.
 
 ## One-file rule
 
@@ -139,7 +158,7 @@ The first version accepts exactly these preprocessor forms anywhere in the
 file:
 
 - `#pragma once`, treated as trivia;
-- `#include <stdint.h>`, `#include <stddef.h>` and
+- `#include <stdint.h>`, `#include <stdfloat.h>`, `#include <stddef.h>` and
   `#include <stdbool.h>`, treated as trivia; and
 - macro definitions, which are ignored unless a reachable array extent names
   them.
@@ -148,6 +167,12 @@ Every other directive is rejected unconditionally. This includes every other
 include, every conditional directive, `#undef`, `#error`, `#line`, `_Pragma`
 and every other pragma. Reachability is not consulted because Neo cannot know
 whether an unsupported directive changes a reachable declaration.
+
+This restriction is ABI-relevant, not merely parser simplification. Pragmas
+such as `#pragma pack`, vendor alignment controls, scalar-storage-order controls
+and compiler mode controls can change field offsets or representations.
+`#pragma once` is the sole accepted pragma because it only controls repeated
+inclusion and cannot change the root shape.
 
 Only object-like macros referenced by reachable array extents must satisfy
 Neo's shape-expression grammar. Other object-like and function-like macro
@@ -229,13 +254,13 @@ The first version supports:
 
 - `uint8_t`, `uint16_t`, `uint32_t`, `uint64_t`;
 - `int8_t`, `int16_t`, `int32_t`, `int64_t`;
-- `float` and `double`; and
+- `float`, `double`, `float32_t` and `float64_t`; and
 - local typedef aliases that eventually resolve to one of these types.
 
-`float` and `double` are encoded as IEEE-754 binary32 and binary64 in the
-selected ABI's byte order. A profile whose target does not use those
-representations must reject the type. ABI verification must test the format as
-well as size and alignment.
+`float32_t` and `float64_t` explicitly select IEEE-754 binary32 and binary64.
+`float` and `double` map to those same representations only where the selected
+ABI profile guarantees them. All four use the selected ABI's byte order. ABI
+verification must test format as well as size and alignment.
 
 The first version rejects `_Bool`, `bool`, plain `char`, `short`, `int`,
 `long`, `long long`, `size_t`, enums as stored fields and all compiler-specific
@@ -308,11 +333,10 @@ a positive compile-time integer and the complete root must remain within the
 Arrays remain first-class nodes in the semantic and fingerprint IR:
 
 ```text
-Array {
-    element: TypeId,
-    dimensions: Vec<u64>, // for example [2, 8, 16]
-    stride: resolved element sizeof
-}
+array
+  element type: resolved scalar or record
+  dimensions: ordered list, for example [2, 8, 16]
+  stride: resolved element size including tail padding
 ```
 
 Neo must not unroll arrays of records into synthetic named fields. It resolves
@@ -389,21 +413,17 @@ numbers still come only from JSON.
 The semantic IR is separate from Mint v2's TOML-shaped `Entry` tree:
 
 ```text
-Type =
-    Scalar(Scalar)
-  | Alias(TypeId)
-  | Record([Field])
-  | Array {
-        element: TypeId,
-        dimensions: Vec<u64>
-    }
+type
+  scalar: one supported scalar representation
+  alias: reference to another declared type
+  record: ordered list of fields
+  array: element type and ordered list of dimensions
 
-Field = {
-    name: C identifier,
-    type: TypeId,
-    source span,
-    fingerprint: bool
-}
+field
+  name: C identifier
+  type: reference to a resolved type
+  source: location in the header
+  fingerprint: whether Neo supplies the value
 ```
 
 The graph contains named declarations, but resolved layout and fingerprints
@@ -498,10 +518,8 @@ Binding rules:
 - Every ordinary leaf field is required.
 - The one optional `@mint fingerprint` field must be absent.
 - Extra object properties are errors.
-- Duplicate object properties are errors on every path that parses JSON source
-  text; parsing never uses last-value-wins semantics. `encode_value` and the
-  Python mapping API receive containers already deduplicated by their producer
-  and cannot detect this case.
+- Duplicate object properties are errors; parsing never uses last-value-wins
+  semantics.
 - `null` is never a fallback and is invalid for every supported field.
 - JSON booleans and strings are invalid for every first-version field type.
 - Integer JSON values must be integral and fit the exact destination range.
@@ -647,26 +665,9 @@ Successful commands return exit code 0. Schema, data and encoding failures
 return 1. CLI usage failures return 2. Diagnostics use source excerpts on
 stderr; machine-readable command output never shares stdout with diagnostics.
 
-## Rust API
+## Diagnostics
 
-The core library should expose data-oriented operations rather than CLI
-argument structures:
-
-```rust
-let schema = Schema::parse(SourceFile::new("config.h", header_source))?;
-let inspected = schema.inspect();
-let fingerprint = schema.fingerprint();
-let image_from_text =
-    schema.encode_json(SourceFile::new("config.json", json_text))?;
-let image_from_value = schema.encode_value(&json_value)?;
-let ihex = image_from_text.to_ihex();
-let bytes = image_from_value.as_bytes();
-```
-
-Parsing and ABI resolution are independent of JSON. A parsed and resolved
-schema can encode many objects without repeating header work.
-
-The public errors carry:
+CLI diagnostics carry:
 
 - a stable category;
 - the input filename or logical source name;
@@ -674,60 +675,9 @@ The public errors carry:
 - the primary message; and
 - related spans for duplicate declarations, unresolved types and cycles.
 
-Spans are available when the caller supplies source text. `encode_value` and
-the Python mapping API instead report an RFC 6901 JSON pointer such as
-`/samples/1/x`, because an in-memory value has no source span.
-
-## Python API
-
-Python support is a planned first-class interface, not a wrapper around the
-CLI. It accepts a Python mapping directly:
-
-```python
-import mint_neo
-
-schema = mint_neo.Schema.from_file("config.h")
-print(schema.fingerprint())
-print(schema.inspect_text())
-layout = schema.inspect()
-
-image = schema.encode({
-    "id": 42,
-    "origin": {"x": 10, "y": 20},
-    "samples": [
-        {"x": 1, "y": 2},
-        {"x": 3, "y": 4},
-    ],
-})
-
-image.write_ihex("config.hex")
-```
-
-This restores the useful part of the former Python workflow: a script prepares
-ordinary data and asks the same library used by the CLI to encode it. Python
-does not receive a second layout API and does not implement ABI resolution.
-
-The binding should also accept header text and return HEX text or raw resolved
-bytes in memory. Raw bytes are an API value for composition; the Neo CLI still
-writes Intel HEX only.
-
-`Schema.from_string(name, text)` preserves a logical filename for diagnostics.
-`Schema.inspect()` returns a Python dictionary and `inspect_text()` returns the
-human-readable form. Encoded images provide `to_bytes()`, `to_ihex()` and
-`write_ihex()`.
-
-Python values follow the JSON contract:
-
-- mapping keys must be strings;
-- `bool` is not accepted as an integer even though Python subclasses it from
-  `int`;
-- Python integers must fit the destination exactly;
-- Python floats must be finite and follow the same IEEE conversion rule;
-- records require mappings and arrays require lists or tuples;
-- `bytes` and `bytearray` are not implicit integer arrays in the first version;
-  and
-- failures raise typed `SchemaError`, `DataError` or `EncodeError` exceptions
-  carrying the same path and diagnostic information as Rust errors.
+Header and JSON input always arrive as source text in the first version, so
+both can retain exact spans. A data error also includes an RFC 6901 JSON pointer
+such as `/samples/1/x`.
 
 ## Parser strategy
 
@@ -771,8 +721,10 @@ crates/mint-neo/
     output/
 ```
 
-One package can provide both the Rust library and `mint-neo` binary. Splitting
-core and CLI crates before the API has users adds little value.
+One package provides the `mint-neo` binary. An internal library target can keep
+the implementation testable, but the first version makes no stable public API
+commitment. Splitting core and CLI crates before such an API exists adds little
+value.
 
 Mint Neo must not depend on Mint v2's TOML `Config`, `Entry`, `DataSource` or
 header generator. Those types cannot represent arrays of records and carry
@@ -846,12 +798,12 @@ later syntax.
 8. Add strict structural JSON binding and scalar byte encoding.
 9. Add Neo fingerprinting and optional fingerprint-field insertion.
 10. Add fixed Intel HEX output and the final CLI.
-11. Add the Python binding over the stable Rust API.
 
 ## Decisions deliberately deferred
 
 - The final product and crate name.
-- Packaging technology and distribution for the Python binding.
+- Whether a later release should expose a stable library API or language
+  bindings.
 - String and character-array semantics.
 - Native C integer and character spellings: `char`, `short`, `int`, `long`,
   `long long`, `bool`, `size_t` and enum-typed members.
