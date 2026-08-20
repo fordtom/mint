@@ -40,8 +40,6 @@ be easier to understand because it offers fewer policies:
 - Require the JSON shape and every array extent to match the C shape exactly.
 - Preserve deterministic, nameless ABI fingerprints.
 - Produce one standard, octet-addressed Intel HEX range.
-- Generate an optional C assertion translation unit so the firmware toolchain
-  can verify Neo's offsets and sizes without Neo invoking that toolchain.
 - Expose the same parse, inspect, fingerprint and encode operations through
   Rust and Python APIs.
 - Produce precise source diagnostics for both the header and JSON.
@@ -60,7 +58,7 @@ be easier to understand because it offers fewer policies:
 - Allocated-region management or end-of-block padding.
 - Multiple blocks or multiple output ranges in one invocation.
 - Motorola S-record, raw binary or vendor-specific HEX output.
-- Generating or rewriting the schema header.
+- Generating, rewriting or emitting C code of any kind.
 - Maintaining command-line compatibility with Mint v2.
 
 ## Transformation from Mint v2
@@ -80,7 +78,6 @@ be easier to understand because it offers fewer policies:
 | Intel HEX rendering | The only output format, with fixed record policy |
 | ABI discovery | `abi list` and `abi show` remain available |
 | Resolved-layout diagnostics | Reintroduced as `inspect` |
-| Target-compiler layout assertions | Generated as a temporary C translation unit |
 | 32-bit octet output-address validation | Retained |
 
 ### Removed
@@ -128,8 +125,6 @@ be easier to understand because it offers fewer policies:
 - Header diagnostics identify exact source spans and related declarations.
 - A Python mapping can be encoded directly without writing an intermediate
   JSON file.
-- The user's compiler can compile generated assertions against the exact
-  schema header without Neo launching a subprocess.
 
 ## One-file rule
 
@@ -620,36 +615,6 @@ target-address to octet-address conversion as Mint v2.
 Range combination, gap fill, reserved-region padding, checksums, signatures and
 format conversion belong downstream.
 
-## Compiler assertions
-
-The schema-header design removes Mint v2's generated `_Static_assert` checks.
-Neo restores that verification without running a compiler:
-
-```bash
-mint-neo assertions config.h > config.mint-assertions.c
-```
-
-The generated translation unit:
-
-- includes `<limits.h>` and `<stddef.h>`, then the schema header by its supplied
-  path;
-- asserts `CHAR_BIT`, root `sizeof` and root `_Alignof`;
-- asserts `offsetof` once per distinct member path, with every array index
-  fixed at zero;
-- asserts each array's element size and stride so per-element offsets follow
-  without enumerating every instance; and
-- defines the expected fingerprint as an integer constant.
-
-This file is a generated build artifact, not a second maintained schema.
-Firmware CI compiles it with the same compiler, target and flags as the
-firmware. Neo never invokes that compiler. `assertions` fails when the header
-path cannot be represented as a safe C include token.
-
-Every size, alignment and offset comparison is expressed in bits, for example
-`sizeof(config_t) * CHAR_BIT == resolved_octets * 8`. C operators report C
-addressable units, which are 16 bits wide for `ti-c28x-eabi`, while Neo's
-resolved coordinates remain octets.
-
 ## Command-line interface
 
 The initial CLI surface is:
@@ -658,7 +623,6 @@ The initial CLI surface is:
 mint-neo build HEADER --json FILE|- --out FILE
 mint-neo fingerprint HEADER
 mint-neo inspect HEADER [--format text|json]
-mint-neo assertions HEADER
 mint-neo abi list
 mint-neo abi show ABI
 ```
@@ -837,7 +801,7 @@ The implementation should be validated at four boundaries.
 
 - Acceptance fixtures for every supported declaration spelling.
 - Rejection fixtures for every excluded reachable construct.
-- Exact span assertions for malformed tags, unresolved names and cycles.
+- Exact span checks for malformed tags, unresolved names and cycles.
 - Fuzzing or property tests that ensure malformed input never panics.
 
 ### ABI layout
@@ -866,8 +830,6 @@ The implementation should be validated at four boundaries.
 - Proof that layout-equivalent dimensions such as `[2][6]` and `[12]` hash
   differently.
 - Golden Intel HEX output for 8-bit and wider address-unit ABIs.
-- Generated assertion translation units compiled by every available target
-  probe.
 
 ## Delivery sequence
 
@@ -884,8 +846,7 @@ later syntax.
 8. Add strict structural JSON binding and scalar byte encoding.
 9. Add Neo fingerprinting and optional fingerprint-field insertion.
 10. Add fixed Intel HEX output and the final CLI.
-11. Add compiler-assertion generation and compile it in target probes.
-12. Add the Python binding over the stable Rust API.
+11. Add the Python binding over the stable Rust API.
 
 ## Decisions deliberately deferred
 
