@@ -63,7 +63,7 @@ ip = { value = [192, 168, 1, 1], type = "u8", size = 4 }
 checksum = { checksum = "crc32", type = "u32" }
 ```
 
-`mint header layout.toml -o layout.h` generates the matching C typedefs, array extent macros, named bitmap shift/mask macros, and fingerprint macros. `mint fingerprint layout.toml` prints each block's ABI fingerprint.
+`mint header layout.toml -o layout.h` generates the matching C typedefs, block address and length macros, array extent macros, named bitmap shift/mask macros, and fingerprint macros. `mint fingerprint layout.toml` prints each block's ABI fingerprint.
 
 Key observations:
 
@@ -443,7 +443,7 @@ Run `mint --help` for the full argument list.
 
 **Multiple blocks, one file**: Define several `[blockname.header]` / `[blockname.data]` sections. Build all with `mint build layout.toml` or select with `layout.toml#blockname`.
 
-**Generated C header**: Run `mint header layout.toml -o layout.h`. Dotted paths become nested structs, arrays use generated extent macros, named bitmap regions receive shift and mask macros, and fingerprint fields receive expected-value macros. Layout parsing guarantees valid block and field names; header generation rejects statically invalid selected layouts and generated-name collisions.
+**Generated C header**: Run `mint header layout.toml -o layout.h`. Each block emits `<BLOCK>_START_ADDRESS` and `<BLOCK>_LENGTH` macros. Dotted paths become nested structs, arrays use generated extent macros, named bitmap regions receive shift and mask macros, and fingerprint fields receive expected-value macros. Layout parsing guarantees valid block and field names; header generation rejects statically invalid selected layouts and generated-name collisions.
 
 **Multiple CRC configs**: Define `[mint.checksum.crc32]` and `[mint.checksum.crc32c]` (or any names). Reference by name in checksum fields.
 
