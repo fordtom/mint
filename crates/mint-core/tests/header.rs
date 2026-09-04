@@ -91,6 +91,8 @@ bitmap = { type = "u64", bitmap = [{ bits = 64, name = "WholeField" }] }
             "missing {declaration}\n{header}"
         );
     }
+    assert!(header.contains("#define TYPES_START_ADDRESS 0x0u"));
+    assert!(header.contains("#define TYPES_LENGTH 0x200u"));
     assert!(header.contains("#define TYPES_BITMAP_WHOLE_FIELD_SHIFT 0u"));
     assert!(header.contains("#define TYPES_BITMAP_WHOLE_FIELD_MASK UINT64_C(0xFFFFFFFFFFFFFFFF)"));
     assert!(header.contains("#define TYPES_POINTERS_LEN 3u"));
@@ -123,6 +125,8 @@ pointer = { ref = "missing", type = "u32" }
         |path| vec![BlockSelector::named(path, "block")],
     );
 
+    assert!(header.contains("#define BLOCK_START_ADDRESS 0x1000u"));
+    assert!(header.contains("#define BLOCK_LENGTH 0x100u"));
     assert!(header.contains("#define BLOCK_SCHEMA_FINGERPRINT UINT64_C(0x9F2050E2FAA654D7)"));
     assert!(header.contains("uint64_t schema; /* fingerprint */"));
 }
@@ -160,6 +164,10 @@ value = { value = 3, type = "u8" }
     let second = mint_core::header::generate(&selectors).expect("header regenerates");
 
     assert_eq!(first, second);
+    assert!(first.contains("#define FIRST_START_ADDRESS 0x0u"));
+    assert!(first.contains("#define FIRST_LENGTH 0x100u"));
+    assert!(first.contains("#define SECOND_START_ADDRESS 0x100u"));
+    assert!(first.contains("#define SECOND_LENGTH 0x100u"));
     assert!(first.contains("#define FIRST_NAME_LEN 16u"));
     assert!(first.contains("#define FIRST_NAME_PADDED_LEN 16u"));
     assert!(first.contains("#define FIRST_MATRIX_ROWS 2u"));

@@ -157,6 +157,23 @@ fn render_block(
     };
 
     let mut macros = Vec::new();
+    add_macro(
+        names,
+        &mut macros,
+        format!("{macro_prefix}_START_ADDRESS"),
+        format!("0x{:X}u", block.header.start_address),
+        format!("block header '{block_name}.start_address'"),
+        true,
+    )?;
+    add_macro(
+        names,
+        &mut macros,
+        format!("{macro_prefix}_LENGTH"),
+        format!("0x{:X}u", block.header.length),
+        format!("block header '{block_name}.length'"),
+        false,
+    )?;
+
     let mut path = Vec::new();
     collect_macros(
         source,
